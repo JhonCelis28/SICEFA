@@ -1,0 +1,13 @@
+{
+    "name": "INFRASTOCK",
+    "alias": "infrastock",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\INFRASTOCK\\Providers\\INFRASTOCKServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}
