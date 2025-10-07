@@ -5,43 +5,60 @@ namespace Modules\INFRASTOCK\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Factory;
 
+/**
+ * @class INFRASTOCKServiceProvider
+ * @brief Proveedor de servicios principal para el módulo INFRASTOCK.
+ *
+ * Este ServiceProvider es responsable de registrar y arrancar todos los componentes
+ * necesarios para el funcionamiento del módulo INFRASTOCK, incluyendo configuraciones,
+ * vistas, traducciones, migraciones y otros proveedores de servicios específicos del módulo.
+ */
 class INFRASTOCKServiceProvider extends ServiceProvider
 {
     /**
-     * @var string $moduleName
+     * @var string $moduleName El nombre en mayúsculas del módulo.
      */
     protected $moduleName = 'INFRASTOCK';
 
     /**
-     * @var string $moduleNameLower
+     * @var string $moduleNameLower El nombre en minúsculas del módulo.
      */
     protected $moduleNameLower = 'infrastock';
 
     /**
-     * Boot the application events.
+     * Arranca los eventos de la aplicación.
+     * Este método se ejecuta después de que todos los demás proveedores de servicios
+     * hayan sido registrados.
      *
      * @return void
      */
     public function boot()
     {
-        $this->registerTranslations();
-        $this->registerConfig();
-        $this->registerViews();
+        $this->registerTranslations(); // Registra las traducciones del módulo.
+        $this->registerConfig();       // Registra los archivos de configuración del módulo.
+        $this->registerViews();        // Registra las vistas del módulo.
+        // Carga las migraciones de la base de datos del módulo.
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
     }
 
     /**
-     * Register the service provider.
+     * Registra el proveedor de servicios.
+     * Este método se encarga de enlazar o registrar servicios dentro del contenedor de la aplicación.
      *
      * @return void
      */
     public function register()
     {
+        // Registra el RouteServiceProvider para cargar las rutas del módulo.
         $this->app->register(RouteServiceProvider::class);
+        // Registra el ViewComposerServiceProvider para compartir datos con las vistas del módulo.
+        $this->app->register(ViewComposerServiceProvider::class);
     }
 
     /**
-     * Register config.
+     * Registra los archivos de configuración del módulo.
+     * Publica el archivo de configuración para que pueda ser modificado por el usuario
+     * y fusiona la configuración por defecto del módulo con la configuración de la aplicación.
      *
      * @return void
      */
@@ -56,7 +73,9 @@ class INFRASTOCKServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register views.
+     * Registra las vistas del módulo.
+     * Publica las vistas para que puedan ser sobrescritas si es necesario
+     * y carga las vistas desde la ruta del módulo y las rutas publicables.
      *
      * @return void
      */
@@ -74,7 +93,9 @@ class INFRASTOCKServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register translations.
+     * Registra las traducciones del módulo.
+     * Carga los archivos de traducción desde la carpeta de recursos del módulo
+     * o desde la ruta de recursos publicada si existe.
      *
      * @return void
      */
@@ -90,7 +111,8 @@ class INFRASTOCKServiceProvider extends ServiceProvider
     }
 
     /**
-     * Get the services provided by the provider.
+     * Obtiene los servicios proporcionados por el proveedor.
+     * Indica qué servicios son proporcionados por este ServiceProvider.
      *
      * @return array
      */
@@ -99,6 +121,12 @@ class INFRASTOCKServiceProvider extends ServiceProvider
         return [];
     }
 
+    /**
+     * Obtiene las rutas publicables para las vistas del módulo.
+     * Este método busca rutas de vistas publicadas en el directorio de recursos de la aplicación.
+     *
+     * @return array
+     */
     private function getPublishableViewPaths(): array
     {
         $paths = [];

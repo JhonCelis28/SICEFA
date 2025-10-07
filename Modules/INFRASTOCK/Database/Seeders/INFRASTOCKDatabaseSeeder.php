@@ -4,18 +4,36 @@ namespace Modules\INFRASTOCK\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Modules\INFRASTOCK\Database\Seeders\AppTableSeeder;
 
+/**
+ * @class INFRASTOCKDatabaseSeeder
+ * @brief Seeder principal para el módulo INFRASTOCK.
+ *
+ * Este seeder orquesta la ejecución de otros seeders específicos dentro del módulo INFRASTOCK.
+ * Su propósito principal es asegurar que todas las tablas necesarias para el funcionamiento
+ * del módulo sean pobladas con datos iniciales o de prueba de manera controlada y transaccional.
+ */
 class INFRASTOCKDatabaseSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Ejecuta las semillas de la base de datos para el módulo INFRASTOCK.
+     *
+     * Este método gestiona el proceso de siembra de la base de datos para el módulo.
+     * Utiliza transacciones para asegurar la integridad de los datos, ejecutando
+     * el `AppTableSeeder` para registrar la aplicación INFRASTOCK en el sistema.
      *
      * @return void
      */
-    public function run()
+    public function run(): void
     {
-        Model::unguard();
+        
+        DB::beginTransaction();
 
-        // $this->call("OthersTableSeeder");
+        //$this->call(AppTableSeeder::class);
+        $this->call(AppTableSeeder::class);
+
+        DB::commit();
     }
 }

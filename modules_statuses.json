@@ -1,10 +1,10 @@
 {
-    "SICA": true,
-    "EVS": true,
+    "SICA": false,
+    "EVS": false,
     "BOLMETEOR": true,
-    "CEFAMAPS": true,
+    "CEFAMAPS": false,
     "TILABS": true,
-    "SENAEMPRESA": true,
+    "SENAEMPRESA": false,
     "CPD": true,
     "AGROINDUSTRIA": true,
     "AGROCEFA": true,
@@ -13,8 +13,9 @@
     "SIGAC": true,
     "CAFETO": true,
     "HANGARAUTO": false,
-    "GTH": true,
+    "GTH": false,
     "HDC": true,
     "PQRS": true,
-    "INFRASTOCK": true
+    "INFRASTOCK": true,
+    "Prototipo": true
 }

@@ -1,8 +1,14 @@
 {
     "name": "INFRASTOCK",
     "alias": "infrastock",
-    "description": "",
-    "keywords": [],
+    "description": "Archivo de configuración principal para el módulo INFRASTOCK. Define metadatos del módulo, proveedores de servicios, alias, y dependencias para su correcto funcionamiento dentro de la aplicación Laravel.",
+    "keywords": [
+        "infrastock",
+        "inventario",
+        "herramientas",
+        "insumos",
+        "gestión"
+    ],
     "priority": 0,
     "providers": [
         "Modules\\INFRASTOCK\\Providers\\INFRASTOCKServiceProvider"

@@ -1,5 +1,6 @@
 {
   "private": true,
+  "description": "Define scripts para la compilación de assets y dependencias de desarrollo para el módulo INFRASTOCK.",
   "scripts": {
     "dev": "npm run development",
     "development": "mix",
