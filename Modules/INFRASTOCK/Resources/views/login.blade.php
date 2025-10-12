@@ -122,7 +122,8 @@
 
         <!-- Pie de Página (Footer) -->
         <footer class="bg-green-700 text-white py-4 text-center">
-            <p class="text-sm">&copy; {{ date('Y') }} INFRASTOCK - Todos los derechos reservados</p>
+            <strong>Copyright &copy; 2025 <a target="blank" href="https://centroagroindustrial.blogspot.com/">Centro de Formación Agroindustrial "La Angostura</a>. All rights reserved.</strong>
+            <div class="float-right d-none d-sm-inline"> ADSO </div>
         </footer>
     </div>
 

@@ -26,7 +26,7 @@
 @section('content')
 
     <!-- Sección de tarjetas de resumen (Small Boxes) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-6">
 
         <!-- Tarjeta: Nuevas Solicitudes de Insumos -->
         <div class="bg-white rounded-xl shadow-md p-6 flex items-center justify-between transition-transform transform hover:scale-105 duration-200 relative">
