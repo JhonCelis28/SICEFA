@@ -31,6 +31,7 @@ class Equipment extends Model
         'inventory_id',
         'name',
         'amount',
+        'initial_amount',
         'price',
         'category_id',
         'expiration_date',
@@ -69,5 +70,33 @@ class Equipment extends Model
     public function inventory()
     {
         return $this->belongsTo(Inventory::class, 'inventory_id');
+    }
+
+    /**
+     * Calcula el stock disponible basado en la cantidad inicial menos las solicitudes aprobadas.
+     * @return int
+     */
+    public function getStockAttribute()
+    {
+        // Si no hay cantidad inicial definida, usar la cantidad actual
+        $initialAmount = $this->initial_amount ?? $this->amount;
+        
+        // Calcular las solicitudes aprobadas y entregadas para este equipo
+        $consumedAmount = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('movement_id', $this->id)
+            ->where('item_type', 'equipment')
+            ->whereIn('role', ['approved', 'delivered'])
+            ->sum('amount');
+            
+        return max(0, $initialAmount - $consumedAmount);
+    }
+
+    /**
+     * Verifica si hay stock suficiente para una cantidad específica.
+     * @param int $requestedAmount
+     * @return bool
+     */
+    public function hasStockFor($requestedAmount)
+    {
+        return $this->stock >= $requestedAmount;
     }
 }

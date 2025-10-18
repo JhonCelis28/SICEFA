@@ -222,6 +222,19 @@
                         <li><a href="{{ route('infrastock.admin.loans.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.loans.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Listar Préstamos</a></li>
                     </ul>
                 </li>
+
+                <!-- Grupo de navegación para Gestión de Usuarios -->
+                <li x-data="{ open: false }">
+                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.admin.users.*')) active @endif">
+                        <i class="fas fa-users w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
+                        <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Gestionar Usuario</span>
+                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
+                    </a>
+                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
+                        <li><a href="{{ route('infrastock.admin.users.create') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.users.create')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Registrar Usuario</a></li>
+                        <li><a href="{{ route('infrastock.admin.users.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.users.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Listado de Usuario</a></li>
+                    </ul>
+                </li>
             </ul>
         </nav>
     </div>
@@ -297,8 +310,8 @@
 
                     <div x-show="dropdownOpen" @click.away="dropdownOpen = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
                         <a href="{{ route('cefa.infrastock.admin.profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</a>
-                        <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
-                        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
+                        <a href="{{ route('infrastock.admin.logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
+                        <form id="logout-form" action="{{ route('infrastock.admin.logout') }}" method="POST" class="hidden">
                             @csrf
                         </form>
                     </div>

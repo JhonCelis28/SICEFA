@@ -35,6 +35,7 @@ class INFRASTOCKController extends Controller
         return view('infrastock::index'); // Retorna la vista 'index.blade.php' del módulo INFRASTOCK.
     }
 
+
     /**
      * Muestra el formulario para crear un nuevo recurso a nivel de módulo.
      * Actualmente, esta función actúa como un placeholder y redirige a la vista principal
@@ -76,10 +77,12 @@ class INFRASTOCKController extends Controller
 
         // Conteo total de equipos (insumos) registrados.
         $totalEquipments = Equipment::count();
-        // Suma total de la cantidad de todos los insumos en stock.
-        $suppliesInStock = Equipment::sum('amount');
-        // Calcula el porcentaje de insumos en stock respecto al total de equipos.
-        $suppliesPercentage = ($totalEquipments > 0) ? round(($suppliesInStock / $totalEquipments) * 100, 2) : 0;
+        // Suma total de la cantidad inicial de todos los insumos.
+        $totalInitialAmount = Equipment::sum('initial_amount') ?: Equipment::sum('amount');
+        // Calcula el stock total disponible usando el nuevo sistema.
+        $totalStockAmount = Equipment::get()->sum('stock');
+        // Calcula el porcentaje de insumos en stock respecto al total inicial.
+        $suppliesPercentage = ($totalInitialAmount > 0) ? round(($totalStockAmount / $totalInitialAmount) * 100, 2) : 0;
 
         // Conteo de herramientas que actualmente están en préstamo.
         $toolsOnLoanCount = WarehouseMovement::where('item_type', 'tool')
@@ -171,10 +174,41 @@ class INFRASTOCKController extends Controller
 
     /**
      * Maneja la lógica posterior al inicio de sesión para el módulo INFRASTOCK.
-     * Redirige a una vista específica o realiza acciones después de que un usuario ha iniciado sesión.
-     * @return Renderable
+     * Redirige al usuario autenticado al dashboard correspondiente según su rol.
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function postlogin(){
-        return view('infrastock::postlogin'); // Retorna la vista de post-login del módulo.
+        $user = auth()->user();
+        
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Usuario no autenticado');
+        }
+
+        // Obtener los roles del usuario
+        $userRoles = $user->roles->pluck('name')->toArray();
+        
+        // Verificar el rol del usuario y redirigir al dashboard correspondiente
+        if (in_array('Aseo', $userRoles)) {
+            return redirect()->route('infrastock.cleaning-staff.dashboard');
+        } else {
+            // Para administradores o usuarios sin rol específico
+            return redirect()->route('cefa.infrastock.admin.dashboard');
+        }
+    }
+
+    /**
+     * Cierra la sesión del usuario administrador.
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function logout(Request $request)
+    {
+        auth()->logout();
+        
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return redirect()->route('cefa.welcome')
+            ->with('success', 'Has cerrado sesión correctamente.');
     }
 }

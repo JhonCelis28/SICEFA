@@ -39,6 +39,17 @@ class INFRASTOCKServiceProvider extends ServiceProvider
         $this->registerViews();        // Registra las vistas del módulo.
         // Carga las migraciones de la base de datos del módulo.
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        
+        // Registrar comandos de Artisan
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Modules\INFRASTOCK\Console\Commands\CheckINFRASTOCKRoles::class,
+                \Modules\INFRASTOCK\Console\Commands\CheckUserData::class,
+                \Modules\INFRASTOCK\Console\Commands\CheckPersonData::class,
+                \Modules\INFRASTOCK\Console\Commands\TestPhoneField::class,
+                \Modules\INFRASTOCK\Console\Commands\CheckTableStructure::class,
+            ]);
+        }
     }
 
     /**

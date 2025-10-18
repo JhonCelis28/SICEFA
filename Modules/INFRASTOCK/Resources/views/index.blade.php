@@ -52,12 +52,19 @@
                     <a href="#features" class="hover:text-green-200 transition-colors duration-300">Funcionalidades</a>
                     <a href="#contact" class="hover:text-green-200 transition-colors duration-300">Contacto</a>
                 </nav>
-                <!-- Botón condicional: "Inicia sesión" para usuarios no autenticados o "Administrador" para autenticados -->
+                <!-- Botón condicional: "Inicia sesión" para usuarios no autenticados o dashboard específico para autenticados -->
                 <div>
                     @guest
-                        <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('login') }}">Inicia sesión</a>
+                        <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('login') }}?redirect_to={{ urlencode(route('infrastock.post-login')) }}">Inicia sesión</a>
                     @else
-                        <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
+                        @php
+                            $userRoles = Auth::user()->roles->pluck('name')->toArray();
+                        @endphp
+                        @if(in_array('Aseo', $userRoles))
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.cleaning-staff.dashboard') }}">Personal de Aseo</a>
+                        @else
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
+                        @endif
                     @endguest
                 </div>
             </div>
@@ -72,9 +79,16 @@
                 <a href="#contact" class="block py-2 px-3 hover:bg-green-600 rounded-md transition-colors duration-300">Contacto</a>
                 <!-- Botón condicional para el menú móvil -->
                 @guest
-                    <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('login') }}">Inicia sesión</a>
+                    <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('login') }}?redirect_to={{ urlencode(route('infrastock.post-login')) }}">Inicia sesión</a>
                 @else
-                    <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
+                    @php
+                        $userRoles = Auth::user()->roles->pluck('name')->toArray();
+                    @endphp
+                    @if(in_array('Aseo', $userRoles))
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.cleaning-staff.dashboard') }}">Personal de Aseo</a>
+                    @else
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
+                    @endif
                 @endguest
             </nav>
         </div>
@@ -93,7 +107,7 @@
                     Bienvenido al sistema de gestión de <span class="font-semibold">Infraestructura y Stock</span>. 
                     Optimiza el control de insumos, herramientas y materiales con reportes claros y ágiles.
                 </p>
-                <a href="{{ route('login') }}"
+                <a href="{{ route('login') }}?redirect_to={{ urlencode(route('infrastock.post-login')) }}"
                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl shadow-lg font-semibold transition">
                     Ir al Login
                 </a>

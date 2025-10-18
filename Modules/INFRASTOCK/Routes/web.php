@@ -16,6 +16,9 @@
 // Ruta principal del módulo INFRASTOCK, que redirige a la página de inicio del módulo.
 Route::get('/infrastock', 'INFRASTOCKController@index')->name('cefa.infrastock.index');
 
+// Ruta para manejar la redirección después del login desde SICA
+Route::get('/infrastock/post-login', 'INFRASTOCKController@postlogin')->name('infrastock.post-login');
+
 /**
  * Grupo de rutas para la administración de Áreas Productivas.
  * Todas estas rutas requieren que el usuario esté autenticado.
@@ -162,3 +165,73 @@ Route::get('/infrastock/admin/dashboard','INFRASTOCKController@dashboard')->name
 
 // Ruta para la lógica posterior al inicio de sesión del módulo.
 Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.postlogin');
+
+/**
+ * Rutas para la gestión de usuarios (Solo para administradores).
+ * Estas rutas requieren autenticación y permisos de administrador.
+ */
+Route::middleware(['web', 'auth'])->prefix('infrastock/admin')->group(function () {
+    // Gestión de usuarios
+    Route::resource('users', 'UserManagementController')->names([
+        'index' => 'infrastock.admin.users.index',
+        'create' => 'infrastock.admin.users.create',
+        'store' => 'infrastock.admin.users.store',
+        'show' => 'infrastock.admin.users.show',
+        'edit' => 'infrastock.admin.users.edit',
+        'update' => 'infrastock.admin.users.update',
+        'destroy' => 'infrastock.admin.users.destroy',
+    ]);
+    
+            // Cambiar estado de usuario (AJAX)
+            Route::post('users/{id}/toggle-status', 'UserManagementController@toggleStatus')->name('infrastock.admin.users.toggle-status');
+            
+            // Verificar solicitudes pendientes de usuario (AJAX)
+            Route::get('users/{id}/check-requests', 'UserManagementController@checkRequests')->name('infrastock.admin.users.check-requests');
+});
+
+/**
+ * Rutas públicas para el Personal de Aseo (registro y login).
+ * Estas rutas no requieren autenticación previa.
+ */
+Route::prefix('infrastock/cleaning-staff')->group(function () {
+    // Registro del personal de aseo
+    Route::get('/register', 'CleaningStaffController@showRegistrationForm')->name('infrastock.cleaning-staff.register');
+    Route::post('/register', 'CleaningStaffController@register')->name('infrastock.cleaning-staff.register.post');
+    
+    // Login del personal de aseo
+    Route::get('/login', 'CleaningStaffController@showLoginForm')->name('infrastock.cleaning-staff.login');
+    Route::post('/login', 'CleaningStaffController@login')->name('infrastock.cleaning-staff.login.post');
+});
+
+/**
+ * Grupo de rutas para el Personal de Aseo.
+ * Todas estas rutas requieren que el usuario esté autenticado.
+ */
+Route::middleware(['web', 'auth'])->group(function () {
+    // Logout del administrador
+    Route::post('/infrastock/admin/logout', 'INFRASTOCKController@logout')->name('infrastock.admin.logout');
+    
+    // Logout del personal de aseo
+    Route::post('/infrastock/cleaning-staff/logout', 'CleaningStaffController@logout')->name('infrastock.cleaning-staff.logout');
+    
+    // Dashboard principal del personal de aseo
+    Route::get('/infrastock/cleaning-staff/dashboard', 'CleaningStaffController@dashboard')->name('infrastock.cleaning-staff.dashboard');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/cleaning-staff/requests/create', 'CleaningStaffController@createRequest')->name('infrastock.cleaning-staff.requests.create');
+    Route::post('/infrastock/cleaning-staff/requests', 'CleaningStaffController@storeRequest')->name('infrastock.cleaning-staff.requests.store');
+    Route::get('/infrastock/cleaning-staff/requests', 'CleaningStaffController@myRequests')->name('infrastock.cleaning-staff.requests.index');
+    
+    // Notificaciones
+    Route::get('/infrastock/cleaning-staff/notifications', 'CleaningStaffController@notifications')->name('infrastock.cleaning-staff.notifications');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/cleaning-staff/profile', 'CleaningStaffController@profile')->name('infrastock.cleaning-staff.profile');
+    Route::put('/infrastock/cleaning-staff/profile', 'CleaningStaffController@updateProfile')->name('infrastock.cleaning-staff.profile.update');
+    
+    // Reportes de sobrantes (solo filtros, sin exportación)
+    Route::get('/infrastock/cleaning-staff/surplus-report', 'CleaningStaffController@surplusReport')->name('infrastock.cleaning-staff.surplus-report');
+    
+    // Historial de insumos
+    Route::get('/infrastock/cleaning-staff/supply-history', 'CleaningStaffController@supplyHistory')->name('infrastock.cleaning-staff.supply-history');
+});
