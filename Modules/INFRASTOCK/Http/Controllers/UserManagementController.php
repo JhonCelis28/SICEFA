@@ -29,10 +29,31 @@ class UserManagementController extends Controller
     public function create()
     {
         // Obtener roles disponibles para el módulo INFRASTOCK (solo Aseo y Operario)
-        $roles = Role::whereIn('name', ['Operario', 'Aseo'])
-            ->where('app_id', 23)
-            ->orderBy('name')
-            ->get();
+        try {
+            // Primero intentar con app_id específico
+            $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                ->where('app_id', 20)
+                ->orderBy('name')
+                ->get();
+
+            // Si no se encuentran roles con app_id 20, buscar solo por nombre
+            if ($roles->isEmpty()) {
+                $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            // Si hay error de conexión, usar roles básicos
+            $roles = collect();
+        }
+
+        // Si aún no hay roles, crear roles básicos temporalmente
+        if ($roles->isEmpty()) {
+            $roles = collect([
+                (object)['id' => 1, 'name' => 'Operario'],
+                (object)['id' => 2, 'name' => 'Aseo']
+            ]);
+        }
 
         return view('infrastock::admin.users.create', compact('roles'));
     }
@@ -142,6 +163,15 @@ class UserManagementController extends Controller
             return redirect()->route('infrastock.admin.users.index')
                 ->with('success', 'Usuario registrado exitosamente.');
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.users.index')
+                    ->with('error', 'Ya existe un usuario con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             
@@ -162,19 +192,53 @@ class UserManagementController extends Controller
     public function index()
     {
         // Obtener usuarios con roles específicos de INFRASTOCK (Aseo y Operario)
+        // Primero intentar con app_id específico, si no hay resultados, buscar solo por nombre
         $users = User::with(['person', 'roles'])
             ->withTrashed() // Incluir usuarios eliminados (inactivos)
             ->whereHas('roles', function($query) {
                 $query->whereIn('name', ['Operario', 'Aseo'])
-                      ->where('app_id', 23);
+                      ->where('app_id', 20);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
+        // Si no se encuentran usuarios con app_id 20, buscar solo por nombre de rol
+        if ($users->isEmpty()) {
+            $users = User::with(['person', 'roles'])
+                ->withTrashed()
+                ->whereHas('roles', function($query) {
+                    $query->whereIn('name', ['Operario', 'Aseo']);
+                })
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
+        }
+
         // Obtener roles disponibles para filtros (solo los roles de INFRASTOCK)
-        $roles = Role::whereIn('name', ['Operario', 'Aseo'])
-            ->orderBy('name')
-            ->get();
+        try {
+            // Primero intentar con app_id específico
+            $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                ->where('app_id', 20)
+                ->orderBy('name')
+                ->get();
+
+            // Si no se encuentran roles con app_id 20, buscar solo por nombre
+            if ($roles->isEmpty()) {
+                $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            // Si hay error de conexión, usar roles básicos
+            $roles = collect();
+        }
+
+        // Si aún no hay roles, crear roles básicos temporalmente
+        if ($roles->isEmpty()) {
+            $roles = collect([
+                (object)['id' => 1, 'name' => 'Operario'],
+                (object)['id' => 2, 'name' => 'Aseo']
+            ]);
+        }
 
         return view('infrastock::admin.users.index', compact('users', 'roles'));
     }
@@ -247,10 +311,31 @@ class UserManagementController extends Controller
         \Log::info('Phone: ' . ($user->person ? $user->person->phone : 'N/A'));
 
         // Obtener roles disponibles para el módulo INFRASTOCK (solo Aseo y Operario)
-        $roles = Role::whereIn('name', ['Operario', 'Aseo'])
-            ->where('app_id', 23)
-            ->orderBy('name')
-            ->get();
+        try {
+            // Primero intentar con app_id específico
+            $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                ->where('app_id', 20)
+                ->orderBy('name')
+                ->get();
+
+            // Si no se encuentran roles con app_id 20, buscar solo por nombre
+            if ($roles->isEmpty()) {
+                $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            // Si hay error de conexión, usar roles básicos
+            $roles = collect();
+        }
+
+        // Si aún no hay roles, crear roles básicos temporalmente
+        if ($roles->isEmpty()) {
+            $roles = collect([
+                (object)['id' => 1, 'name' => 'Operario'],
+                (object)['id' => 2, 'name' => 'Aseo']
+            ]);
+        }
 
         return view('infrastock::admin.users.edit', compact('user', 'roles'));
     }
@@ -344,6 +429,15 @@ class UserManagementController extends Controller
             return redirect()->route('infrastock.admin.users.index')
                 ->with('success', 'Usuario actualizado exitosamente.');
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.users.index')
+                    ->with('error', 'Ya existe un usuario con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             
@@ -398,6 +492,19 @@ class UserManagementController extends Controller
             
             \Log::info('Usuario encontrado para eliminar: ', $user->toArray());
             
+            // Verificar si el usuario tiene solicitudes pendientes
+            $hasRelatedRecords = false; // TODO: Implement validation
+            
+            if ($hasRelatedRecords) {
+                if (request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se puede eliminar el usuario porque tiene registros relacionados.'
+                    ], 422);
+                }
+                return redirect()->route('infrastock.admin.users.index')->with('error', 'No se puede eliminar el usuario porque tiene registros relacionados.');
+            }
+            
             // Eliminar relaciones primero
             $user->roles()->detach();
             
@@ -407,19 +514,25 @@ class UserManagementController extends Controller
 
             \Log::info('Usuario eliminado exitosamente');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Usuario eliminado permanentemente.'
-            ]);
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Usuario eliminado permanentemente.'
+                ]);
+            }
+            return redirect()->route('infrastock.admin.users.index')->with('success', 'deleted');
 
         } catch (\Exception $e) {
             \Log::error('Error al eliminar usuario: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al eliminar el usuario: ' . $e->getMessage()
-            ], 500);
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al eliminar el usuario: ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->route('infrastock.admin.users.index')->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
         }
     }
 }

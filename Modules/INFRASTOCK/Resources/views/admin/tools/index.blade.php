@@ -30,125 +30,222 @@
 
 @section('content')
     <!-- Contenedor principal de la vista de gestión de herramientas -->
-    <div class="container mx-auto px-4 py-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Listado de Herramientas</h2>
-            <!-- Botón para abrir el modal de registro de nueva herramienta -->
-            <button @click="isCreateModalOpen = true" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 shadow-md">
-                Registrar Nueva Herramienta
-            </button>
-        </div>
+    <div x-data="{
+        isCreateModalOpen: false,
+        isEditModalOpen: false,
+        currentTool: { id: null, inventory_id: '', labor_id: '', amount: '', price: '', category_id: '' },
+        validationErrors: {},
+        createForm: { inventory_id: '', labor_id: '', amount: '', price: '', category_id: '' },
 
-        <!-- Tabla de Herramientas -->
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="p-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">Detalles de las Herramientas</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <!-- Encabezados de la tabla -->
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inventario</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Labor</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <!-- Iteración sobre cada herramienta para mostrar sus datos -->
-                            @foreach($tools as $tool)
-                                <tr class="hover:bg-gray-100 transition-colors duration-150">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $tool->id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">ID: {{ $tool->inventory->id }} - {{ $tool->inventory->description ?? 'N/A' }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->labor->description ?? 'N/A' }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->amount }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->price }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->category->name ?? 'N/A' }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <!-- Botón para abrir el modal de edición, pasando los datos de la herramienta actual -->
-                                        <button @click="openEditModal({{ $tool->id }}, @json($tool->inventory->id), @json($tool->labor->id), @json($tool->amount), @json($tool->price), @json($tool->category->id))" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                            <i class="fas fa-edit"></i> Editar
-                                        </button>
-                                        <!-- Formulario para eliminar una herramienta -->
-                                        <form action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" method="POST" class="inline-block" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta herramienta?');">
-                                            @csrf {{-- Token CSRF para protección. --}}
-                                            @method('DELETE') {{-- Método HTTP DELETE para eliminación. --}}
-                                            <button type="submit" class="text-red-600 hover:text-red-900">
-                                                <i class="fas fa-trash-alt"></i> Eliminar
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+        init() {
+            @if($errors->any() || session('error'))
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.isCreateModalOpen = true;
+                    this.validationErrors = @json($errors->messages());
+                    const oldData = @json(old());
+                    this.createForm.inventory_id = oldData.inventory_id || '';
+                    this.createForm.labor_id = oldData.labor_id || '';
+                    this.createForm.amount = oldData.amount || '';
+                    this.createForm.price = oldData.price || '';
+                    this.createForm.category_id = oldData.category_id || '';
+                    if ('{{ session('error') }}') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: '{{ session('error') }}',
+                            confirmButtonText: 'Entendido'
+                        });
+                    }
+                });
+            @endif
+        },
+
+        openCreateModal() {
+            this.isCreateModalOpen = true;
+            this.resetCreateForm();
+        },
+
+        openEditModal(id, inventory_id, labor_id, amount, price, category_id) {
+            this.isEditModalOpen = true;
+            this.currentTool = { id: id, inventory_id: inventory_id, labor_id: labor_id, amount: amount, price: price, category_id: category_id };
+            this.validationErrors = {};
+        },
+
+        closeModals() {
+            this.isCreateModalOpen = false;
+            this.isEditModalOpen = false;
+            this.validationErrors = {};
+        },
+
+        resetCreateForm() {
+            this.createForm = { inventory_id: '', labor_id: '', amount: '', price: '', category_id: '' };
+            this.validationErrors = {};
+        }
+    }">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Listado de Herramientas</h2>
+                <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+                    Registrar Nueva Herramienta
+                </button>
+            </div>
+
+            <!-- Filtro de búsqueda automático -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center space-x-4">
+                    <div class="flex-1">
+                        <input type="text" 
+                               id="searchInput"
+                               placeholder="Buscar por inventario, labor o categoría..." 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <button onclick="clearSearch()" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
                 </div>
             </div>
-        </div>
 
-        <!-- Lógica Alpine.js para la gestión de modales de creación y edición -->
-        <div x-data="toolCrudModals">
+            <!-- Tabla de Herramientas -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Detalles de las Herramientas</h3>
+                        <div class="text-sm text-gray-500">
+                            Mostrando {{ $tools->firstItem() ?? 0 }} - {{ $tools->lastItem() ?? 0 }} de {{ $tools->total() }} registros
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inventario</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Labor</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach($tools as $tool)
+                                    <tr class="hover:bg-gray-100 transition-colors duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $tool->id }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                ID: {{ $tool->inventory->id }} - {{ $tool->inventory->description ?? 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->labor->description ?? 'N/A' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                {{ $tool->amount }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                ${{ number_format($tool->price, 2) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                                {{ $tool->category->name ?? 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <button @click="openEditModal({{ $tool->id }}, {{ $tool->inventory->id }}, {{ $tool->labor->id }}, {{ $tool->amount }}, {{ $tool->price }}, {{ $tool->category->id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </button>
+                                            <form method="POST" action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($tool->labor->description ?? 'Herramienta') }}')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900">
+                                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay resultados -->
+                    <div id="noResultsMessage" class="text-center py-8" style="display: none;">
+                        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
+                        <p class="text-gray-500">No hay herramientas que coincidan con tu búsqueda</p>
+                    </div>
+                    
+                    <!-- Paginación -->
+                    @if($tools->hasPages())
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        {{ $tools->appends(request()->query())->links() }}
+                    </div>
+                    @endif
+                </div>
+            </div>
+
             <!-- Modal de Creación de Herramienta -->
-            <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
+            <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
                 <div @click.away="isCreateModalOpen = false; resetCreateForm();" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold text-gray-800">Registrar Nueva Herramienta</h3>
-                        <!-- Botón para cerrar el modal de creación -->
                         <button @click="isCreateModalOpen = false; resetCreateForm();" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
                     </div>
-                    <!-- Formulario de creación de herramienta -->
-                    <form @submit.prevent="createTool" x-ref="createForm">
+                    <form method="POST" action="{{ route('infrastock.admin.tools.store') }}">
                         @csrf
                         <div class="mb-4">
                             <label for="create_inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                            <select name="inventory_id" id="create_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.inventory_id}" x-model="createForm.inventory_id" required>
-                                <option value="">Selecciona un inventario</option>
+                            <select name="inventory_id" id="create_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('inventory_id') border-red-500 @enderror" required>
+                                <option value="">Seleccione un inventario</option>
                                 @foreach($inventories as $inventory)
-                                    <option value="{{ $inventory->id }}">{{ $inventory->id }} - {{ $inventory->description }}</option>
+                                    <option value="{{ $inventory->id }}" {{ old('inventory_id') == $inventory->id ? 'selected' : '' }}>ID: {{ $inventory->id }} - {{ $inventory->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'inventory_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_inventory_id_error" x-text="validationErrors.inventory_id ? validationErrors.inventory_id[0] : ''"></p>
+                            @error('inventory_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
                             <label for="create_labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                            <select name="labor_id" id="create_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.labor_id}" x-model="createForm.labor_id" required>
-                                <option value="">Selecciona una labor</option>
+                            <select name="labor_id" id="create_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('labor_id') border-red-500 @enderror" required>
+                                <option value="">Seleccione una labor</option>
                                 @foreach($labors as $labor)
-                                    <option value="{{ $labor->id }}">{{ $labor->description }}</option>
+                                    <option value="{{ $labor->id }}" {{ old('labor_id') == $labor->id ? 'selected' : '' }}>{{ $labor->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'labor_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_labor_id_error" x-text="validationErrors.labor_id ? validationErrors.labor_id[0] : ''"></p>
+                            @error('labor_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
                             <label for="create_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                            <input type="number" name="amount" id="create_amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.amount}" x-model="createForm.amount" required min="0">
-                            <!-- Muestra el error de validación para el campo 'amount' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_amount_error" x-text="validationErrors.amount ? validationErrors.amount[0] : ''"></p>
+                            <input type="number" name="amount" id="create_amount" value="{{ old('amount') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" required>
+                            @error('amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
                             <label for="create_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                            <input type="number" name="price" id="create_price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.price}" x-model="createForm.price" required min="0" step="0.01">
-                            <!-- Muestra el error de validación para el campo 'price' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_price_error" x-text="validationErrors.price ? validationErrors.price[0] : ''"></p>
+                            <input type="number" step="0.01" name="price" id="create_price" value="{{ old('price') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('price') border-red-500 @enderror" required>
+                            @error('price')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-6">
                             <label for="create_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
-                            <select name="category_id" id="create_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.category_id}" x-model="createForm.category_id" required>
-                                <option value="">Selecciona una categoría</option>
+                            <select name="category_id" id="create_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror" required>
+                                <option value="">Seleccione una categoría</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'category_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_category_id_error" x-text="validationErrors.category_id ? validationErrors.category_id[0] : ''"></p>
+                            @error('category_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="flex justify-end space-x-4">
-                            <!-- Botones de cancelar y guardar para el modal de creación -->
                             <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Guardar Herramienta</button>
                         </div>
@@ -157,64 +254,66 @@
             </div>
 
             <!-- Modal de Edición de Herramienta -->
-            <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
+            <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
                 <div @click.away="isEditModalOpen = false" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold text-gray-800">Editar Herramienta</h3>
-                        <!-- Botón para cerrar el modal de edición -->
                         <button @click="isEditModalOpen = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
                     </div>
-                    <!-- Formulario de edición de herramienta -->
-                    <form @submit.prevent="updateTool" x-ref="editForm">
+                    <form method="POST" :action="`{{ route('infrastock.admin.tools.update', '') }}/${currentTool.id}`">
                         @csrf
                         @method('PUT')
                         <div class="mb-4">
                             <label for="edit_inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                            <select name="inventory_id" id="edit_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.inventory_id}" x-model="currentTool.inventory_id" required>
-                                <option value="">Selecciona un inventario</option>
+                            <select name="inventory_id" id="edit_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('inventory_id') border-red-500 @enderror" x-model="currentTool.inventory_id" required>
+                                <option value="">Seleccione un inventario</option>
                                 @foreach($inventories as $inventory)
-                                    <option value="{{ $inventory->id }}">{{ $inventory->id }} - {{ $inventory->description }}</option>
+                                    <option value="{{ $inventory->id }}">{{ $inventory->id }} - {{ $inventory->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'inventory_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_inventory_id_error" x-text="validationErrors.inventory_id ? validationErrors.inventory_id[0] : ''"></p>
+                            @error('inventory_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
                             <label for="edit_labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                            <select name="labor_id" id="edit_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.labor_id}" x-model="currentTool.labor_id" required>
-                                <option value="">Selecciona una labor</option>
+                            <select name="labor_id" id="edit_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('labor_id') border-red-500 @enderror" x-model="currentTool.labor_id" required>
+                                <option value="">Seleccione una labor</option>
                                 @foreach($labors as $labor)
-                                    <option value="{{ $labor->id }}">{{ $labor->description }}</option>
+                                    <option value="{{ $labor->id }}">{{ $labor->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'labor_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_labor_id_error" x-text="validationErrors.labor_id ? validationErrors.labor_id[0] : ''"></p>
+                            @error('labor_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
                             <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                            <input type="number" name="amount" id="edit_amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.amount}" x-model="currentTool.amount" required min="0">
-                            <!-- Muestra el error de validación para el campo 'amount' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_amount_error" x-text="validationErrors.amount ? validationErrors.amount[0] : ''"></p>
+                            <input type="number" name="amount" id="edit_amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" x-model="currentTool.amount" required>
+                            @error('amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
                             <label for="edit_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                            <input type="number" name="price" id="edit_price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.price}" x-model="currentTool.price" required min="0" step="0.01">
-                            <!-- Muestra el error de validación para el campo 'price' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_price_error" x-text="validationErrors.price ? validationErrors.price[0] : ''"></p>
+                            <input type="number" step="0.01" name="price" id="edit_price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('price') border-red-500 @enderror" x-model="currentTool.price" required>
+                            @error('price')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-6">
                             <label for="edit_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
-                            <select name="category_id" id="edit_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.category_id}" x-model="currentTool.category_id" required>
-                                <option value="">Selecciona una categoría</option>
+                            <select name="category_id" id="edit_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror" x-model="currentTool.category_id" required>
+                                <option value="">Seleccione una categoría</option>
                                 @foreach($categories as $category)
                                     <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'category_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_category_id_error" x-text="validationErrors.category_id ? validationErrors.category_id[0] : ''"></p>
+                            @error('category_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="flex justify-end space-x-4">
-                            <!-- Botones de cancelar y actualizar para el modal de edición -->
                             <button type="button" @click="isEditModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Actualizar Herramienta</button>
                         </div>
@@ -227,163 +326,133 @@
 
 @section('script')
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('toolCrudModals', () => ({
-            isCreateModalOpen: false, // Estado del modal de creación (abierto/cerrado).
-            isEditModalOpen: false,   // Estado del modal de edición (abierto/cerrado).
-            currentTool: { id: null, inventory_id: '', labor_id: '', amount: '', price: '', category_id: '' }, // Datos de la herramienta que se está editando.
-            validationErrors: {}, // Almacena los errores de validación recibidos del servidor.
-            createForm: { inventory_id: '', labor_id: '', amount: '', price: '', category_id: '' }, // Datos del formulario de creación.
-
-            init() {
-                // Recupera los errores de validación del servidor y los datos `old()` para el formulario de creación.
-                const serverErrors = @json($errors->toArray());
-                const oldData = @json(old());
-
-                // Si hay errores de validación, abre el modal de creación y precarga los datos.
-                if (Object.keys(serverErrors).length > 0) {
-                    this.isCreateModalOpen = true;
-                    this.validationErrors = serverErrors.errors;
-                    // Llena el formulario de creación con los datos antiguos para mantener la información.
-                    this.createForm.inventory_id = oldData.inventory_id || '';
-                    this.createForm.labor_id = oldData.labor_id || '';
-                    this.createForm.amount = oldData.amount || '';
-                    this.createForm.price = oldData.price || '';
-                    this.createForm.category_id = oldData.category_id || '';
+// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
+function confirmDeleteSync(toolName) {
+    let confirmed = false;
+    
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: `¿Quieres eliminar la herramienta "${toolName}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Mostrar loading
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espera',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
                 }
-            },
-
-            /**
-             * Abre el modal de edición y carga los datos de la herramienta seleccionada.
-             * @param int id ID de la herramienta a editar.
-             * @param int inventory_id ID del inventario asociado a la herramienta.
-             * @param int labor_id ID de la labor asociada a la herramienta.
-             * @param int amount Cantidad de la herramienta.
-             * @param float price Precio de la herramienta.
-             * @param int category_id ID de la categoría de la herramienta.
-             */
-            openEditModal(id, inventory_id, labor_id, amount, price, category_id) {
-                this.isEditModalOpen = true;
-                this.currentTool.id = id;
-                this.currentTool.inventory_id = inventory_id;
-                this.currentTool.labor_id = labor_id;
-                this.currentTool.amount = amount;
-                this.currentTool.price = price;
-                this.currentTool.category_id = category_id;
-                this.validationErrors = {}; // Limpia errores de validación previos.
-            },
-
-            /**
-             * Reinicia el formulario de creación, limpiando todos los campos y los errores de validación.
-             */
-            resetCreateForm() {
-                this.createForm = { inventory_id: '', labor_id: '', amount: '', price: '', category_id: '' };
-                this.validationErrors = {}; // Limpia errores de validación de Alpine.
-            },
-
-            /**
-             * Envía el formulario de creación de herramienta de forma asíncrona (AJAX).
-             * Maneja la respuesta del servidor, mostrando mensajes de éxito o errores de validación.
-             */
-            async createTool() {
-                try {
-                    const formData = new FormData(this.$refs.createForm);
-                    const response = await fetch('{{ route('infrastock.admin.tools.store') }}', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // Token CSRF para seguridad.
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        this.isCreateModalOpen = false;
-                        this.resetCreateForm();
-                        // Muestra una notificación de éxito y recarga la página.
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: 'Herramienta registrada correctamente.',
-                            showConfirmButton: false,
-                            timer: 1500
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else if (response.status === 422) {
-                        // Si hay errores de validación, los muestra en el formulario.
-                        const errorData = await response.json();
-                        this.validationErrors = errorData.errors;
-                    } else {
-                        // Muestra un mensaje de error general.
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Hubo un problema al registrar la herramienta.'
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error al enviar el formulario:', error);
-                    // Muestra un mensaje de error de conexión.
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo conectar con el servidor.'
-                    });
-                }
-            },
-
-            /**
-             * Envía el formulario de actualización de herramienta de forma asíncrona (AJAX).
-             * Maneja la respuesta del servidor, mostrando mensajes de éxito o errores de validación.
-             */
-            async updateTool() {
-                try {
-                    const formData = new FormData(this.$refs.editForm);
-                    formData.append('_method', 'PUT'); // Simula el método PUT para Laravel.
-                    const response = await fetch('{{ route('infrastock.admin.tools.update', '') }}' + this.currentTool.id, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // Token CSRF.
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        this.isEditModalOpen = false;
-                        this.validationErrors = {}; // Limpia errores al actualizar con éxito.
-                        // Muestra una notificación de éxito y recarga la página.
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: 'Herramienta actualizada correctamente.',
-                            showConfirmButton: false,
-                            timer: 1500
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else if (response.status === 422) {
-                        // Si hay errores de validación, los muestra en el formulario.
-                        const errorData = await response.json();
-                        this.validationErrors = errorData.errors;
-                    } else {
-                        // Muestra un mensaje de error general.
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Hubo un problema al actualizar la herramienta.'
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error al enviar el formulario:', error);
-                    // Muestra un mensaje de error de conexión.
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo conectar con el servidor.'
-                    });
-                }
-            }
-        }))
+            });
+            
+            // Permitir que el formulario se envíe
+            confirmed = true;
+            // Enviar el formulario manualmente
+            event.target.submit();
+        }
     });
+    
+    // Retornar false para prevenir el envío inmediato del formulario
+    return false;
+}
+
+// Verificar si hay mensajes de sesión
+document.addEventListener('DOMContentLoaded', function() {
+    @if(session('success') === 'deleted')
+        Swal.fire({
+            icon: 'success',
+            title: '¡Eliminado!',
+            text: 'La herramienta ha sido eliminada correctamente.',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    @endif
+    
+    @if(session('error') && session('error') !== 'Ya existe una herramienta con estos datos. Por favor, verifica la información.')
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: '{{ session('error') }}',
+            confirmButtonText: 'Entendido'
+        });
+    @endif
+    
+    // Configurar filtro automático
+    setupAutoFilter();
+});
+
+// Función para configurar el filtro automático
+function setupAutoFilter() {
+    const searchInput = document.getElementById('searchInput');
+    const table = document.querySelector('table tbody');
+    const rows = table.querySelectorAll('tr');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        rows.forEach(row => {
+            // Columnas a buscar: Inventario (col 1), Labor (col 2), Categoría (col 5)
+            const inventoryCell = row.cells[1];
+            const laborCell = row.cells[2];
+            const categoryCell = row.cells[5];
+            
+            const inventoryText = inventoryCell.textContent.toLowerCase();
+            const laborText = laborCell.textContent.toLowerCase();
+            const categoryText = categoryCell.textContent.toLowerCase();
+            
+            if (inventoryText.includes(searchTerm) || laborText.includes(searchTerm) || categoryText.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Actualizar contador de resultados visibles
+        updateVisibleCount();
+    });
+}
+
+// Función para limpiar la búsqueda
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = '';
+    
+    const rows = document.querySelectorAll('table tbody tr');
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    updateVisibleCount();
+}
+
+// Función para actualizar el contador de resultados visibles
+function updateVisibleCount() {
+    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
+    const totalRows = document.querySelectorAll('table tbody tr').length;
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    
+    const counterElement = document.querySelector('.text-sm.text-gray-500');
+    if (counterElement) {
+        if (document.getElementById('searchInput').value) {
+            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
+        } else {
+            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros`;
+        }
+    }
+    
+    // Mostrar/ocultar mensaje de "no hay resultados"
+    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
+        noResultsMessage.style.display = 'block';
+    } else {
+        noResultsMessage.style.display = 'none';
+    }
+}
 </script>
 @endsection

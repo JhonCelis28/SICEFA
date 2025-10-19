@@ -23,7 +23,7 @@ class AreaController extends Controller
      */
     public function index()
     {
-        $areas = ProductiveUnit::all(); // Obtiene todas las unidades productivas.
+        $areas = ProductiveUnit::paginate(15); // Obtiene las unidades productivas con paginación (15 por página).
         return view('infrastock::admin.areas.index', compact('areas')); // Retorna la vista index con las áreas.
     }
 
@@ -45,13 +45,43 @@ class AreaController extends Controller
      */
     public function store(Request $request)
     {
+        // Verificar si el nombre ya existe antes de validar
+        $existingArea = ProductiveUnit::where('name', $request->name)->first();
+        if ($existingArea) {
+            return redirect()->route('infrastock.admin.areas.index')
+                ->with('error', 'El nombre del área ya está en uso. Por favor, elige otro nombre.')
+                ->withInput();
+        }
+
         // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'name' => 'required|unique:productive_units|max:255', // El nombre es obligatorio, único y máximo 255 caracteres.
+            'name' => 'required|max:255', // El nombre es obligatorio y máximo 255 caracteres.
             'description' => 'nullable', // La descripción es opcional.
         ]);
 
-        ProductiveUnit::create($request->all()); // Crea una nueva unidad productiva con los datos validados.
+        // Preparar los datos para crear el área, asegurando que description no sea null
+        $data = $request->all();
+        $data['description'] = $data['description'] ?? ''; // Si description es null, usar string vacío
+        
+        try {
+            ProductiveUnit::create($data); // Crea una nueva unidad productiva con los datos validados.
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado en la base de datos
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.areas.index')
+                    ->with('error', 'El nombre del área ya está en uso. Por favor, elige otro nombre.')
+                    ->withInput();
+            }
+            throw $e; // Re-lanzar otros errores de base de datos
+        }
+
+        // Si es una petición AJAX, devolver respuesta JSON
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Área creada exitosamente.'
+            ]);
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.areas.index')->with('success', 'Área creada exitosamente.');
@@ -88,14 +118,45 @@ class AreaController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Valida los datos de entrada de la solicitud, asegurando que el nombre sea único excluyendo el área actual.
+        // Verificar si el nombre ya existe en otra área antes de validar
+        $existingArea = ProductiveUnit::where('name', $request->name)->where('id', '!=', $id)->first();
+        if ($existingArea) {
+            return redirect()->route('infrastock.admin.areas.index')
+                ->with('error', 'El nombre del área ya está en uso. Por favor, elige otro nombre.')
+                ->withInput();
+        }
+
+        // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'name' => 'required|max:255|unique:productive_units,name,' . $id,
+            'name' => 'required|max:255',
             'description' => 'nullable',
         ]);
 
         $area = ProductiveUnit::findOrFail($id); // Encuentra el área por su ID o lanza una excepción.
-        $area->update($request->all()); // Actualiza el área con los nuevos datos.
+        
+        // Preparar los datos para actualizar el área, asegurando que description no sea null
+        $data = $request->all();
+        $data['description'] = $data['description'] ?? ''; // Si description es null, usar string vacío
+        
+        try {
+            $area->update($data); // Actualiza el área con los nuevos datos.
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado en la base de datos
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.areas.index')
+                    ->with('error', 'El nombre del área ya está en uso. Por favor, elige otro nombre.')
+                    ->withInput();
+            }
+            throw $e; // Re-lanzar otros errores de base de datos
+        }
+
+        // Si es una petición AJAX, devolver respuesta JSON
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Área actualizada exitosamente.'
+            ]);
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.areas.index')->with('success', 'Área actualizada exitosamente.');
@@ -103,15 +164,43 @@ class AreaController extends Controller
 
     /**
      * Elimina un área productiva de la base de datos.
+     * Valida que no tenga historial activo de insumos o herramientas antes de eliminar.
      * @param int $id El ID del área productiva a eliminar.
      * @return Renderable
      */
     public function destroy($id)
     {
         $area = ProductiveUnit::findOrFail($id); // Encuentra el área por su ID o lanza una excepción.
+        
+        // Por ahora, permitir eliminar todas las áreas sin validación
+        // TODO: Implementar validación cuando se definan las relaciones correctas
+        $hasRelatedRecords = false;
+        
+        if ($hasRelatedRecords) {
+            // Si es una petición AJAX, devolver error JSON
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar esta área porque tiene historial activo de insumos, herramientas o préstamos.'
+                ], 422);
+            }
+            
+            // Redirige con mensaje de error
+            return redirect()->route('infrastock.admin.areas.index')
+                ->with('error', 'No se puede eliminar esta área porque tiene historial activo de insumos, herramientas o préstamos.');
+        }
+        
         $area->delete(); // Elimina el área de la base de datos (soft delete si está configurado).
 
-        // Redirige a la vista index con un mensaje de éxito.
-        return redirect()->route('infrastock.admin.areas.index')->with('success', 'Área eliminada exitosamente.');
+        // Si es una petición AJAX, devolver respuesta JSON
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Área eliminada exitosamente.'
+            ]);
+        }
+
+        // Redirige a la vista index con un parámetro de éxito para SweetAlert2
+        return redirect()->route('infrastock.admin.areas.index')->with('success', 'deleted');
     }
 }

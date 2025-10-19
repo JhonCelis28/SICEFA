@@ -28,7 +28,7 @@ class SupplyController extends Controller
      */
     public function index()
     {
-        $supplies = Equipment::with('category', 'labor', 'inventory')->get(); // Obtiene todos los insumos con sus relaciones.
+        $supplies = Equipment::with('category', 'labor', 'inventory')->paginate(15); // Obtiene los insumos con paginación (15 por página).
         $categories = InfrastockCategory::where('type', 'supply')->get(); // Obtiene categorías específicas para insumos.
         $labors = Labor::all(); // Obtiene todas las labores.
         $inventories = Inventory::all(); // Obtiene todos los inventarios.
@@ -64,7 +64,17 @@ class SupplyController extends Controller
             'labor_id' => 'required|exists:labors,id', // ID de labor es obligatorio y debe existir.
         ]);
 
-        Equipment::create($request->all()); // Crea un nuevo insumo con los datos validados.
+        try {
+            Equipment::create($request->all()); // Crea un nuevo insumo con los datos validados.
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado en la base de datos
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.supplies.index')
+                    ->with('error', 'Ya existe un insumo con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e; // Re-lanzar otros errores de base de datos
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.supplies.index')->with('success', 'Insumo registrado exitosamente.');
@@ -112,7 +122,18 @@ class SupplyController extends Controller
         ]);
 
         $supply = Equipment::findOrFail($id); // Encuentra el insumo por su ID o lanza una excepción.
-        $supply->update($request->all()); // Actualiza el insumo con los nuevos datos.
+        
+        try {
+            $supply->update($request->all()); // Actualiza el insumo con los nuevos datos.
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado en la base de datos
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.supplies.index')
+                    ->with('error', 'Ya existe un insumo con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e; // Re-lanzar otros errores de base de datos
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.supplies.index')->with('success', 'Insumo actualizado exitosamente.');
@@ -126,9 +147,35 @@ class SupplyController extends Controller
     public function destroy($id)
     {
         $supply = Equipment::findOrFail($id); // Encuentra el insumo por su ID o lanza una excepción.
+        
+        // Por ahora, permitir eliminar todos los insumos sin validación
+        // TODO: Implementar validación cuando se definan las relaciones correctas
+        $hasRelatedRecords = false; // Temporalmente deshabilitado
+        
+        if ($hasRelatedRecords) {
+            // Si es una petición AJAX, devolver respuesta JSON
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar el insumo porque tiene registros relacionados.'
+                ], 422);
+            }
+
+            // Redirige a la vista index con un parámetro de error para SweetAlert2
+            return redirect()->route('infrastock.admin.supplies.index')->with('error', 'No se puede eliminar el insumo porque tiene registros relacionados.');
+        }
+        
         $supply->delete(); // Elimina el insumo de la base de datos (soft delete si está configurado).
 
-        // Redirige a la vista index con un mensaje de éxito.
-        return redirect()->route('infrastock.admin.supplies.index')->with('success', 'Insumo eliminado exitosamente.');
+        // Si es una petición AJAX, devolver respuesta JSON
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Insumo eliminado exitosamente.'
+            ]);
+        }
+
+        // Redirige a la vista index con un parámetro de éxito para SweetAlert2
+        return redirect()->route('infrastock.admin.supplies.index')->with('success', 'deleted');
     }
 }

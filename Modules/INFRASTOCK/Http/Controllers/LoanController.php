@@ -27,20 +27,13 @@ class LoanController extends Controller
      */
     public function index()
     {
-        // Obtiene todos los movimientos de almacén que son de tipo 'Préstamo' o 'Devolución'.
-        // Incluye las relaciones con usuario, unidad productiva/almacén, herramienta e insumo para mostrar detalles.
         $loans = WarehouseMovement::with('user', 'productiveUnitWarehouse', 'tool', 'equipment')
                                 ->whereIn('role', ['Préstamo', 'Devolución'])
-                                ->get();
-
-        // Obtiene todas las herramientas, insumos, usuarios y unidades productivas/almacenes
-        // para poblar los selectores en los modales de creación/edición.
+                                ->paginate(15);
         $tools = Tool::all();
         $equipments = Equipment::all();
         $users = User::all();
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
-
-        // Retorna la vista index de préstamos con todos los datos necesarios.
         return view('infrastock::admin.loans.index', compact('loans', 'tools', 'equipments', 'users', 'productiveUnitWarehouses'));
     }
 
@@ -62,33 +55,34 @@ class LoanController extends Controller
      */
     public function store(Request $request)
     {
-        // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'item_type' => 'required|in:equipment,tool', // Tipo de elemento: insumo o herramienta.
-            'movement_id' => 'required|integer', // ID del elemento (insumo o herramienta).
-            'user_id' => 'required|exists:users,id', // ID del usuario que realiza/recibe el movimiento.
-            'role' => 'required|in:Préstamo,Devolución', // Tipo de movimiento: Préstamo o Devolución.
+            'item_type' => 'required|in:equipment,tool',
+            'movement_id' => 'required|integer',
+            'user_id' => 'required|exists:users,id',
+            'role' => 'required|in:Préstamo,Devolución',
         ]);
 
-        // Lógica placeholder para obtener la unidad productiva/almacén.
-        // En un escenario real, esto debería ser determinado por el contexto del elemento o una selección del usuario.
         $productiveUnitWarehouse = ProductiveUnitWarehouse::first();
-
-        // Maneja el caso en que no se encuentre una unidad productiva/almacén (debe ser provista en un escenario real).
         if (!$productiveUnitWarehouse) {
             return back()->withErrors(['error' => 'No se encontró una unidad productiva/almacén.']);
         }
 
-        // Crea un nuevo registro de movimiento de almacén con los datos validados.
-        WarehouseMovement::create([
-            'productive_unit_warehouse_id' => $productiveUnitWarehouse->id,
-            'movement_id' => $request->movement_id,
-            'item_type' => $request->item_type,
-            'user_id' => $request->user_id,
-            'role' => $request->role,
-        ]);
-
-        // Redirige a la vista index con un mensaje de éxito.
+        try {
+            WarehouseMovement::create([
+                'productive_unit_warehouse_id' => $productiveUnitWarehouse->id,
+                'movement_id' => $request->movement_id,
+                'item_type' => $request->item_type,
+                'user_id' => $request->user_id,
+                'role' => $request->role,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.loans.index')
+                    ->with('error', 'Ya existe un movimiento con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e;
+        }
         return redirect()->route('infrastock.admin.loans.index')->with('success', 'Movimiento registrado exitosamente.');
     }
 
@@ -123,18 +117,25 @@ class LoanController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'item_type' => 'required|in:equipment,tool', // Tipo de elemento: insumo o herramienta.
-            'movement_id' => 'required|integer', // ID del elemento (insumo o herramienta).
-            'user_id' => 'required|exists:users,id', // ID del usuario que realiza/recibe el movimiento.
-            'role' => 'required|in:Préstamo,Devolución', // Tipo de movimiento: Préstamo o Devolución.
+            'item_type' => 'required|in:equipment,tool',
+            'movement_id' => 'required|integer',
+            'user_id' => 'required|exists:users,id',
+            'role' => 'required|in:Préstamo,Devolución',
         ]);
 
-        $loan = WarehouseMovement::findOrFail($id); // Encuentra el movimiento de almacén por su ID o lanza una excepción.
-        $loan->update($request->all()); // Actualiza el movimiento con los nuevos datos.
-
-        // Redirige a la vista index con un mensaje de éxito.
+        $loan = WarehouseMovement::findOrFail($id);
+        
+        try {
+            $loan->update($request->all());
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.loans.index')
+                    ->with('error', 'Ya existe un movimiento con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e;
+        }
         return redirect()->route('infrastock.admin.loans.index')->with('success', 'Movimiento actualizado exitosamente.');
     }
 
@@ -145,10 +146,26 @@ class LoanController extends Controller
      */
     public function destroy($id)
     {
-        $loan = WarehouseMovement::findOrFail($id); // Encuentra el movimiento de almacén por su ID o lanza una excepción.
-        $loan->delete(); // Elimina el movimiento de la base de datos (soft delete si está configurado).
-
-        // Redirige a la vista index con un mensaje de éxito.
-        return redirect()->route('infrastock.admin.loans.index')->with('success', 'Movimiento eliminado exitosamente.');
+        $loan = WarehouseMovement::findOrFail($id);
+        $hasRelatedRecords = false; // TODO: Implement validation
+        
+        if ($hasRelatedRecords) {
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar el movimiento porque tiene registros relacionados.'
+                ], 422);
+            }
+            return redirect()->route('infrastock.admin.loans.index')->with('error', 'No se puede eliminar el movimiento porque tiene registros relacionados.');
+        }
+        
+        $loan->delete();
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Movimiento eliminado exitosamente.'
+            ]);
+        }
+        return redirect()->route('infrastock.admin.loans.index')->with('success', 'deleted');
     }
 }

@@ -30,19 +30,65 @@
 
 @section('content')
     <!-- Contenedor principal de la vista de gestión de insumos -->
+    <div x-data="{
+        isCreateModalOpen: false,
+        isEditModalOpen: false,
+        currentSupply: { id: null, inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '' },
+        
+        init() {
+            console.log('Alpine.js inicializado correctamente');
+        },
+        
+        openCreateModal() {
+            console.log('Abriendo modal de creación');
+            this.isCreateModalOpen = true;
+        },
+        
+        openEditModal(id, inventory_id, name, labor_id, amount, price, category_id) {
+            console.log('Abriendo modal de edición:', { id, inventory_id, name, labor_id, amount, price, category_id });
+            this.isEditModalOpen = true;
+            this.currentSupply = { id: id, inventory_id: inventory_id, name: name, labor_id: labor_id, amount: amount, price: price, category_id: category_id };
+        },
+        
+        closeModals() {
+            this.isCreateModalOpen = false;
+            this.isEditModalOpen = false;
+        }
+    }">
     <div class="container mx-auto px-4 py-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Listado de Insumos</h2>
-            <!-- Botón para abrir el modal de registro de nuevo insumo -->
-            <button @click="isCreateModalOpen = true" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 shadow-md">
-                Registrar Nuevo Insumo
-            </button>
-        </div>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Listado de Insumos</h2>
+                <div class="flex space-x-2">
+                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+                        Registrar Nuevo Insumo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtro de búsqueda automático -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center space-x-4">
+                    <div class="flex-1">
+                        <input type="text" 
+                               id="searchInput"
+                               placeholder="Buscar por nombre, inventario, labor o categoría..." 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <button onclick="clearSearch()" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                </div>
+            </div>
 
         <!-- Tabla de Insumos -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="p-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">Detalles de los Insumos</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Detalles de los Insumos</h3>
+                        <div class="text-sm text-gray-500">
+                            Mostrando {{ $supplies->firstItem() ?? 0 }} - {{ $supplies->lastItem() ?? 0 }} de {{ $supplies->total() }} registros
+                        </div>
+                    </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -63,21 +109,38 @@
                             @foreach($supplies as $supply)
                                 <tr class="hover:bg-gray-100 transition-colors duration-150">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $supply->id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">ID: {{ $supply->inventory->id }} - {{ $supply->inventory->description ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            ID: {{ $supply->inventory->id }}
+                                        </span>
+                                        <div class="text-xs text-gray-400 mt-1">{{ $supply->inventory->description ?? 'N/A' }}</div>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->labor->description ?? 'N/A' }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->amount }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->price }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->category->name ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                            {{ $supply->amount }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            ${{ number_format($supply->price, 2) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                                            {{ $supply->category->name ?? 'N/A' }}
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <!-- Botón para abrir el modal de edición, pasando los datos del insumo actual -->
-                                        <button @click="openEditModal({{ $supply->id }}, @json($supply->inventory->id), @json($supply->name), @json($supply->labor->id), @json($supply->amount), @json($supply->price), @json($supply->category->id))" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                                        <button @click="openEditModal({{ $supply->id }}, {{ $supply->inventory->id }}, '{{ addslashes($supply->name) }}', {{ $supply->labor->id }}, {{ $supply->amount }}, {{ $supply->price }}, {{ $supply->category->id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
                                             <i class="fas fa-edit"></i> Editar
                                         </button>
                                         <!-- Formulario para eliminar un insumo -->
-                                        <form action="{{ route('infrastock.admin.supplies.destroy', $supply->id) }}" method="POST" class="inline-block" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este insumo?');">
-                                            @csrf {{-- Token CSRF para protección. --}}
-                                            @method('DELETE') {{-- Método HTTP DELETE para eliminación. --}}
+                                        <form method="POST" action="{{ route('infrastock.admin.supplies.destroy', $supply->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($supply->name) }}')">
+                                            @csrf
+                                            @method('DELETE')
                                             <button type="submit" class="text-red-600 hover:text-red-900">
                                                 <i class="fas fa-trash-alt"></i> Eliminar
                                             </button>
@@ -86,150 +149,156 @@
                                 </tr>
                             @endforeach
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay resultados -->
+                    <div id="noResultsMessage" class="text-center py-8" style="display: none;">
+                        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
+                        <p class="text-gray-500">No hay insumos que coincidan con tu búsqueda</p>
+                    </div>
+                    
+                    <!-- Paginación -->
+                    @if($supplies->hasPages())
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        {{ $supplies->appends(request()->query())->links() }}
+                    </div>
+                    @endif
                 </div>
             </div>
-        </div>
 
-        <!-- Lógica Alpine.js para la gestión de modales de creación y edición -->
-        <div x-data="supplyCrudModals">
-            <!-- Modal de Creación de Insumo -->
-            <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
-                <div @click.away="isCreateModalOpen = false; resetCreateForm();" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+            <!-- Modal de Creación -->
+            <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold text-gray-800">Registrar Nuevo Insumo</h3>
-                        <!-- Botón para cerrar el modal de creación -->
-                        <button @click="isCreateModalOpen = false; resetCreateForm();" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+                        <button @click="closeModals()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
                     </div>
                     <!-- Formulario de creación de insumo -->
-                    <form @submit.prevent="createSupply" x-ref="createForm">
+                    <form method="POST" action="{{ route('infrastock.admin.supplies.store') }}">
                         @csrf
                         <div class="mb-4">
-                            <label for="create_inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                            <select name="inventory_id" id="create_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.inventory_id}" x-model="createForm.inventory_id" required>
-                                <option value="">Selecciona un inventario</option>
+                            <label for="inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
+                            <select name="inventory_id" id="inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('inventory_id') border-red-500 @enderror" required>
+                                <option value="">Seleccione un inventario</option>
                                 @foreach($inventories as $inventory)
-                                    <option value="{{ $inventory->id }}">{{ $inventory->id }} - {{ $inventory->description }}</option>
+                                    <option value="{{ $inventory->id }}" {{ old('inventory_id') == $inventory->id ? 'selected' : '' }}>ID: {{ $inventory->id }} - {{ $inventory->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'inventory_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_inventory_id_error" x-text="validationErrors.inventory_id ? validationErrors.inventory_id[0] : ''"></p>
+                            @error('inventory_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="create_name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo:</label>
-                            <input type="text" name="name" id="create_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.name}" x-model="createForm.name" required>
-                            <!-- Muestra el error de validación para el campo 'name' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_name_error" x-text="validationErrors.name ? validationErrors.name[0] : ''"></p>
+                            <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo:</label>
+                            <input type="text" name="name" id="name" value="{{ old('name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('name') border-red-500 @enderror" required>
+                            @error('name')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="create_labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                            <select name="labor_id" id="create_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.labor_id}" x-model="createForm.labor_id" required>
-                                <option value="">Selecciona una labor</option>
+                            <label for="labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
+                            <select name="labor_id" id="labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('labor_id') border-red-500 @enderror" required>
+                                <option value="">Seleccione una labor</option>
                                 @foreach($labors as $labor)
-                                    <option value="{{ $labor->id }}">{{ $labor->description }}</option>
+                                    <option value="{{ $labor->id }}" {{ old('labor_id') == $labor->id ? 'selected' : '' }}>{{ $labor->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'labor_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_labor_id_error" x-text="validationErrors.labor_id ? validationErrors.labor_id[0] : ''"></p>
+                            @error('labor_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="create_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                            <input type="number" name="amount" id="create_amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.amount}" x-model="createForm.amount" required min="0">
-                            <!-- Muestra el error de validación para el campo 'amount' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_amount_error" x-text="validationErrors.amount ? validationErrors.amount[0] : ''"></p>
+                            <label for="amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
+                            <input type="number" name="amount" id="amount" value="{{ old('amount') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" required>
+                            @error('amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="create_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                            <input type="number" name="price" id="create_price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.price}" x-model="createForm.price" required min="0" step="0.01">
-                            <!-- Muestra el error de validación para el campo 'price' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_price_error" x-text="validationErrors.price ? validationErrors.price[0] : ''"></p>
+                            <label for="price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
+                            <input type="number" step="0.01" name="price" id="price" value="{{ old('price') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('price') border-red-500 @enderror" required>
+                            @error('price')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="mb-6">
-                            <label for="create_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
-                            <select name="category_id" id="create_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.category_id}" x-model="createForm.category_id" required>
-                                <option value="">Selecciona una categoría</option>
+                            <label for="category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
+                            <select name="category_id" id="category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror" required>
+                                <option value="">Seleccione una categoría</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'category_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="create_category_id_error" x-text="validationErrors.category_id ? validationErrors.category_id[0] : ''"></p>
+                            @error('category_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="flex justify-end space-x-4">
-                            <!-- Botones de cancelar y guardar para el modal de creación -->
-                            <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
+                            <button type="button" @click="closeModals()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Guardar Insumo</button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Modal de Edición de Insumo -->
-            <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4">
-                <div @click.away="isEditModalOpen = false" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+            <!-- Modal de Edición -->
+            <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold text-gray-800">Editar Insumo</h3>
-                        <!-- Botón para cerrar el modal de edición -->
-                        <button @click="isEditModalOpen = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+                        <button @click="closeModals()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
                     </div>
                     <!-- Formulario de edición de insumo -->
-                    <form @submit.prevent="updateSupply" x-ref="editForm">
+                    <form method="POST" :action="'{{ route('infrastock.admin.supplies.update', '') }}/' + currentSupply.id">
                         @csrf
                         @method('PUT')
                         <div class="mb-4">
                             <label for="edit_inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                            <select name="inventory_id" id="edit_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.inventory_id}" x-model="currentSupply.inventory_id" required>
-                                <option value="">Selecciona un inventario</option>
+                            <select name="inventory_id" id="edit_inventory_id" :value="currentSupply.inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                <option value="">Seleccione un inventario</option>
                                 @foreach($inventories as $inventory)
-                                    <option value="{{ $inventory->id }}">{{ $inventory->id }} - {{ $inventory->description }}</option>
+                                    <option value="{{ $inventory->id }}" :selected="currentSupply.inventory_id == {{ $inventory->id }}">ID: {{ $inventory->id }} - {{ $inventory->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'inventory_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_inventory_id_error" x-text="validationErrors.inventory_id ? validationErrors.inventory_id[0] : ''"></p>
                         </div>
                         <div class="mb-4">
                             <label for="edit_name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo:</label>
-                            <input type="text" name="name" id="edit_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.name}" x-model="currentSupply.name" required>
-                            <!-- Muestra el error de validación para el campo 'name' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_name_error" x-text="validationErrors.name ? validationErrors.name[0] : ''"></p>
+                            <input type="text" name="name" id="edit_name" :value="currentSupply.name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                         </div>
                         <div class="mb-4">
                             <label for="edit_labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                            <select name="labor_id" id="edit_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.labor_id}" x-model="currentSupply.labor_id" required>
-                                <option value="">Selecciona una labor</option>
+                            <select name="labor_id" id="edit_labor_id" :value="currentSupply.labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                <option value="">Seleccione una labor</option>
                                 @foreach($labors as $labor)
-                                    <option value="{{ $labor->id }}">{{ $labor->description }}</option>
+                                    <option value="{{ $labor->id }}" :selected="currentSupply.labor_id == {{ $labor->id }}">{{ $labor->description ?? 'N/A' }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'labor_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_labor_id_error" x-text="validationErrors.labor_id ? validationErrors.labor_id[0] : ''"></p>
                         </div>
                         <div class="mb-4">
                             <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                            <input type="number" name="amount" id="edit_amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.amount}" x-model="currentSupply.amount" required min="0">
-                            <!-- Muestra el error de validación para el campo 'amount' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_amount_error" x-text="validationErrors.amount ? validationErrors.amount[0] : ''"></p>
+                            <input type="number" name="amount" id="edit_amount" :value="currentSupply.amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                         </div>
                         <div class="mb-4">
                             <label for="edit_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                            <input type="number" name="price" id="edit_price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.price}" x-model="currentSupply.price" required min="0" step="0.01">
-                            <!-- Muestra el error de validación para el campo 'price' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_price_error" x-text="validationErrors.price ? validationErrors.price[0] : ''"></p>
+                            <input type="number" step="0.01" name="price" id="edit_price" :value="currentSupply.price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                         </div>
                         <div class="mb-6">
                             <label for="edit_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
-                            <select name="category_id" id="edit_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :class="{'border-red-500': validationErrors.category_id}" x-model="currentSupply.category_id" required>
-                                <option value="">Selecciona una categoría</option>
+                            <select name="category_id" id="edit_category_id" :value="currentSupply.category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                <option value="">Seleccione una categoría</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}" :selected="currentSupply.category_id == {{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
-                            <!-- Muestra el error de validación para el campo 'category_id' -->
-                            <p class="text-red-500 text-xs italic mt-2" id="edit_category_id_error" x-text="validationErrors.category_id ? validationErrors.category_id[0] : ''"></p>
                         </div>
                         <div class="flex justify-end space-x-4">
-                            <!-- Botones de cancelar y actualizar para el modal de edición -->
-                            <button type="button" @click="isEditModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
+                            <button type="button" @click="closeModals()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Actualizar Insumo</button>
                         </div>
                     </form>
@@ -241,166 +310,146 @@
 
 @section('script')
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('supplyCrudModals', () => ({
-            isCreateModalOpen: false, // Estado del modal de creación (abierto/cerrado).
-            isEditModalOpen: false,   // Estado del modal de edición (abierto/cerrado).
-            currentSupply: { id: null, inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '' }, // Datos del insumo que se está editando.
-            validationErrors: {}, // Almacena los errores de validación recibidos del servidor.
-            createForm: { inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '' }, // Datos del formulario de creación.
-
-            init() {
-                // Recupera los errores de validación del servidor y los datos `old()` para el formulario de creación.
-                const serverErrors = @json($errors->toArray());
-                const oldData = @json(old());
-
-                // Si hay errores de validación, abre el modal de creación y precarga los datos.
-                if (Object.keys(serverErrors).length > 0) {
-                    this.isCreateModalOpen = true;
-                    this.validationErrors = serverErrors.errors;
-                    // Llena el formulario de creación con los datos antiguos para mantener la información.
-                    this.createForm.inventory_id = oldData.inventory_id || '';
-                    this.createForm.name = oldData.name || '';
-                    this.createForm.labor_id = oldData.labor_id || '';
-                    this.createForm.amount = oldData.amount || '';
-                    this.createForm.price = oldData.price || '';
-                    this.createForm.category_id = oldData.category_id || '';
+// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
+function confirmDeleteSync(supplyName) {
+    let confirmed = false;
+    
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: `¿Quieres eliminar el insumo "${supplyName}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Mostrar loading
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espera',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
                 }
-            },
-
-            /**
-             * Abre el modal de edición y carga los datos del insumo seleccionado.
-             * @param int id ID del insumo a editar.
-             * @param int inventory_id ID del inventario asociado al insumo.
-             * @param string name Nombre del insumo.
-             * @param int labor_id ID de la labor asociada al insumo.
-             * @param int amount Cantidad del insumo.
-             * @param float price Precio del insumo.
-             * @param int category_id ID de la categoría del insumo.
-             */
-            openEditModal(id, inventory_id, name, labor_id, amount, price, category_id) {
-                this.isEditModalOpen = true;
-                this.currentSupply.id = id;
-                this.currentSupply.inventory_id = inventory_id;
-                this.currentSupply.name = name;
-                this.currentSupply.labor_id = labor_id;
-                this.currentSupply.amount = amount;
-                this.currentSupply.price = price;
-                this.currentSupply.category_id = category_id;
-                this.validationErrors = {}; // Limpia errores de validación previos.
-            },
-
-            /**
-             * Reinicia el formulario de creación, limpiando todos los campos y los errores de validación.
-             */
-            resetCreateForm() {
-                this.createForm = { inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '' };
-                this.validationErrors = {}; // Limpia errores de validación de Alpine.
-            },
-
-            /**
-             * Envía el formulario de creación de insumo de forma asíncrona (AJAX).
-             * Maneja la respuesta del servidor, mostrando mensajes de éxito o errores de validación.
-             */
-            async createSupply() {
-                try {
-                    const formData = new FormData(this.$refs.createForm);
-                    const response = await fetch('{{ route('infrastock.admin.supplies.store') }}', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // Token CSRF para seguridad.
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        this.isCreateModalOpen = false;
-                        this.resetCreateForm();
-                        // Muestra una notificación de éxito y recarga la página.
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: 'Insumo registrado correctamente.',
-                            showConfirmButton: false,
-                            timer: 1500
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else if (response.status === 422) {
-                        // Si hay errores de validación, los muestra en el formulario.
-                        const errorData = await response.json();
-                        this.validationErrors = errorData.errors;
-                    } else {
-                        // Muestra un mensaje de error general.
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Hubo un problema al registrar el insumo.'
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error al enviar el formulario:', error);
-                    // Muestra un mensaje de error de conexión.
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo conectar con el servidor.'
-                    });
-                }
-            },
-
-            /**
-             * Envía el formulario de actualización de insumo de forma asíncrona (AJAX).
-             * Maneja la respuesta del servidor, mostrando mensajes de éxito o errores de validación.
-             */
-            async updateSupply() {
-                try {
-                    const formData = new FormData(this.$refs.editForm);
-                    formData.append('_method', 'PUT'); // Simula el método PUT para Laravel.
-                    const response = await fetch('{{ route('infrastock.admin.supplies.update', '') }}' + this.currentSupply.id, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // Token CSRF.
-                        },
-                        body: formData
-                    });
-
-                    if (response.ok) {
-                        this.isEditModalOpen = false;
-                        this.validationErrors = {}; // Limpia errores al actualizar con éxito.
-                        // Muestra una notificación de éxito y recarga la página.
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: 'Insumo actualizado correctamente.',
-                            showConfirmButton: false,
-                            timer: 1500
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else if (response.status === 422) {
-                        // Si hay errores de validación, los muestra en el formulario.
-                        const errorData = await response.json();
-                        this.validationErrors = errorData.errors;
-                    } else {
-                        // Muestra un mensaje de error general.
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Hubo un problema al actualizar el insumo.'
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error al enviar el formulario:', error);
-                    // Muestra un mensaje de error de conexión.
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo conectar con el servidor.'
-                    });
-                }
-            }
-        }))
+            });
+            
+            // Permitir que el formulario se envíe
+            confirmed = true;
+            // Enviar el formulario manualmente
+            event.target.submit();
+        }
     });
+    
+    // Retornar false para prevenir el envío inmediato del formulario
+    return false;
+}
+
+// Verificar si hay mensajes de sesión
+document.addEventListener('DOMContentLoaded', function() {
+    @if(session('success') === 'deleted')
+        Swal.fire({
+            icon: 'success',
+            title: '¡Eliminado!',
+            text: 'El insumo ha sido eliminado correctamente.',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    @endif
+    
+    @if(session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: '{{ session('error') }}',
+            confirmButtonText: 'Entendido'
+        });
+    @endif
+    
+    // Configurar filtro automático
+    setupAutoFilter();
+});
+
+// Función para configurar el filtro automático
+function setupAutoFilter() {
+    const searchInput = document.getElementById('searchInput');
+    const table = document.querySelector('table tbody');
+    const rows = table.querySelectorAll('tr');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        rows.forEach(row => {
+            const inventoryCell = row.cells[1]; // Columna de inventario
+            const nameCell = row.cells[2]; // Columna de nombre
+            const laborCell = row.cells[3]; // Columna de labor
+            const categoryCell = row.cells[6]; // Columna de categoría
+            
+            const inventoryText = inventoryCell.textContent.toLowerCase();
+            const nameText = nameCell.textContent.toLowerCase();
+            const laborText = laborCell.textContent.toLowerCase();
+            const categoryText = categoryCell.textContent.toLowerCase();
+            
+            if (inventoryText.includes(searchTerm) || nameText.includes(searchTerm) || laborText.includes(searchTerm) || categoryText.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Actualizar contador de resultados visibles
+        updateVisibleCount();
+    });
+}
+
+// Función para limpiar la búsqueda
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = '';
+    
+    const rows = document.querySelectorAll('table tbody tr');
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    updateVisibleCount();
+}
+
+// Función para actualizar el contador de resultados visibles
+function updateVisibleCount() {
+    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
+    const totalRows = document.querySelectorAll('table tbody tr').length;
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    
+    const counterElement = document.querySelector('.text-sm.text-gray-500');
+    if (counterElement) {
+        if (document.getElementById('searchInput').value) {
+            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
+        } else {
+            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros`;
+        }
+    }
+    
+    // Mostrar/ocultar mensaje de "no hay resultados"
+    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
+        noResultsMessage.style.display = 'block';
+    } else {
+        noResultsMessage.style.display = 'none';
+    }
+}
+
+// Verificar si hay errores de validación y abrir modal automáticamente
+@if($errors->hasAny(['inventory_id', 'name', 'labor_id', 'amount', 'price', 'category_id']) || session('error'))
+    document.addEventListener('DOMContentLoaded', function() {
+        // Buscar el componente Alpine.js y abrir el modal de creación
+        const alpineComponent = document.querySelector('[x-data]');
+        if (alpineComponent && alpineComponent._x_dataStack) {
+            alpineComponent._x_dataStack[0].isCreateModalOpen = true;
+        }
+        console.log('Errores encontrados:', @json($errors->messages()));
+    });
+@endif
 </script>
 @endsection

@@ -48,6 +48,7 @@ class INFRASTOCKServiceProvider extends ServiceProvider
                 \Modules\INFRASTOCK\Console\Commands\CheckPersonData::class,
                 \Modules\INFRASTOCK\Console\Commands\TestPhoneField::class,
                 \Modules\INFRASTOCK\Console\Commands\CheckTableStructure::class,
+                \Modules\INFRASTOCK\Console\Commands\CreateINFRASTOCKRoles::class,
             ]);
         }
     }

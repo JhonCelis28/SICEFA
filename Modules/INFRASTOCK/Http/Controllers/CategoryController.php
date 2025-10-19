@@ -23,7 +23,7 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = InfrastockCategory::all(); // Obtiene todas las categorías.
+        $categories = InfrastockCategory::paginate(15); // Obtiene las categorías con paginación (15 por página).
         return view('infrastock::admin.categories.index', compact('categories')); // Retorna la vista index con las categorías.
     }
 
@@ -47,11 +47,21 @@ class CategoryController extends Controller
     {
         // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'name' => 'required|unique:infrastock_categories|max:255', // El nombre es obligatorio, único y máximo 255 caracteres.
+            'name' => 'required|max:255', // El nombre es obligatorio y máximo 255 caracteres.
             'type' => 'required|in:supply,tool', // El tipo es obligatorio y debe ser 'supply' o 'tool'.
         ]);
 
-        InfrastockCategory::create($request->all()); // Crea una nueva categoría con los datos validados.
+        try {
+            InfrastockCategory::create($request->all()); // Crea una nueva categoría con los datos validados.
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado en la base de datos
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.categories.index')
+                    ->with('error', 'El nombre de la categoría ya está en uso. Por favor, elige otro nombre.')
+                    ->withInput();
+            }
+            throw $e; // Re-lanzar otros errores de base de datos
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.categories.index')->with('success', 'Categoría creada exitosamente.');
@@ -90,12 +100,23 @@ class CategoryController extends Controller
     {
         // Valida los datos de entrada de la solicitud, asegurando que el nombre sea único excluyendo la categoría actual.
         $request->validate([
-            'name' => 'required|max:255|unique:infrastock_categories,name,' . $id,
+            'name' => 'required|max:255',
             'type' => 'required|in:supply,tool',
         ]);
 
         $category = InfrastockCategory::findOrFail($id); // Encuentra la categoría por su ID o lanza una excepción.
-        $category->update($request->all()); // Actualiza la categoría con los nuevos datos.
+        
+        try {
+            $category->update($request->all()); // Actualiza la categoría con los nuevos datos.
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado en la base de datos
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.categories.index')
+                    ->with('error', 'El nombre de la categoría ya está en uso. Por favor, elige otro nombre.')
+                    ->withInput();
+            }
+            throw $e; // Re-lanzar otros errores de base de datos
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.categories.index')->with('success', 'Categoría actualizada exitosamente.');
@@ -109,9 +130,35 @@ class CategoryController extends Controller
     public function destroy($id)
     {
         $category = InfrastockCategory::findOrFail($id); // Encuentra la categoría por su ID o lanza una excepción.
+        
+        // Por ahora, permitir eliminar todas las categorías sin validación
+        // TODO: Implementar validación cuando se definan las relaciones correctas
+        $hasRelatedRecords = false; // Temporalmente deshabilitado
+        
+        if ($hasRelatedRecords) {
+            // Si es una petición AJAX, devolver respuesta JSON
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la categoría porque tiene registros relacionados.'
+                ], 422);
+            }
+
+            // Redirige a la vista index con un parámetro de error para SweetAlert2
+            return redirect()->route('infrastock.admin.categories.index')->with('error', 'No se puede eliminar la categoría porque tiene registros relacionados.');
+        }
+        
         $category->delete(); // Elimina la categoría de la base de datos (soft delete si está configurado).
 
-        // Redirige a la vista index con un mensaje de éxito.
-        return redirect()->route('infrastock.admin.categories.index')->with('success', 'Categoría eliminada exitosamente.');
+        // Si es una petición AJAX, devolver respuesta JSON
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Categoría eliminada exitosamente.'
+            ]);
+        }
+
+        // Redirige a la vista index con un parámetro de éxito para SweetAlert2
+        return redirect()->route('infrastock.admin.categories.index')->with('success', 'deleted');
     }
 }

@@ -90,6 +90,25 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8; /* slate-400 */
         }
+
+        /* Asegurar que los modales tengan el z-index más alto */
+        .modal-overlay {
+            z-index: 9999 !important;
+        }
+        
+        .modal-content {
+            z-index: 10000 !important;
+        }
+
+        /* Mejorar el comportamiento de x-cloak para evitar parpadeos */
+        [x-cloak] { 
+            display: none !important; 
+        }
+        
+        /* Asegurar que los modales estén ocultos por defecto */
+        .modal-overlay[x-cloak] {
+            display: none !important;
+        }
     </style>
 
     @yield('head')
@@ -119,7 +138,7 @@
         @mouseenter="" {{-- Evento mouseenter vacio para anular comportamiento previo --}}
         @mouseleave="" {{-- Evento mouseleave vacio para anular comportamiento previo --}}
         :class="{ '-translate-x-full': !sidebarOpen, 'md:w-64': sidebarOpen, 'md:w-20': false }" {{-- Clases dinámicas para controlar el ancho y la visibilidad del sidebar --}}
-        class="fixed inset-y-0 left-0 z-50 bg-green-800 shadow-xl transform transition-all duration-300 ease-in-out md:relative">
+        class="fixed inset-y-0 left-0 z-40 bg-green-800 shadow-xl transform transition-all duration-300 ease-in-out md:relative">
         
         <!-- Encabezado del Sidebar: Logo y Eslogan -->
         <div class="flex flex-col items-center justify-center h-32 bg-green-900 text-white"
@@ -154,28 +173,20 @@
                     </a>
                 </li>
 
-                <!-- Grupo de navegación para Áreas Productivas -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.admin.areas.*')) active @endif">
+                <!-- Áreas Productivas - Enlace directo -->
+                <li>
+                    <a href="{{ route('infrastock.admin.areas.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.areas.*')) active @endif">
                         <i class="fas fa-sitemap w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Áreas Productivas</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
                     </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.admin.areas.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.areas.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Gestionar Áreas</a></li>
-                    </ul>
                 </li>
 
-                <!-- Grupo de navegación para Categorías -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.admin.categories.*')) active @endif">
+                <!-- Categorías - Enlace directo -->
+                <li>
+                    <a href="{{ route('infrastock.admin.categories.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.categories.*')) active @endif">
                         <i class="fas fa-layer-group w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Categorías</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
                     </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.admin.categories.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.categories.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Gestionar Categorías</a></li>
-                    </ul>
                 </li>
                 
                 <!-- Grupo de navegación para Insumos -->
@@ -198,42 +209,28 @@
                     </ul>
                 </li>
 
-                <!-- Grupo de navegación para Herramientas -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.admin.tools.*')) active @endif">
+                <!-- Herramientas - Enlace directo -->
+                <li>
+                    <a href="{{ route('infrastock.admin.tools.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.tools.*')) active @endif">
                         <i class="fas fa-tools w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Herramientas</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
                     </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.admin.tools.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs(['infrastock.admin.tools.index', 'infrastock.admin.tools.create', 'infrastock.admin.tools.edit'])) active @endif"><i class="far fa-circle text-xs mr-3"></i> Gestionar Herramientas</a></li>
-                    </ul>
                 </li>
 
-                <!-- Grupo de navegación para Préstamos y Devoluciones -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.admin.loans.*')) active @endif">
+                <!-- Préstamos y Devoluciones - Enlace directo -->
+                <li>
+                    <a href="{{ route('infrastock.admin.loans.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.loans.*')) active @endif">
                         <i class="fas fa-clipboard-list w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Préstamos y Devoluciones</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
                     </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.admin.loans.create') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.loans.create')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Registrar Préstamo</a></li>
-                        <li><a href="{{ route('infrastock.admin.loans.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.loans.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Listar Préstamos</a></li>
-                    </ul>
                 </li>
 
-                <!-- Grupo de navegación para Gestión de Usuarios -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.admin.users.*')) active @endif">
+                <!-- Gestión de Usuarios - Enlace directo -->
+                <li>
+                    <a href="{{ route('infrastock.admin.users.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.users.*')) active @endif">
                         <i class="fas fa-users w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
-                        <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Gestionar Usuario</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
+                        <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Gestión de Usuarios</span>
                     </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.admin.users.create') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.users.create')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Registrar Usuario</a></li>
-                        <li><a href="{{ route('infrastock.admin.users.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.users.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Listado de Usuario</a></li>
-                    </ul>
                 </li>
             </ul>
         </nav>
@@ -243,7 +240,7 @@
     <div class="flex-1 flex flex-col overflow-hidden">
 
         <!-- Barra de Navegación Superior (Top Navbar) -->
-        <header class="flex items-center justify-between h-16 bg-white border-b border-gray-200 px-6 shadow-sm z-40">
+        <header class="flex items-center justify-between h-16 bg-white border-b border-gray-200 px-6 shadow-sm z-30">
             <div class="flex items-center">
                 <!-- Botón de hamburguesa para alternar la visibilidad del sidebar en dispositivos móviles -->
                 <button @click="if(window.innerWidth < 768) toggleSidebar()" class="text-gray-500 focus:outline-none focus:text-gray-700 md:hidden">
@@ -279,7 +276,7 @@
                         @endif
                     </button>
                     <!-- Dropdown de notificaciones -->
-                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
+                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg py-1 z-40 border border-gray-100">
                         <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">Notificaciones</div>
                         @if($pendingSupplyRequestsCount > 0)
                             <a href="{{ route('infrastock.admin.supply-requests.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -308,7 +305,7 @@
                         <i class="fas fa-angle-down ml-1 text-sm"></i>
                     </button>
 
-                    <div x-show="dropdownOpen" @click.away="dropdownOpen = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
+                    <div x-show="dropdownOpen" @click.away="dropdownOpen = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-40 border border-gray-100">
                         <a href="{{ route('cefa.infrastock.admin.profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</a>
                         <a href="{{ route('infrastock.admin.logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
                         <form id="logout-form" action="{{ route('infrastock.admin.logout') }}" method="POST" class="hidden">
@@ -367,7 +364,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Alpine.js CDN para añadir reactividad y funcionalidad al HTML -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <script>
         // La lógica de Alpine.js para el layout se ha movido directamente al atributo x-data del div del sidebar.

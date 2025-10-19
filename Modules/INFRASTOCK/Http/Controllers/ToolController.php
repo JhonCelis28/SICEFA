@@ -28,11 +28,10 @@ class ToolController extends Controller
      */
     public function index()
     {
-        $tools = Tool::with('category', 'labor', 'inventory')->get(); // Obtiene todas las herramientas con sus relaciones.
+        $tools = Tool::with('category', 'labor', 'inventory')->paginate(15); // Obtiene las herramientas con paginación (15 por página).
         $categories = InfrastockCategory::where('type', 'tool')->get(); // Obtiene categorías específicas para herramientas.
         $labors = Labor::all(); // Obtiene todas las labores.
         $inventories = Inventory::all(); // Obtiene todos los inventarios.
-        // Retorna la vista index de herramientas con todos los datos necesarios.
         return view('infrastock::admin.tools.index', compact('tools', 'categories', 'labors', 'inventories'));
     }
 
@@ -54,18 +53,24 @@ class ToolController extends Controller
      */
     public function store(Request $request)
     {
-        // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'inventory_id' => 'required|exists:inventories,id', // ID de inventario es obligatorio y debe existir.
-            'labor_id' => 'required|exists:labors,id', // ID de labor es obligatorio y debe existir.
-            'amount' => 'required|integer|min:0', // Cantidad es obligatoria, entera y mínimo 0.
-            'price' => 'required|numeric|min:0', // Precio es obligatorio, numérico y mínimo 0.
-            'category_id' => 'required|exists:infrastock_categories,id', // ID de categoría es obligatorio y debe existir.
+            'inventory_id' => 'required|exists:inventories,id',
+            'labor_id' => 'required|exists:labors,id',
+            'amount' => 'required|integer|min:0',
+            'price' => 'required|numeric|min:0',
+            'category_id' => 'required|exists:infrastock_categories,id',
         ]);
 
-        Tool::create($request->all()); // Crea una nueva herramienta con los datos validados.
-
-        // Redirige a la vista index con un mensaje de éxito.
+        try {
+            Tool::create($request->all());
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.tools.index')
+                    ->with('error', 'Ya existe una herramienta con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e;
+        }
         return redirect()->route('infrastock.admin.tools.index')->with('success', 'Herramienta registrada exitosamente.');
     }
 
@@ -100,7 +105,6 @@ class ToolController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Valida los datos de entrada de la solicitud.
         $request->validate([
             'inventory_id' => 'required|exists:inventories,id',
             'labor_id' => 'required|exists:labors,id',
@@ -109,10 +113,18 @@ class ToolController extends Controller
             'category_id' => 'required|exists:infrastock_categories,id',
         ]);
 
-        $tool = Tool::findOrFail($id); // Encuentra la herramienta por su ID o lanza una excepción.
-        $tool->update($request->all()); // Actualiza la herramienta con los nuevos datos.
-
-        // Redirige a la vista index con un mensaje de éxito.
+        $tool = Tool::findOrFail($id);
+        
+        try {
+            $tool->update($request->all());
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return redirect()->route('infrastock.admin.tools.index')
+                    ->with('error', 'Ya existe una herramienta con estos datos. Por favor, verifica la información.')
+                    ->withInput();
+            }
+            throw $e;
+        }
         return redirect()->route('infrastock.admin.tools.index')->with('success', 'Herramienta actualizada exitosamente.');
     }
 
@@ -123,10 +135,26 @@ class ToolController extends Controller
      */
     public function destroy($id)
     {
-        $tool = Tool::findOrFail($id); // Encuentra la herramienta por su ID o lanza una excepción.
-        $tool->delete(); // Elimina la herramienta de la base de datos (soft delete si está configurado).
-
-        // Redirige a la vista index con un mensaje de éxito.
-        return redirect()->route('infrastock.admin.tools.index')->with('success', 'Herramienta eliminada exitosamente.');
+        $tool = Tool::findOrFail($id);
+        $hasRelatedRecords = false; // TODO: Implement validation
+        
+        if ($hasRelatedRecords) {
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la herramienta porque tiene registros relacionados.'
+                ], 422);
+            }
+            return redirect()->route('infrastock.admin.tools.index')->with('error', 'No se puede eliminar la herramienta porque tiene registros relacionados.');
+        }
+        
+        $tool->delete();
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Herramienta eliminada exitosamente.'
+            ]);
+        }
+        return redirect()->route('infrastock.admin.tools.index')->with('success', 'deleted');
     }
 }
