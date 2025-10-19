@@ -4,7 +4,7 @@
 
 FECHA: 19 de Octubre de 2025
 MÓDULO: INFRASTOCK
-DESARROLLADOR: [Tu Nombre]
+DESARROLLADOR: [Jhon Celis]
 VERSIÓN: Mejoras v2.0
 
 ================================================================================
