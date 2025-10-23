@@ -160,9 +160,6 @@ Route::get('/logo', function() {
     return response()->file($path);
 });
 
-// Ruta para el dashboard del administrador del módulo INFRASTOCK.
-Route::get('/infrastock/admin/dashboard','INFRASTOCKController@dashboard')->name('cefa.infrastock.admin.dashboard');
-
 // Ruta para la lógica posterior al inicio de sesión del módulo.
 Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.postlogin');
 
@@ -171,6 +168,8 @@ Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.post
  * Estas rutas requieren autenticación y permisos de administrador.
  */
 Route::middleware(['web', 'auth'])->prefix('infrastock/admin')->group(function () {
+    // Dashboard del administrador
+    Route::get('/dashboard','INFRASTOCKController@dashboard')->name('cefa.infrastock.admin.dashboard');
     // Gestión de usuarios
     Route::resource('users', 'UserManagementController')->names([
         'index' => 'infrastock.admin.users.index',
@@ -213,7 +212,72 @@ Route::middleware(['web', 'auth'])->group(function () {
     
     // Logout del personal de aseo
     Route::post('/infrastock/cleaning-staff/logout', 'CleaningStaffController@logout')->name('infrastock.cleaning-staff.logout');
+});
+
+/**
+ * Grupo de rutas para el Administrador con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth'])->group(function () {
+    // Gestión de solicitudes del administrador
+    Route::get('/infrastock/admin/requests', 'AdminRequestController@index')->name('infrastock.admin.requests.index');
+    Route::post('/infrastock/admin/requests/{id}/approve', 'AdminRequestController@approve')->name('infrastock.admin.requests.approve');
+    Route::post('/infrastock/admin/requests/{id}/reject', 'AdminRequestController@reject')->name('infrastock.admin.requests.reject');
     
+    // Gestión de notificaciones
+    Route::post('/infrastock/notifications/{id}/mark-read', 'NotificationController@markAsRead')->name('infrastock.notifications.mark-read');
+    
+    // Ruta de prueba para crear notificaciones
+    Route::get('/infrastock/test-notification', function() {
+        // Buscar usuarios con roles de administrador
+        $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38]; // IDs de roles de administrador
+        $admins = \App\Models\User::whereHas('roles', function($query) use ($adminRoleIds) {
+            $query->whereIn('roles.id', $adminRoleIds);
+        })->get();
+
+        // Si no hay administradores específicos, usar usuarios con rol "Administrador" o "Super Administrador"
+        if ($admins->isEmpty()) {
+            $admins = \App\Models\User::whereHas('roles', function($query) {
+                $query->where('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
+            })->get();
+        }
+
+        // Si aún no hay administradores, usar el usuario actual como fallback
+        if ($admins->isEmpty()) {
+            $admins = collect([auth()->user()]);
+        }
+
+        $notificationCount = 0;
+        foreach ($admins as $admin) {
+            $notification = \Modules\INFRASTOCK\Entities\Notification::create([
+                'type' => 'request_created',
+                'notifiable_type' => 'App\Models\User',
+                'notifiable_id' => $admin->id,
+                'data' => [
+                    'title' => 'Notificación de Prueba',
+                    'message' => 'Esta es una notificación de prueba para verificar que el sistema funciona correctamente.',
+                    'request_id' => 999,
+                    'total_items' => 1,
+                    'equipment_list' => 'Prueba',
+                    'user_name' => 'Usuario de Prueba',
+                    'action_url' => route('infrastock.admin.requests.index'),
+                    'created_at' => now()->format('d/m/Y H:i'),
+                ],
+            ]);
+            $notificationCount++;
+        }
+        
+        return redirect()->route('infrastock.admin.requests.index')
+            ->with('success', "Notificaciones de prueba creadas para {$notificationCount} administradores");
+    })->name('infrastock.test.notification');
+});
+
+/**
+ * Grupo de rutas para el Personal de Aseo con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Dashboard principal del personal de aseo
     Route::get('/infrastock/cleaning-staff/dashboard', 'CleaningStaffController@dashboard')->name('infrastock.cleaning-staff.dashboard');
     
@@ -222,16 +286,22 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/infrastock/cleaning-staff/requests', 'CleaningStaffController@storeRequest')->name('infrastock.cleaning-staff.requests.store');
     Route::get('/infrastock/cleaning-staff/requests', 'CleaningStaffController@myRequests')->name('infrastock.cleaning-staff.requests.index');
     
+    // Gestión de sobrantes
+    Route::get('/infrastock/cleaning-staff/surplus', 'SurplusController@index')->name('infrastock.cleaning-staff.surplus.index');
+    Route::post('/infrastock/cleaning-staff/surplus', 'SurplusController@store')->name('infrastock.cleaning-staff.surplus.store');
+    Route::get('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@show')->name('infrastock.cleaning-staff.surplus.show');
+    Route::delete('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@destroy')->name('infrastock.cleaning-staff.surplus.destroy');
+    
+    // Acciones específicas para solicitudes
+    Route::get('/infrastock/cleaning-staff/requests/{id}', 'CleaningStaffController@showRequest')->name('infrastock.cleaning-staff.requests.show');
+    Route::get('/infrastock/cleaning-staff/requests/{id}/edit', 'CleaningStaffController@editRequest')->name('infrastock.cleaning-staff.requests.edit');
+    Route::put('/infrastock/cleaning-staff/requests/{id}', 'CleaningStaffController@updateRequest')->name('infrastock.cleaning-staff.requests.update');
+    Route::delete('/infrastock/cleaning-staff/requests/{id}', 'CleaningStaffController@destroyRequest')->name('infrastock.cleaning-staff.requests.destroy');
+    
     // Notificaciones
     Route::get('/infrastock/cleaning-staff/notifications', 'CleaningStaffController@notifications')->name('infrastock.cleaning-staff.notifications');
     
     // Gestión de perfil
     Route::get('/infrastock/cleaning-staff/profile', 'CleaningStaffController@profile')->name('infrastock.cleaning-staff.profile');
     Route::put('/infrastock/cleaning-staff/profile', 'CleaningStaffController@updateProfile')->name('infrastock.cleaning-staff.profile.update');
-    
-    // Reportes de sobrantes (solo filtros, sin exportación)
-    Route::get('/infrastock/cleaning-staff/surplus-report', 'CleaningStaffController@surplusReport')->name('infrastock.cleaning-staff.surplus-report');
-    
-    // Historial de insumos
-    Route::get('/infrastock/cleaning-staff/supply-history', 'CleaningStaffController@supplyHistory')->name('infrastock.cleaning-staff.supply-history');
 });

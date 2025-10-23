@@ -1,0 +1,164 @@
+<?php
+
+namespace Modules\INFRASTOCK\Http\Controllers;
+
+use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Modules\INFRASTOCK\Entities\WarehouseMovement;
+use Modules\INFRASTOCK\Entities\Equipment;
+use Modules\INFRASTOCK\Entities\Notification;
+use App\Models\User;
+
+class AdminRequestController extends Controller
+{
+    /**
+     * Muestra todas las solicitudes pendientes para el administrador
+     */
+    public function index()
+    {
+        $requests = \Modules\INFRASTOCK\Entities\Request::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse',
+            'user'
+        ])
+        ->where('status', 'pending')
+        ->orderBy('created_at', 'desc')
+        ->paginate(10);
+
+        // Cargar notificaciones para el usuario actual
+        $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
+            ->where('notifiable_id', auth()->id())
+            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
+            ->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $notificationCount = $notifications->where('read_at', null)->count();
+
+        return view('infrastock::admin.requests.index', compact('requests', 'notifications', 'notificationCount'));
+    }
+
+    /**
+     * Aprueba una solicitud
+     */
+    public function approve(Request $request, $id)
+    {
+        $requestData = \Modules\INFRASTOCK\Entities\Request::with(['items.equipment', 'user'])
+            ->where('id', $id)
+            ->where('status', 'pending')
+            ->first();
+        
+        if (!$requestData) {
+            return redirect()->back()->with('error', 'Solicitud no encontrada o ya procesada.');
+        }
+
+        try {
+            // Actualizar el estado de la solicitud
+            $requestData->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+            ]);
+
+            // Actualizar el estado de todos los items
+            $requestData->items()->update(['status' => 'approved']);
+
+            // Enviar notificación al personal de aseo
+            $this->notifyCleaningStaffRequestStatus($requestData, 'approved');
+
+            return redirect()->back()->with('success', 'Solicitud aprobada exitosamente.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al aprobar la solicitud: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rechaza una solicitud
+     */
+    public function reject(Request $request, $id)
+    {
+        $requestData = \Modules\INFRASTOCK\Entities\Request::with(['items.equipment', 'user'])
+            ->where('id', $id)
+            ->where('status', 'pending')
+            ->first();
+        
+        if (!$requestData) {
+            return redirect()->back()->with('error', 'Solicitud no encontrada o ya procesada.');
+        }
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        try {
+            // Actualizar el estado de la solicitud
+            $requestData->update([
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'rejection_reason' => $request->rejection_reason,
+            ]);
+
+            // Actualizar el estado de todos los items
+            $requestData->items()->update(['status' => 'rejected']);
+
+            // Enviar notificación al personal de aseo
+            $this->notifyCleaningStaffRequestStatus($requestData, 'rejected');
+
+            return redirect()->back()->with('success', 'Solicitud rechazada exitosamente.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al rechazar la solicitud: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enviar notificación al personal de aseo cuando se aprueba/rechaza una solicitud
+     */
+    private function notifyCleaningStaffRequestStatus($requestData, $status)
+    {
+        try {
+            $totalItems = $requestData->items->count();
+            $equipmentNames = $requestData->items->pluck('equipment.name')->toArray();
+            $equipmentList = implode(', ', array_slice($equipmentNames, 0, 3));
+            if (count($equipmentNames) > 3) {
+                $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
+            }
+
+            if ($status === 'approved') {
+                Notification::create([
+                    'type' => 'request_approved',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $requestData->user_id,
+                    'data' => [
+                        'title' => 'Solicitud Aprobada',
+                        'message' => "Tu solicitud con {$totalItems} insumos ha sido aprobada: {$equipmentList}.",
+                        'request_id' => $requestData->id,
+                        'total_items' => $totalItems,
+                        'equipment_list' => $equipmentList,
+                        'action_url' => route('infrastock.cleaning-staff.requests.index'),
+                        'created_at' => now()->format('d/m/Y H:i'),
+                    ],
+                ]);
+            } elseif ($status === 'rejected') {
+                Notification::create([
+                    'type' => 'request_rejected',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $requestData->user_id,
+                    'data' => [
+                        'title' => 'Solicitud Rechazada',
+                        'message' => "Tu solicitud con {$totalItems} insumos ha sido rechazada: {$equipmentList}.",
+                        'request_id' => $requestData->id,
+                        'total_items' => $totalItems,
+                        'equipment_list' => $equipmentList,
+                        'rejection_reason' => $requestData->rejection_reason,
+                        'action_url' => route('infrastock.cleaning-staff.requests.index'),
+                        'created_at' => now()->format('d/m/Y H:i'),
+                    ],
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación al personal de aseo: ' . $e->getMessage());
+        }
+    }
+}

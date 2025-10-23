@@ -121,6 +121,15 @@ class INFRASTOCKController extends Controller
         $instructorNames = $toolsByInstructor->pluck('user_name')->toArray();
         $loanCounts = $toolsByInstructor->pluck('total_loans')->toArray();
 
+        // Cargar notificaciones para el usuario actual
+        $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
+            ->where('notifiable_id', auth()->id())
+            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
+            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $notificationCount = $notifications->where('read_at', null)->count();
 
         // Retorna la vista del dashboard con todos los datos recopilados.
         return view('infrastock::admin.dashboard', compact(
@@ -131,7 +140,9 @@ class INFRASTOCKController extends Controller
             'areaNames',
             'consumptionAmounts',
             'instructorNames',
-            'loanCounts'
+            'loanCounts',
+            'notifications',
+            'notificationCount'
         ));
     }
 

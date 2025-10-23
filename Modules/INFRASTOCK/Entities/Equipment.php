@@ -78,13 +78,13 @@ class Equipment extends Model
      */
     public function getStockAttribute()
     {
-        // Si no hay cantidad inicial definida, usar la cantidad actual
-        $initialAmount = $this->initial_amount ?? $this->amount;
+        // Si no hay cantidad inicial definida o es 0, usar la cantidad actual
+        $initialAmount = ($this->initial_amount && $this->initial_amount > 0) ? $this->initial_amount : $this->amount;
         
         // Calcular las solicitudes aprobadas y entregadas para este equipo
-        $consumedAmount = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('movement_id', $this->id)
+        $consumedAmount = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('equipment_id', $this->id)
             ->where('item_type', 'equipment')
-            ->whereIn('role', ['approved', 'delivered'])
+            ->whereIn('role', ['Entrega', 'Recibe'])
             ->sum('amount');
             
         return max(0, $initialAmount - $consumedAmount);

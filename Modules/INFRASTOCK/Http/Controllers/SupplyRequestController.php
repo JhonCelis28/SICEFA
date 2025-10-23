@@ -31,11 +31,26 @@ class SupplyRequestController extends Controller
      */
     public function index()
     {
-        // Obtiene las solicitudes de insumos con rol 'Solicitud' (pendientes) y sus relaciones.
-        $supplyRequests = WarehouseMovement::with('user', 'equipment', 'productiveUnitWarehouse.productiveUnit', 'productiveUnitWarehouse.warehouse')
-                                        ->where('item_type', 'equipment')
-                                        ->where('role', 'Solicitud') // Asume 'Solicitud' como el rol para solicitudes pendientes.
-                                        ->get();
+        // Obtiene las solicitudes del nuevo sistema con estado 'pending' y sus relaciones.
+        $supplyRequests = \Modules\INFRASTOCK\Entities\Request::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse',
+            'user'
+        ])
+        ->whereIn('status', ['pending', 'approved', 'rejected'])
+        ->orderBy('created_at', 'desc')
+        ->paginate(10);
+
+        // Cargar notificaciones para el usuario actual
+        $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
+            ->where('notifiable_id', auth()->id())
+            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
+            ->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $notificationCount = $notifications->where('read_at', null)->count();
 
         // Datos adicionales para los selectores en los modales (si se usaran para crear/editar en el mismo modal).
         $equipments = Equipment::all();
@@ -43,7 +58,7 @@ class SupplyRequestController extends Controller
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
 
         // Retorna la vista index de solicitudes con todos los datos necesarios.
-        return view('infrastock::admin.supply-requests.index', compact('supplyRequests', 'equipments', 'users', 'productiveUnitWarehouses'));
+        return view('infrastock::admin.supply-requests.index', compact('supplyRequests', 'equipments', 'users', 'productiveUnitWarehouses', 'notifications', 'notificationCount'));
     }
 
     /**
@@ -70,7 +85,6 @@ class SupplyRequestController extends Controller
             'user_id' => 'required|exists:users,id', // ID del usuario es obligatorio y debe existir.
             'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id', // ID de unidad/almacén es obligatorio y debe existir.
             'amount' => 'required|integer|min:1', // Cantidad solicitada es obligatoria, entera y mínimo 1.
-            'description' => 'nullable|string', // Descripción/razón de la solicitud es opcional.
         ]);
 
         // Crea un nuevo registro de movimiento de almacén con el rol 'Solicitud'.
@@ -81,7 +95,6 @@ class SupplyRequestController extends Controller
             'user_id' => $request->user_id,
             'role' => 'Solicitud', // Estado inicial de la solicitud.
             'amount' => $request->amount,
-            'description' => $request->description,
         ]);
 
         // Redirige a la vista index con un mensaje de éxito.
@@ -121,25 +134,44 @@ class SupplyRequestController extends Controller
     {
         // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'movement_id' => 'required|exists:equipments,id',
-            'user_id' => 'required|exists:users,id',
-            'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
-            'amount' => 'required|integer|min:1',
-            'description' => 'nullable|string',
-            'role' => 'required|in:Solicitud,approved,rejected,delivered', // El estado puede ser actualizado por el administrador.
+            'status' => 'required|in:pending,approved,rejected',
+            'rejection_reason' => 'nullable|string|max:500',
         ]);
 
-        $supplyRequest = WarehouseMovement::findOrFail($id); // Encuentra la solicitud por su ID o lanza una excepción.
-        // Actualiza la solicitud con los nuevos datos, incluyendo el cambio de rol (estado).
+        $supplyRequest = \Modules\INFRASTOCK\Entities\Request::findOrFail($id);
+        
+        // Obtener el ID del usuario autenticado de forma segura
+        $userId = auth()->check() ? auth()->id() : null;
+        
+        // Si no hay usuario autenticado, usar el primer usuario admin como fallback
+        if (!$userId) {
+            $adminUser = \App\Models\User::first();
+            $userId = $adminUser ? $adminUser->id : null;
+        }
+
+        // Actualiza la solicitud con el nuevo estado
         $supplyRequest->update([
-            'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
-            'movement_id' => $request->movement_id,
-            'item_type' => 'equipment',
-            'user_id' => $request->user_id,
-            'role' => $request->role, // Actualización del estado de la solicitud.
-            'amount' => $request->amount,
-            'description' => $request->description,
+            'status' => $request->status,
+            'rejection_reason' => $request->rejection_reason,
+            'approved_at' => $request->status === 'approved' ? now() : null,
+            'rejected_at' => $request->status === 'rejected' ? now() : null,
+            'approved_by' => $request->status === 'approved' ? $userId : null,
         ]);
+
+        // Actualizar el estado de todos los items
+        $supplyRequest->items()->update(['status' => $request->status]);
+
+        // Enviar notificación al personal de aseo
+        $this->notifyCleaningStaffRequestStatus($supplyRequest, $request->status);
+
+        // Si es una petición AJAX, devolver JSON
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de la solicitud actualizado exitosamente.',
+                'status' => $request->status
+            ]);
+        }
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.supply-requests.index')->with('success', 'Estado de la solicitud actualizado exitosamente.');
@@ -152,10 +184,60 @@ class SupplyRequestController extends Controller
      */
     public function destroy($id)
     {
-        $supplyRequest = WarehouseMovement::findOrFail($id); // Encuentra la solicitud por su ID o lanza una excepción.
-        $supplyRequest->delete(); // Elimina la solicitud de la base de datos (soft delete si está configurado).
+        $supplyRequest = \Modules\INFRASTOCK\Entities\Request::findOrFail($id);
+        $supplyRequest->delete();
 
         // Redirige a la vista index con un mensaje de éxito.
         return redirect()->route('infrastock.admin.supply-requests.index')->with('success', 'Solicitud eliminada exitosamente.');
+    }
+
+    /**
+     * Enviar notificación al personal de aseo cuando se aprueba/rechaza una solicitud
+     */
+    private function notifyCleaningStaffRequestStatus($requestData, $status)
+    {
+        try {
+            $totalItems = $requestData->items->count();
+            $equipmentNames = $requestData->items->pluck('equipment.name')->toArray();
+            $equipmentList = implode(', ', array_slice($equipmentNames, 0, 3));
+            if (count($equipmentNames) > 3) {
+                $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
+            }
+
+            if ($status === 'approved') {
+                \Modules\INFRASTOCK\Entities\Notification::create([
+                    'type' => 'request_approved',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $requestData->user_id,
+                    'data' => [
+                        'title' => 'Solicitud Aprobada',
+                        'message' => "Tu solicitud con {$totalItems} insumos ha sido aprobada: {$equipmentList}.",
+                        'request_id' => $requestData->id,
+                        'total_items' => $totalItems,
+                        'equipment_list' => $equipmentList,
+                        'action_url' => route('infrastock.cleaning-staff.requests.index'),
+                        'created_at' => now()->format('d/m/Y H:i'),
+                    ],
+                ]);
+            } elseif ($status === 'rejected') {
+                \Modules\INFRASTOCK\Entities\Notification::create([
+                    'type' => 'request_rejected',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $requestData->user_id,
+                    'data' => [
+                        'title' => 'Solicitud Rechazada',
+                        'message' => "Tu solicitud con {$totalItems} insumos ha sido rechazada: {$equipmentList}.",
+                        'request_id' => $requestData->id,
+                        'total_items' => $totalItems,
+                        'equipment_list' => $equipmentList,
+                        'rejection_reason' => $requestData->rejection_reason,
+                        'action_url' => route('infrastock.cleaning-staff.requests.index'),
+                        'created_at' => now()->format('d/m/Y H:i'),
+                    ],
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación al personal de aseo: ' . $e->getMessage());
+        }
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Routing\Controller;
 use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Entities\Equipment;
 use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
+use Modules\INFRASTOCK\Entities\Notification;
 use App\Models\User;
 use Modules\SICA\Entities\Person;
 use Modules\SICA\Entities\Role;
@@ -188,58 +189,64 @@ class CleaningStaffController extends Controller
         
         // Obtener estadísticas del usuario actual
         $pendingRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'Solicitud')
+            ->where('role', 'Entrega')
             ->where('item_type', 'equipment')
             ->count();
 
         $approvedRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'approved')
+            ->where('role', 'Recibe')
             ->where('item_type', 'equipment')
             ->count();
 
         $deliveredRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'delivered')
+            ->where('role', 'Recibe')
             ->where('item_type', 'equipment')
             ->count();
 
-        $rejectedRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'rejected')
-            ->where('item_type', 'equipment')
-            ->count();
+        $rejectedRequests = 0; // Por ahora no tenemos rechazos en el sistema actual
 
-        // Obtener solicitudes recientes del usuario
-        $recentRequests = WarehouseMovement::with('equipment', 'productiveUnitWarehouse.productiveUnit')
-            ->where('user_id', $user->id)
-            ->where('item_type', 'equipment')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-
-        // Obtener notificaciones (solicitudes con cambios de estado recientes)
+        // Obtener notificaciones recientes del usuario
         $notifications = WarehouseMovement::with('equipment')
             ->where('user_id', $user->id)
             ->where('item_type', 'equipment')
-            ->whereIn('role', ['approved', 'rejected', 'delivered'])
+            ->whereIn('role', ['Entrega', 'Recibe'])
             ->where('updated_at', '>=', Carbon::now()->subDays(7))
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        // Obtener insumos disponibles para solicitar (usando el nuevo sistema de stock)
-        $availableSupplies = Equipment::with('category')
-            ->get()
-            ->filter(function($equipment) {
-                return $equipment->stock > 0;
-            })
-            ->sortBy('name');
+        $notificationCount = $notifications->count();
+
+        // Obtener el insumo más solicitado (con más solicitudes)
+        $mostRequestedSupply = WarehouseMovement::selectRaw('equipment_id, COUNT(*) as request_count')
+            ->with('equipment.category')
+            ->where('item_type', 'equipment')
+            ->whereIn('role', ['Entrega', 'Recibe']) // Solicitudes que han sido procesadas
+            ->groupBy('equipment_id')
+            ->orderBy('request_count', 'desc')
+            ->first();
+
+        // Si hay un insumo más solicitado, obtener sus detalles completos
+        if ($mostRequestedSupply && $mostRequestedSupply->equipment) {
+            $mostRequestedSupplyData = [
+                'equipment' => $mostRequestedSupply->equipment,
+                'request_count' => $mostRequestedSupply->request_count,
+                'total_amount_requested' => WarehouseMovement::where('equipment_id', $mostRequestedSupply->equipment_id)
+                    ->where('item_type', 'equipment')
+                    ->whereIn('role', ['Entrega', 'Recibe'])
+                    ->sum('amount')
+            ];
+        } else {
+            $mostRequestedSupplyData = null;
+        }
 
         return view('infrastock::cleaning-staff.dashboard', compact(
             'pendingRequests',
             'approvedRequests', 
             'deliveredRequests',
             'rejectedRequests',
-            'recentRequests',
             'notifications',
-            'availableSupplies'
+            'notificationCount',
+            'mostRequestedSupplyData'
         ));
     }
 
@@ -250,11 +257,8 @@ class CleaningStaffController extends Controller
     public function createRequest()
     {
         $equipments = Equipment::with('category')
-            ->get()
-            ->filter(function($equipment) {
-                return $equipment->stock > 0;
-            })
-            ->sortBy('name');
+            ->orderBy('name')
+            ->get();
 
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')
             ->get();
@@ -263,54 +267,431 @@ class CleaningStaffController extends Controller
     }
 
     /**
-     * Almacena una nueva solicitud de insumo.
+     * Almacena una nueva solicitud de insumos (múltiples insumos agrupados).
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function storeRequest(Request $request)
     {
         $request->validate([
-            'movement_id' => 'required|exists:equipments,id',
             'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
-            'amount' => 'required|integer|min:1',
+            'equipments' => 'required|array|min:1',
+            'equipments.*.amount' => 'required|integer|min:1',
             'description' => 'nullable|string|max:500',
         ]);
 
-        // Verificar que el insumo tenga cantidad suficiente
-        $equipment = Equipment::findOrFail($request->movement_id);
-        if (!$equipment->hasStockFor($request->amount)) {
-            return redirect()->back()->with('error', 'No hay suficiente stock disponible para este insumo. Stock disponible: ' . $equipment->stock);
+        // Verificar que se hayan seleccionado insumos
+        if (empty($request->equipments)) {
+            return redirect()->back()->with('error', 'Debe seleccionar al menos un insumo para la solicitud.');
         }
 
-        WarehouseMovement::create([
-            'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
-            'movement_id' => $request->movement_id,
-            'item_type' => 'equipment',
-            'user_id' => auth()->id(),
-            'role' => 'Solicitud',
-            'amount' => $request->amount,
-            'description' => $request->description,
-        ]);
+        $errors = [];
+        $validItems = [];
 
-        return redirect()->route('infrastock.cleaning-staff.requests.create')
-            ->with('success', 'Solicitud de insumo creada exitosamente.');
+        // Validar cada insumo seleccionado
+        foreach ($request->equipments as $equipmentId => $equipmentData) {
+            $equipment = Equipment::find($equipmentId);
+            
+            if (!$equipment) {
+                $errors[] = "El insumo con ID {$equipmentId} no existe.";
+                continue;
+            }
+
+            $amount = $equipmentData['amount'];
+
+        // Verificar que el insumo tenga cantidad suficiente
+            if (!$equipment->hasStockFor($amount)) {
+                $errors[] = "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}";
+                continue;
+            }
+
+            $validItems[] = [
+                'equipment_id' => $equipmentId,
+                'requested_amount' => $amount,
+                'equipment' => $equipment
+            ];
+        }
+
+        // Si hay errores, mostrar mensaje
+        if (!empty($errors)) {
+            return redirect()->back()->with('error', 'Errores encontrados: ' . implode(' ', $errors));
+        }
+
+        // Si no hay items válidos, mostrar error
+        if (empty($validItems)) {
+            return redirect()->back()->with('error', 'No se encontraron insumos válidos para la solicitud.');
+        }
+
+        try {
+            // Crear la solicitud principal
+            $newRequest = \Modules\INFRASTOCK\Entities\Request::create([
+                'user_id' => auth()->id(),
+            'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+            'description' => $request->description,
+                'status' => 'pending',
+            ]);
+
+            // Crear los items de la solicitud
+            foreach ($validItems as $item) {
+                \Modules\INFRASTOCK\Entities\RequestItem::create([
+                    'request_id' => $newRequest->id,
+                    'equipment_id' => $item['equipment_id'],
+                    'requested_amount' => $item['requested_amount'],
+                    'status' => 'pending',
+                ]);
+            }
+
+            // Enviar notificación al administrador
+            $newRequest->load(['items.equipment', 'user']);
+            $this->notifyAdminNewGroupedRequest($newRequest);
+
+            $totalItems = count($validItems);
+            $message = $totalItems === 1 
+                ? 'Solicitud de insumo creada exitosamente.'
+                : "Solicitud creada exitosamente con {$totalItems} insumos.";
+
+            return redirect()->route('infrastock.cleaning-staff.requests.index')
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al crear la solicitud: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Muestra todas las solicitudes del usuario actual.
+     * Muestra todas las solicitudes del usuario actual (agrupadas).
      * @return Renderable
      */
-    public function myRequests()
+    public function myRequests(Request $request)
     {
         $user = auth()->user();
         
-        $requests = WarehouseMovement::with('equipment', 'productiveUnitWarehouse.productiveUnit', 'productiveUnitWarehouse.warehouse')
-            ->where('user_id', $user->id)
-            ->where('item_type', 'equipment')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $query = \Modules\INFRASTOCK\Entities\Request::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse',
+            'user'
+        ])->where('user_id', $user->id);
+        
+        // Filtrar por estado si se proporciona
+        $status = $request->get('status');
+        if ($status) {
+            switch ($status) {
+                case 'pending':
+                    $query->where('status', 'pending');
+                    break;
+                case 'approved':
+                    $query->where('status', 'approved');
+                    break;
+                case 'rejected':
+                    $query->where('status', 'rejected');
+                    break;
+            }
+        }
+        
+        $requests = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        return view('infrastock::cleaning-staff.my-requests', compact('requests'));
+        // Obtener equipos disponibles para el modal (incluyendo agotados)
+        $equipments = Equipment::with('category')
+            ->orderBy('name')
+            ->get();
+
+        // Obtener unidades productivas disponibles
+        $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')
+            ->orderBy('id')
+            ->get();
+
+        return view('infrastock::cleaning-staff.my-requests', compact('requests', 'equipments', 'productiveUnitWarehouses'));
+    }
+
+    /**
+     * Muestra los detalles de una solicitud específica (agrupada).
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function showRequest($id)
+    {
+        $request = \Modules\INFRASTOCK\Entities\Request::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse',
+            'user'
+        ])->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$request) {
+            return response()->json(['error' => 'Solicitud no encontrada'], 404);
+        }
+
+        // Preparar los items de la solicitud
+        $items = $request->items->map(function($item) {
+            return [
+                'id' => $item->id,
+                'equipment_name' => $item->equipment->name ?? 'N/A',
+                'equipment_category' => $item->equipment->category->name ?? 'Sin categoría',
+                'requested_amount' => $item->requested_amount,
+                'approved_amount' => $item->approved_amount,
+                'delivered_amount' => $item->delivered_amount,
+                'unit' => $item->equipment->unit ?? 'unidades',
+                'status' => $item->status,
+                'notes' => $item->notes,
+            ];
+        });
+
+        return response()->json([
+            'id' => $request->id,
+            'status' => $request->status,
+            'description' => $request->description,
+            'productive_unit' => $request->productiveUnitWarehouse->productiveUnit->name ?? 'N/A',
+            'warehouse' => $request->productiveUnitWarehouse->warehouse->name ?? 'N/A',
+            'created_at' => $request->created_at->format('d/m/Y H:i'),
+            'approved_at' => $request->approved_at ? $request->approved_at->format('d/m/Y H:i') : null,
+            'rejected_at' => $request->rejected_at ? $request->rejected_at->format('d/m/Y H:i') : null,
+            'rejection_reason' => $request->rejection_reason,
+            'user_name' => $request->user->name ?? 'Personal de Aseo',
+            'total_items' => $request->total_items,
+            'total_requested_amount' => $request->total_requested_amount,
+            'items' => $items
+        ]);
+    }
+
+    /**
+     * Muestra el formulario para editar una solicitud específica (agrupada).
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function editRequest($id)
+    {
+        $request = \Modules\INFRASTOCK\Entities\Request::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse'
+        ])->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending') // Solo se puede editar si está pendiente
+            ->first();
+
+        if (!$request) {
+            return response()->json(['error' => 'Solicitud no encontrada o no se puede editar'], 404);
+        }
+
+        // Preparar los items de la solicitud para edición
+        $items = $request->items->map(function($item) {
+            return [
+                'id' => $item->id,
+                'equipment_id' => $item->equipment_id,
+                'equipment_name' => $item->equipment->name ?? 'N/A',
+                'equipment_category' => $item->equipment->category->name ?? 'Sin categoría',
+                'requested_amount' => $item->requested_amount,
+                'unit' => $item->equipment->unit ?? 'unidades',
+                'stock' => $item->equipment->stock ?? 0,
+            ];
+        });
+
+        return response()->json([
+            'id' => $request->id,
+            'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+            'productive_unit' => $request->productiveUnitWarehouse->productiveUnit->name ?? 'N/A',
+            'warehouse' => $request->productiveUnitWarehouse->warehouse->name ?? 'N/A',
+            'description' => $request->description,
+            'created_at' => $request->created_at->format('d/m/Y H:i'),
+            'items' => $items
+        ]);
+    }
+
+    /**
+     * Actualiza una solicitud específica (agrupada).
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateRequest(Request $request, $id)
+    {
+        $requestData = \Modules\INFRASTOCK\Entities\Request::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$requestData) {
+            return redirect()->route('infrastock.cleaning-staff.requests.index')
+                ->with('error', 'Solicitud no encontrada o no se puede editar.');
+        }
+
+        $request->validate([
+            'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
+            'items' => 'required|array|min:1',
+            'items.*.requested_amount' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Actualizar la solicitud principal
+            $requestData->update([
+                'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+                'description' => $request->description,
+            ]);
+
+            // Actualizar los items de la solicitud
+            foreach ($request->items as $itemId => $itemData) {
+                $requestItem = \Modules\INFRASTOCK\Entities\RequestItem::where('id', $itemId)
+                    ->where('request_id', $requestData->id)
+                    ->first();
+
+                if ($requestItem) {
+                    // Verificar stock disponible
+                    $equipment = $requestItem->equipment;
+                    if (!$equipment->hasStockFor($itemData['requested_amount'])) {
+                        return redirect()->route('infrastock.cleaning-staff.requests.index')
+                            ->with('error', "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}");
+                    }
+
+                    $requestItem->update([
+                        'requested_amount' => $itemData['requested_amount'],
+                    ]);
+                }
+            }
+
+            return redirect()->route('infrastock.cleaning-staff.requests.index')
+                ->with('success', 'Solicitud actualizada exitosamente.');
+
+        } catch (\Exception $e) {
+            return redirect()->route('infrastock.cleaning-staff.requests.index')
+                ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Elimina una solicitud específica (agrupada).
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroyRequest($id)
+    {
+        $request = \Modules\INFRASTOCK\Entities\Request::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$request) {
+            return redirect()->route('infrastock.cleaning-staff.requests.index')
+                ->with('error', 'Solicitud no encontrada.');
+        }
+
+        // Solo permitir eliminar solicitudes pendientes
+        if ($request->status !== 'pending') {
+            return redirect()->route('infrastock.cleaning-staff.requests.index')
+                ->with('error', 'Solo se pueden eliminar solicitudes pendientes.');
+        }
+
+        // Eliminar la solicitud (los items se eliminarán automáticamente por cascade)
+        $request->delete();
+
+        return redirect()->route('infrastock.cleaning-staff.requests.index')
+            ->with('success', 'Solicitud eliminada exitosamente.');
+    }
+
+    /**
+     * Enviar notificación al administrador cuando se crea una nueva solicitud agrupada
+     */
+    private function notifyAdminNewGroupedRequest($request)
+    {
+        try {
+            // Buscar usuarios con roles de administrador
+            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38]; // IDs de roles de administrador
+            $admins = User::whereHas('roles', function($query) use ($adminRoleIds) {
+                $query->whereIn('roles.id', $adminRoleIds);
+            })->get();
+
+            // Si no hay administradores específicos, usar usuarios con rol "Administrador" o "Super Administrador"
+            if ($admins->isEmpty()) {
+                $admins = User::whereHas('roles', function($query) {
+                    $query->where('name', 'Administrador')
+                          ->orWhere('name', 'Super Administrador');
+                })->get();
+            }
+
+            // Si aún no hay administradores, usar el primer usuario del sistema como fallback
+            if ($admins->isEmpty()) {
+                $admins = User::take(1)->get();
+            }
+
+            $totalItems = $request->items->count();
+            $equipmentNames = $request->items->pluck('equipment.name')->toArray();
+            $equipmentList = implode(', ', array_slice($equipmentNames, 0, 3));
+            if (count($equipmentNames) > 3) {
+                $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
+            }
+
+            foreach ($admins as $admin) {
+                Notification::create([
+                    'type' => 'request_created',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $admin->id,
+                    'data' => [
+                        'title' => 'Nueva Solicitud de Insumos',
+                        'message' => "El personal de aseo ha creado una nueva solicitud con {$totalItems} insumos: {$equipmentList}.",
+                        'request_id' => $request->id,
+                        'total_items' => $totalItems,
+                        'equipment_list' => $equipmentList,
+                        'user_name' => $request->user->name ?? 'Personal de Aseo',
+                        'action_url' => route('infrastock.admin.requests.index'),
+                        'created_at' => now()->format('d/m/Y H:i'),
+                    ],
+                ]);
+            }
+            
+            \Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+        } catch (\Exception $e) {
+            // Log del error pero no interrumpir el flujo principal
+            \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enviar notificación al administrador cuando se crea una nueva solicitud (método legacy)
+     */
+    private function notifyAdminNewRequest($equipment, $amount, $requestId)
+    {
+        try {
+            // Buscar usuarios administradores (asumiendo que tienen un rol específico)
+            $admins = User::whereHas('roles', function($query) {
+                $query->where('name', 'like', '%admin%')
+                      ->orWhere('name', 'like', '%administrador%');
+            })->get();
+
+            // Si no hay administradores específicos, usar el primer usuario del sistema
+            if ($admins->isEmpty()) {
+                $admins = User::take(1)->get();
+            }
+
+            foreach ($admins as $admin) {
+                Notification::createRequestCreatedNotification(
+                    $admin->id,
+                    $equipment->name,
+                    $amount,
+                    $requestId
+                );
+            }
+        } catch (\Exception $e) {
+            // Log del error pero no interrumpir el flujo principal
+            \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enviar notificación al personal de aseo cuando se aprueba/rechaza una solicitud
+     */
+    public function notifyCleaningStaffRequestStatus($userId, $equipmentName, $amount, $requestId, $status)
+    {
+        try {
+            if ($status === 'approved') {
+                Notification::createRequestApprovedNotification($userId, $equipmentName, $amount, $requestId);
+            } elseif ($status === 'rejected') {
+                Notification::createRequestRejectedNotification($userId, $equipmentName, $amount, $requestId);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación al personal de aseo: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -332,7 +713,7 @@ class CleaningStaffController extends Controller
     }
 
     /**
-     * Muestra el formulario de gestión de perfil.
+     * Muestra el formulario de edición del perfil del usuario.
      * @return Renderable
      */
     public function profile()
@@ -351,26 +732,45 @@ class CleaningStaffController extends Controller
         $user = auth()->user();
         
         $request->validate([
+            'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:500',
+            'nickname' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:8|confirmed',
+        ], [
+            'name.required' => 'El nombre es obligatorio.',
+            'name.max' => 'El nombre no puede exceder los 255 caracteres.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico debe ser válido.',
+            'email.unique' => 'Este correo electrónico ya está en uso.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'La confirmación de contraseña no coincide.',
         ]);
 
-        // Actualizar datos del usuario
-        $user->update([
+        try {
+            $data = [
+                'name' => $request->name,
             'email' => $request->email,
-        ]);
+                'nickname' => $request->nickname,
+            ];
 
-        // Actualizar datos de la persona
-        if ($user->person) {
-            $user->person->update([
-                'phone' => $request->phone,
-                'address' => $request->address,
+            // Solo actualizar la contraseña si se proporciona
+            if ($request->filled('password')) {
+                $data['password'] = Hash::make($request->password);
+            }
+
+            $user->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Perfil actualizado exitosamente.'
             ]);
-        }
 
-        return redirect()->route('infrastock.cleaning-staff.profile')
-            ->with('success', 'Perfil actualizado exitosamente.');
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el perfil: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

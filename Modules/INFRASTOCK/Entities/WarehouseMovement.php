@@ -30,11 +30,11 @@ class WarehouseMovement extends Model
     protected $fillable = [
         'productive_unit_warehouse_id',
         'movement_id',
+        'equipment_id',
         'role',
         'user_id',
         'item_type',
         'amount',
-        'description',
     ];
 
     /**
@@ -68,6 +68,16 @@ class WarehouseMovement extends Model
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function equipment()
+    {
+        return $this->belongsTo(Equipment::class, 'equipment_id');
+    }
+
+    /**
+     * Define la relación de pertenencia a un equipo/insumo (método legacy).
+     * Este método solo se aplica si `item_type` es 'equipment'.
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function equipmentLegacy()
     {
         return $this->belongsTo(Equipment::class, 'movement_id')->where('item_type', 'equipment');
     }

@@ -139,17 +139,12 @@
                     </a>
                 </li>
 
-                <!-- Gestión de Solicitudes -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs('infrastock.cleaning-staff.requests.*')) active @endif">
+                <!-- Mis Solicitudes - Enlace directo -->
+                <li>
+                    <a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.cleaning-staff.requests.*')) active @endif">
                         <i class="fas fa-clipboard-list w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Mis Solicitudes</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
                     </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.cleaning-staff.requests.create')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Nueva Solicitud</a></li>
-                        <li><a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.cleaning-staff.requests.index')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Ver Mis Solicitudes</a></li>
-                    </ul>
                 </li>
 
                 <!-- Notificaciones -->
@@ -160,25 +155,12 @@
                     </a>
                 </li>
 
-                <!-- Mi Perfil -->
+                <!-- Sobrantes -->
                 <li>
-                    <a href="{{ route('infrastock.cleaning-staff.profile') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.cleaning-staff.profile')) active @endif">
-                        <i class="fas fa-user w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
-                        <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Mi Perfil</span>
+                    <a href="{{ route('infrastock.cleaning-staff.surplus.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.cleaning-staff.surplus.*')) active @endif">
+                        <i class="fas fa-boxes w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
+                        <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Sobrantes</span>
                     </a>
-                </li>
-
-                <!-- Reportes -->
-                <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs(['infrastock.cleaning-staff.surplus-report', 'infrastock.cleaning-staff.supply-history'])) active @endif">
-                        <i class="fas fa-chart-bar w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
-                        <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Reportes</span>
-                        <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
-                    </a>
-                    <ul x-show="open && sidebarOpen" x-cloak class="ml-6 mt-1 space-y-1 bg-green-700 rounded-lg p-1">
-                        <li><a href="{{ route('infrastock.cleaning-staff.surplus-report') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.cleaning-staff.surplus-report')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Reporte de Sobrantes</a></li>
-                        <li><a href="{{ route('infrastock.cleaning-staff.supply-history') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.cleaning-staff.supply-history')) active @endif"><i class="far fa-circle text-xs mr-3"></i> Historial de Insumos</a></li>
-                    </ul>
                 </li>
             </ul>
         </nav>
@@ -202,18 +184,89 @@
             <div class="flex items-center space-x-4">
                 @auth
                 <!-- Menú desplegable de usuario autenticado -->
-                <div x-data="{ dropdownOpen: false }" class="relative">
-                    <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-800 hover:text-gray-900 focus:outline-none focus:text-gray-900 p-2 rounded-md hover:bg-gray-100 transition-colors duration-200">
-                        <img src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" class="h-8 w-8 rounded-full object-cover" alt="User Image">
-                        <div>
-                            <span class="font-semibold text-base block text-left">{{ Auth::user()->nickname ?? Auth::user()->name }}</span>
-                            <span class="text-xs text-gray-500 block text-left">Personal de Aseo</span> {{-- Rol específico del Personal de Aseo --}}
+                <div x-data="{ dropdownOpen: false, notificationsOpen: false }" class="relative flex items-center space-x-4">
+                    <!-- Campanita de Notificaciones -->
+                    <div class="relative">
+                        <button @click="notificationsOpen = !notificationsOpen" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                            <i class="fas fa-bell text-lg"></i>
+                            @if(isset($notificationCount) && $notificationCount > 0)
+                                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">{{ $notificationCount }}</span>
+                            @endif
+                        </button>
+                        
+                        <!-- Dropdown de Notificaciones -->
+                        <div x-show="notificationsOpen" @click.away="notificationsOpen = false" x-cloak class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-900">Notificaciones</h3>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                @if(isset($notifications) && $notifications->count() > 0)
+                                    @foreach($notifications->take(5) as $notification)
+                                        <div class="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                                            <div class="flex items-start space-x-3">
+                                                <div class="flex-shrink-0">
+                                                    @switch($notification->type)
+                                                        @case('request_approved')
+                                                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                                <i class="fas fa-check text-green-600 text-sm"></i>
+                                                            </div>
+                                                            @break
+                                                        @case('request_rejected')
+                                                            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                                                <i class="fas fa-times text-red-600 text-sm"></i>
+                                                            </div>
+                                                            @break
+                                                        @default
+                                                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                                                <i class="fas fa-bell text-blue-600 text-sm"></i>
+                                                            </div>
+                                                    @endswitch
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-medium text-gray-900">{{ $notification->data['title'] ?? 'Notificación' }}</p>
+                                                    <p class="text-xs text-gray-500 mt-1">{{ $notification->data['message'] ?? 'Sin mensaje' }}</p>
+                                                    <p class="text-xs text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
+                                                </div>
+                                                <div class="flex-shrink-0">
+                                                    @if(isset($notification->data['amount']))
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                            {{ $notification->data['amount'] }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                    @if($notifications->count() > 5)
+                                        <div class="p-4 text-center">
+                                            <a href="{{ route('infrastock.cleaning-staff.notifications') }}" class="text-sm text-green-600 hover:text-green-700 font-medium">
+                                                Ver todas las notificaciones ({{ $notifications->count() }})
+                                            </a>
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="p-8 text-center text-gray-500">
+                                        <i class="fas fa-bell-slash text-3xl mb-3"></i>
+                                        <p class="text-sm">No hay notificaciones</p>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
-                        <i class="fas fa-angle-down ml-1 text-sm"></i>
-                    </button>
+                    </div>
+
+                    <!-- Dropdown del Usuario -->
+                    <div class="relative">
+                        <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-800 hover:text-gray-900 focus:outline-none focus:text-gray-900 p-2 rounded-md hover:bg-gray-100 transition-colors duration-200">
+                            <img src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" class="h-8 w-8 rounded-full object-cover" alt="User Image">
+                            <div>
+                                <span class="font-semibold text-base block text-left">{{ Auth::user()->nickname ?? Auth::user()->name }}</span>
+                                <span class="text-xs text-gray-500 block text-left">Personal de Aseo</span> {{-- Rol específico del Personal de Aseo --}}
+                            </div>
+                            <i class="fas fa-angle-down ml-1 text-sm"></i>
+                        </button>
 
                     <div x-show="dropdownOpen" @click.away="dropdownOpen = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
-                        <a href="{{ route('infrastock.cleaning-staff.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</a>
+                        <button onclick="openProfileModal()" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</button>
                         <a href="{{ route('infrastock.cleaning-staff.logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
                         <form id="logout-form" action="{{ route('infrastock.cleaning-staff.logout') }}" method="POST" class="hidden">
                             @csrf
@@ -263,11 +316,274 @@
 
     </div>
 
+    <!-- Modal de Perfil -->
+    <div id="profileModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <!-- Header del Modal -->
+                <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 p-3 rounded-full mr-4">
+                            <i class="fas fa-user-circle text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Mi Perfil</h3>
+                            <p class="text-gray-600">Gestiona tu información personal</p>
+                        </div>
+                    </div>
+                    <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Contenido del Modal -->
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Formulario de Edición -->
+                        <div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-2 rounded-full mr-3">
+                                    <i class="fas fa-edit text-blue-600"></i>
+                                </div>
+                                <h4 class="text-lg font-semibold text-gray-800">Editar Información</h4>
+                            </div>
+
+                            <form id="profileForm" class="space-y-4">
+                                @csrf
+                                @method('PUT')
+                                
+                                <!-- Nombre -->
+                                <div>
+                                    <label for="modal_name" class="block text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fas fa-user mr-1 text-green-500"></i>
+                                        Nombre Completo *
+                                    </label>
+                                    <input type="text" name="name" id="modal_name" required
+                                           value="{{ auth()->user()->name }}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                                </div>
+
+                                <!-- Correo Electrónico -->
+                                <div>
+                                    <label for="modal_email" class="block text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fas fa-envelope mr-1 text-green-500"></i>
+                                        Correo Electrónico *
+                                    </label>
+                                    <input type="email" name="email" id="modal_email" required
+                                           value="{{ auth()->user()->email }}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                                </div>
+
+                                <!-- Apodo/Nickname -->
+                                <div>
+                                    <label for="modal_nickname" class="block text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fas fa-tag mr-1 text-green-500"></i>
+                                        Apodo (Opcional)
+                                    </label>
+                                    <input type="text" name="nickname" id="modal_nickname"
+                                           value="{{ auth()->user()->nickname }}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                                </div>
+
+                                <!-- Contraseña -->
+                                <div>
+                                    <label for="modal_password" class="block text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fas fa-lock mr-1 text-green-500"></i>
+                                        Nueva Contraseña (Opcional)
+                                    </label>
+                                    <input type="password" name="password" id="modal_password"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                                           placeholder="Deja vacío para mantener la contraseña actual">
+                                </div>
+
+                                <!-- Confirmar Contraseña -->
+                                <div>
+                                    <label for="modal_password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
+                                        <i class="fas fa-lock mr-1 text-green-500"></i>
+                                        Confirmar Nueva Contraseña
+                                    </label>
+                                    <input type="password" name="password_confirmation" id="modal_password_confirmation"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                                           placeholder="Confirma tu nueva contraseña">
+                                </div>
+
+                                <!-- Botones -->
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="closeProfileModal()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                                        <i class="fas fa-times mr-1"></i>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200">
+                                        <i class="fas fa-save mr-1"></i>
+                                        Actualizar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Información Actual -->
+                        <div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-purple-100 p-2 rounded-full mr-3">
+                                    <i class="fas fa-info-circle text-purple-600"></i>
+                                </div>
+                                <h4 class="text-lg font-semibold text-gray-800">Información Actual</h4>
+                            </div>
+
+                            <div class="space-y-4">
+                                <!-- Avatar y Nombre -->
+                                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <i class="fas fa-user text-green-600 text-2xl"></i>
+                                    </div>
+                                    <h5 class="font-bold text-gray-900">{{ auth()->user()->name }}</h5>
+                                    @if(auth()->user()->nickname)
+                                        <p class="text-gray-600 text-sm">"{{ auth()->user()->nickname }}"</p>
+                                    @endif
+                                    <span class="inline-block mt-2 bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                                        Personal de Aseo
+                                    </span>
+                                </div>
+
+                                <!-- Información Detallada -->
+                                <div class="space-y-3">
+                                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                        <i class="fas fa-envelope text-gray-500"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Correo Electrónico</p>
+                                            <p class="text-gray-900 text-sm">{{ auth()->user()->email }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                        <i class="fas fa-calendar text-gray-500"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Miembro desde</p>
+                                            <p class="text-gray-900 text-sm">{{ auth()->user()->created_at->format('d/m/Y') }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                        <i class="fas fa-shield-alt text-gray-500"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Estado de la cuenta</p>
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                                Activa
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Estadísticas -->
+                                <div class="border-t pt-4">
+                                    <h6 class="font-semibold text-gray-900 mb-3">Estadísticas de Actividad</h6>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                            <i class="fas fa-clipboard-list text-blue-600 text-lg mb-1"></i>
+                                            <p class="text-xs font-medium text-gray-700">Solicitudes</p>
+                                            <p class="text-sm font-bold text-blue-600">{{ \Modules\INFRASTOCK\Entities\WarehouseMovement::where('user_id', auth()->id())->count() }}</p>
+                                        </div>
+                                        <div class="text-center p-3 bg-orange-50 rounded-lg">
+                                            <i class="fas fa-boxes text-orange-600 text-lg mb-1"></i>
+                                            <p class="text-xs font-medium text-gray-700">Sobrantes</p>
+                                            <p class="text-sm font-bold text-orange-600">{{ \Modules\INFRASTOCK\Entities\Surplus::where('user_id', auth()->id())->count() }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- SweetAlert2 JS para mostrar mensajes de éxito/error/información -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Alpine.js CDN para añadir reactividad y funcionalidad al HTML -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- JavaScript para el Modal de Perfil -->
+    <script>
+        // Función para abrir el modal de perfil
+        function openProfileModal() {
+            document.getElementById('profileModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+        }
+
+        // Función para cerrar el modal de perfil
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.add('hidden');
+            document.body.style.overflow = 'auto'; // Restaurar scroll del body
+        }
+
+        // Cerrar modal al hacer clic fuera de él
+        document.getElementById('profileModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeProfileModal();
+            }
+        });
+
+        // Manejar envío del formulario
+        document.getElementById('profileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            
+            // Mostrar loading
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Actualizando...';
+            submitButton.disabled = true;
+            
+            fetch('{{ route("infrastock.cleaning-staff.profile.update") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Perfil Actualizado!',
+                        text: 'Tu información ha sido actualizada exitosamente.',
+                        timer: 3000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        closeProfileModal();
+                        location.reload(); // Recargar para mostrar cambios
+                    });
+                } else {
+                    throw new Error(data.message || 'Error al actualizar el perfil');
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Hubo un problema al actualizar tu perfil. Inténtalo de nuevo.',
+                    confirmButtonText: 'Entendido'
+                });
+            })
+            .finally(() => {
+                // Restaurar botón
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            });
+        });
+
+        // Cerrar modal con tecla Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeProfileModal();
+            }
+        });
+    </script>
 
     <script>
         // Lógica de SweetAlert2 para mostrar notificaciones basadas en mensajes de sesión de Laravel

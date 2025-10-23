@@ -271,25 +271,54 @@
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" class="relative text-gray-900 hover:text-gray-700 focus:outline-none focus:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors duration-200">
                         <i class="fas fa-bell text-2xl"></i>
-                        @if($pendingSupplyRequestsCount + $expiringSuppliesCount > 0)
-                            <span class="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ $pendingSupplyRequestsCount + $expiringSuppliesCount }}</span>
+                        @if(isset($notificationCount) && $notificationCount > 0)
+                            <span class="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ $notificationCount }}</span>
                         @endif
                     </button>
                     <!-- Dropdown de notificaciones -->
-                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg py-1 z-40 border border-gray-100">
-                        <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">Notificaciones</div>
-                        @if($pendingSupplyRequestsCount > 0)
-                            <a href="{{ route('infrastock.admin.supply-requests.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-boxes mr-2 text-blue-500"></i> {{ $pendingSupplyRequestsCount }} Solicitudes de Insumo
-                            </a>
-                        @endif
-                        @if($expiringSuppliesCount > 0)
-                            <a href="{{ route('infrastock.admin.supplies.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-calendar-times mr-2 text-red-500"></i> {{ $expiringSuppliesCount }} Insumos por Vencer
-                            </a>
-                        @endif
-                        @if($pendingSupplyRequestsCount + $expiringSuppliesCount == 0)
-                            <span class="block px-4 py-2 text-sm text-gray-500">No hay notificaciones nuevas.</span>
+                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-40 border border-gray-100 max-h-96 overflow-y-auto">
+                        <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100 font-semibold">
+                            <i class="fas fa-bell mr-2"></i>Notificaciones
+                        </div>
+                        @if(isset($notifications) && $notifications->count() > 0)
+                            @foreach($notifications->take(5) as $notification)
+                                <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer {{ $notification->read_at ? 'opacity-75' : 'bg-blue-50' }}" 
+                                     onclick="markNotificationAsRead({{ $notification->id }})">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="flex-shrink-0">
+                                            @if($notification->type === 'request_created')
+                                                <i class="fas fa-plus-circle text-green-500 text-lg"></i>
+                                            @elseif($notification->type === 'request_approved')
+                                                <i class="fas fa-check-circle text-blue-500 text-lg"></i>
+                                            @elseif($notification->type === 'request_rejected')
+                                                <i class="fas fa-times-circle text-red-500 text-lg"></i>
+                                            @else
+                                                <i class="fas fa-bell text-gray-500 text-lg"></i>
+                                            @endif
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900">{{ $notification->data['title'] ?? 'Notificación' }}</p>
+                                            <p class="text-sm text-gray-600 mt-1">{{ $notification->data['message'] ?? '' }}</p>
+                                            <p class="text-xs text-gray-500 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
+                                        </div>
+                                        @if(!$notification->read_at)
+                                            <div class="flex-shrink-0">
+                                                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                            @if($notifications->count() > 5)
+                                <div class="px-4 py-2 text-center">
+                                    <a href="#" class="text-sm text-blue-600 hover:text-blue-800">Ver todas las notificaciones</a>
+                                </div>
+                            @endif
+                        @else
+                            <div class="px-4 py-4 text-center text-gray-500">
+                                <i class="fas fa-bell-slash text-2xl mb-2"></i>
+                                <p>No hay notificaciones nuevas</p>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -436,6 +465,38 @@
                 confirmButtonText: 'Entendido'
             });
         @endif
+
+        // Función para marcar notificación como leída
+        function markNotificationAsRead(notificationId) {
+            fetch(`/infrastock/notifications/${notificationId}/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Recargar la página para actualizar el contador
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Auto-refresh de notificaciones cada 30 segundos
+        setInterval(function() {
+            if (document.visibilityState === 'visible') {
+                // Solo recargar si hay notificaciones no leídas
+                const notificationCount = document.querySelector('.bg-red-500');
+                if (notificationCount && parseInt(notificationCount.textContent) > 0) {
+                    location.reload();
+                }
+            }
+        }, 30000);
     </script>
 
     {{-- Sección para scripts adicionales específicos de cada vista hija --}}

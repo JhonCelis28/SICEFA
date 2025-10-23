@@ -36,7 +36,7 @@
             <div class="text-yellow-500 text-4xl opacity-75">
                 <i class="fas fa-clock"></i>
             </div>
-            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="absolute bottom-0 left-0 right-0 bg-yellow-100 text-yellow-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Solicitudes <i class="fas fa-arrow-circle-right ml-1"></i></a>
+            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}?status=pending" class="absolute bottom-0 left-0 right-0 bg-yellow-100 text-yellow-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Pendientes <i class="fas fa-arrow-circle-right ml-1"></i></a>
         </div>
 
         <!-- Tarjeta: Solicitudes Aprobadas -->
@@ -48,19 +48,7 @@
             <div class="text-green-500 text-4xl opacity-75">
                 <i class="fas fa-check-circle"></i>
             </div>
-            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="absolute bottom-0 left-0 right-0 bg-green-100 text-green-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Aprobadas <i class="fas fa-arrow-circle-right ml-1"></i></a>
-        </div>
-
-        <!-- Tarjeta: Solicitudes Entregadas -->
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center justify-between transition-transform transform hover:scale-105 duration-200 relative">
-            <div>
-                <h3 class="text-3xl font-extrabold text-gray-800">{{ $deliveredRequests }}</h3>
-                <p class="text-base text-gray-500 mt-1">Solicitudes Entregadas</p>
-            </div>
-            <div class="text-blue-500 text-4xl opacity-75">
-                <i class="fas fa-truck"></i>
-            </div>
-            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="absolute bottom-0 left-0 right-0 bg-blue-100 text-blue-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Entregas <i class="fas fa-arrow-circle-right ml-1"></i></a>
+            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}?status=approved" class="absolute bottom-0 left-0 right-0 bg-green-100 text-green-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Aprobadas <i class="fas fa-arrow-circle-right ml-1"></i></a>
         </div>
 
         <!-- Tarjeta: Solicitudes Rechazadas -->
@@ -72,163 +60,106 @@
             <div class="text-red-500 text-4xl opacity-75">
                 <i class="fas fa-times-circle"></i>
             </div>
-            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="absolute bottom-0 left-0 right-0 bg-red-100 text-red-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Rechazadas <i class="fas fa-arrow-circle-right ml-1"></i></a>
+            <a href="{{ route('infrastock.cleaning-staff.requests.index') }}?status=rejected" class="absolute bottom-0 left-0 right-0 bg-red-100 text-red-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Rechazadas <i class="fas fa-arrow-circle-right ml-1"></i></a>
         </div>
     </div>
 
-    <!-- Sección de Gráficos y Listas -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <!-- Lista de Notificaciones Recientes -->
-        <div class="lg:col-span-7">
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">Notificaciones Recientes</h3>
-                    <a href="{{ route('infrastock.cleaning-staff.notifications') }}" class="px-4 py-2 bg-green-500 text-white rounded-md text-base font-medium hover:bg-green-600 transition-colors duration-200">Ver Todas</a>
-                </div>
-                <ul class="divide-y divide-gray-200">
-                    @forelse($notifications as $notification)
-                        <li class="py-3 flex items-center justify-between">
-                            <div class="flex-1 min-w-0">
-                                <p class="text-lg font-bold text-gray-900">{{ $notification->equipment->name ?? 'Insumo' }}</p>
-                                <p class="text-sm text-gray-600 mt-1">
-                                    @switch($notification->role)
-                                        @case('approved')
-                                            <span class="text-green-600">✓ Aprobado</span>
-                                            @break
-                                        @case('rejected')
-                                            <span class="text-red-600">✗ Rechazado</span>
-                                            @break
-                                        @case('delivered')
-                                            <span class="text-blue-600">📦 Entregado</span>
-                                            @break
-                                        @default
-                                            {{ ucfirst($notification->role) }}
-                                    @endswitch
-                                </p>
-                            </div>
-                            <div class="ml-4 flex-shrink-0">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-800">
-                                    {{ $notification->amount }}
-                                </span>
-                            </div>
-                        </li>
-                    @empty
-                        <li class="py-3 text-center text-gray-500">
-                            <i class="fas fa-bell-slash text-2xl mb-2"></i>
-                            <p>No hay notificaciones recientes</p>
-                        </li>
-                    @endforelse
-                </ul>
-            </div>
-        </div>
 
-        <!-- Lista de Solicitudes Recientes -->
-        <div class="lg:col-span-5">
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">Solicitudes Recientes</h3>
-                    <div class="flex space-x-3">
-                        <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="text-gray-500 hover:text-green-600 transition-colors duration-200 p-2 rounded-md hover:bg-gray-100"><i class="fas fa-plus text-base"></i></a>
-                        <a href="{{ route('infrastock.cleaning-staff.requests.index') }}" class="text-gray-500 hover:text-green-600 transition-colors duration-200 p-2 rounded-md hover:bg-gray-100"><i class="fas fa-list text-base"></i></a>
-                    </div>
-                </div>
-                <ul class="divide-y divide-gray-200">
-                    @forelse($recentRequests as $request)
-                        <li class="py-3 flex items-center justify-between">
-                            <div class="flex-1 min-w-0">
-                                <p class="text-lg font-bold text-gray-900">{{ $request->equipment->name ?? 'Insumo' }}</p>
-                                <p class="text-sm text-gray-600 mt-1">{{ $request->productiveUnitWarehouse->productiveUnit->name ?? 'Área' }}</p>
-                            </div>
-                            <div class="ml-4 flex-shrink-0">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold 
-                                    @switch($request->role)
-                                        @case('Solicitud')
-                                            bg-yellow-100 text-yellow-800
-                                            @break
-                                        @case('approved')
-                                            bg-green-100 text-green-800
-                                            @break
-                                        @case('rejected')
-                                            bg-red-100 text-red-800
-                                            @break
-                                        @case('delivered')
-                                            bg-blue-100 text-blue-800
-                                            @break
-                                        @default
-                                            bg-gray-100 text-gray-800
-                                    @endswitch">
-                                    {{ $request->amount }}
-                                </span>
-                            </div>
-                        </li>
-                    @empty
-                        <li class="py-3 text-center text-gray-500">
-                            <i class="fas fa-clipboard-list text-2xl mb-2"></i>
-                            <p>No tienes solicitudes recientes</p>
-                        </li>
-                    @endforelse
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sección de Acciones Rápidas -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <!-- Acciones Rápidas -->
+    <!-- Sección del Insumo Más Solicitado -->
+    <div class="mt-6">
         <div class="bg-white rounded-xl shadow-md p-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Acciones Rápidas</h3>
-            <div class="grid grid-cols-2 gap-4">
-                <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-200">
-                    <i class="fas fa-plus-circle text-2xl text-green-600 mb-2"></i>
-                    <span class="text-sm font-medium text-green-800">Nueva Solicitud</span>
-                </a>
-                <a href="{{ route('infrastock.cleaning-staff.notifications') }}" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200">
-                    <i class="fas fa-bell text-2xl text-blue-600 mb-2"></i>
-                    <span class="text-sm font-medium text-blue-800">Notificaciones</span>
-                </a>
-                <a href="{{ route('infrastock.cleaning-staff.profile') }}" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors duration-200">
-                    <i class="fas fa-user text-2xl text-purple-600 mb-2"></i>
-                    <span class="text-sm font-medium text-purple-800">Mi Perfil</span>
-                </a>
-                <a href="{{ route('infrastock.cleaning-staff.supply-history') }}" class="flex flex-col items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors duration-200">
-                    <i class="fas fa-history text-2xl text-orange-600 mb-2"></i>
-                    <span class="text-sm font-medium text-orange-800">Historial</span>
-                </a>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Insumo Más Solicitado</h3>
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-trophy text-yellow-500 text-xl"></i>
+                    <span class="text-sm text-gray-500">Estadística general</span>
+                </div>
             </div>
-        </div>
-
-        <!-- Información de Stock Disponible -->
-        <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Insumos Disponibles</h3>
-                <span class="text-sm text-gray-500">{{ $availableSupplies->count() }} insumos disponibles</span>
-            </div>
-            @if($availableSupplies->count() > 0)
-                <div class="space-y-3 max-h-64 overflow-y-auto">
-                    @foreach($availableSupplies->take(8) as $supply)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-gray-900">{{ $supply->name }}</h4>
-                                <p class="text-sm text-gray-600">{{ $supply->category->name ?? 'Sin categoría' }}</p>
+            
+            @if($mostRequestedSupplyData)
+                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-6 border border-yellow-200">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-4">
+                                <div class="bg-yellow-100 p-3 rounded-full">
+                                    <i class="fas fa-box text-yellow-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-2xl font-bold text-gray-900">{{ $mostRequestedSupplyData['equipment']->name }}</h4>
+                                    <p class="text-gray-600">{{ $mostRequestedSupplyData['equipment']->category->name ?? 'Sin categoría' }}</p>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <span class="text-lg font-bold text-green-600">{{ $supply->stock }}</span>
-                                <p class="text-xs text-gray-500">disponible</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-white rounded-lg p-4 shadow-sm">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fas fa-chart-line text-blue-500"></i>
+                                        <span class="text-sm font-medium text-gray-700">Total de Solicitudes</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-blue-600 mt-2">{{ $mostRequestedSupplyData['request_count'] }}</p>
+                                </div>
+                                
+                                <div class="bg-white rounded-lg p-4 shadow-sm">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fas fa-cubes text-green-500"></i>
+                                        <span class="text-sm font-medium text-gray-700">Cantidad Total Solicitada</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-green-600 mt-2">{{ $mostRequestedSupplyData['total_amount_requested'] }} {{ $mostRequestedSupplyData['equipment']->unit ?? 'unidades' }}</p>
+                                </div>
+                                
+                                <div class="bg-white rounded-lg p-4 shadow-sm">
+                                    <div class="flex items-center space-x-2">
+                                        <i class="fas fa-warehouse text-purple-500"></i>
+                                        <span class="text-sm font-medium text-gray-700">Stock Actual</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-purple-600 mt-2">{{ $mostRequestedSupplyData['equipment']->stock }} {{ $mostRequestedSupplyData['equipment']->unit ?? 'unidades' }}</p>
+                                </div>
+                            </div>
+                            
+                            @if($mostRequestedSupplyData['equipment']->description)
+                                <div class="mt-4 p-4 bg-white rounded-lg shadow-sm">
+                                    <h5 class="font-medium text-gray-700 mb-2">Descripción:</h5>
+                                    <p class="text-gray-600">{{ $mostRequestedSupplyData['equipment']->description }}</p>
+                                </div>
+                            @endif
+                            
+                            <div class="mt-4 flex items-center justify-between">
+                                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                    <span><i class="fas fa-calendar mr-1"></i> Última actualización: {{ $mostRequestedSupplyData['equipment']->updated_at->format('d/m/Y') }}</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    @if($mostRequestedSupplyData['equipment']->stock > 0)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            Disponible
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <i class="fas fa-times-circle mr-1"></i>
+                                            Agotado
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
-                    @endforeach
-                </div>
-                @if($availableSupplies->count() > 8)
-                    <div class="text-center mt-4">
-                        <a href="{{ route('infrastock.cleaning-staff.supply-history') }}" class="text-green-600 hover:text-green-700 font-medium">
-                            Ver todos los insumos disponibles ({{ $availableSupplies->count() }})
-                        </a>
+                        
+                        <div class="ml-6">
+                            <div class="bg-yellow-100 p-4 rounded-lg text-center">
+                                <i class="fas fa-crown text-yellow-600 text-3xl mb-2"></i>
+                                <p class="text-sm font-medium text-yellow-800">#1 Más Solicitado</p>
+                            </div>
+                        </div>
                     </div>
-                @endif
+                </div>
             @else
-                <div class="text-center text-gray-500 py-8">
-                    <i class="fas fa-box-open text-3xl mb-2"></i>
-                    <p>No hay insumos disponibles</p>
+                <div class="text-center py-12 bg-gray-50 rounded-lg">
+                    <i class="fas fa-chart-bar text-gray-400 text-4xl mb-4"></i>
+                    <h4 class="text-lg font-medium text-gray-900 mb-2">No hay datos suficientes</h4>
+                    <p class="text-gray-500 mb-4">Aún no se han registrado suficientes solicitudes para determinar el insumo más solicitado.</p>
+                    <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
+                        <i class="fas fa-plus mr-2"></i>
+                        Crear primera solicitud
+                    </a>
                 </div>
             @endif
         </div>
