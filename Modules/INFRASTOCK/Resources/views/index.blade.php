@@ -62,6 +62,12 @@
                         @endphp
                         @if(in_array('Aseo', $userRoles))
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.cleaning-staff.dashboard') }}">Personal de Aseo</a>
+                        @elseif(in_array('Operario', $userRoles))
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.operator.dashboard') }}">Operario</a>
+                        @elseif(in_array('Centro de Convivencia', $userRoles))
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.convivencia.dashboard') }}">Centro de Convivencia</a>
+                        @elseif(in_array('Ganadería', $userRoles))
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.ganaderia.dashboard') }}">Ganadería</a>
                         @else
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
                         @endif
@@ -86,6 +92,12 @@
                     @endphp
                     @if(in_array('Aseo', $userRoles))
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.cleaning-staff.dashboard') }}">Personal de Aseo</a>
+                    @elseif(in_array('Operario', $userRoles))
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.operator.dashboard') }}">Operario</a>
+                    @elseif(in_array('Centro de Convivencia', $userRoles))
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.convivencia.dashboard') }}">Centro de Convivencia</a>
+                    @elseif(in_array('Ganadería', $userRoles))
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.ganaderia.dashboard') }}">Ganadería</a>
                     @else
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
                     @endif

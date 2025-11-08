@@ -10,6 +10,21 @@
 
 @section('content')
 <div class="container-fluid">
+    <!-- Mensajes de Éxito/Error -->
+    @if(session('success'))
+        <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center">
+            <i class="fas fa-check-circle mr-3"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center">
+            <i class="fas fa-exclamation-circle mr-3"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
     <!-- Header de la página -->
     <div class="mb-6">
         <div class="flex justify-between items-center">
@@ -34,12 +49,35 @@
                 <div>
                     <h3 class="text-xl font-bold text-gray-800">Registrar Sobrante</h3>
                     <p class="text-gray-600">Completa el formulario para registrar un insumo sobrante</p>
+                    <p class="text-xs text-orange-600 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Solo puedes registrar sobrantes de herramientas e insumos generales (no de aseo)
+                    </p>
                 </div>
             </div>
 
-            <form action="{{ route('infrastock.operator.surplus.store') }}" method="POST" class="space-y-6">
+            <form action="{{ route('infrastock.operator.surplus.store') }}" method="POST" class="space-y-6" id="surplusForm">
                 @csrf
                 
+                <!-- Selección de Solicitud Entregada (si aplica) -->
+                @if(isset($deliveredRequests) && $deliveredRequests->count() > 0)
+                <div>
+                    <label for="request_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-clipboard-list mr-2 text-green-500"></i>
+                        Solicitud Entregada (Opcional)
+                    </label>
+                    <select name="request_id" id="request_id"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                        <option value="">-- Selecciona una solicitud entregada --</option>
+                        @foreach($deliveredRequests as $deliveredRequest)
+                            <option value="{{ $deliveredRequest->id }}" {{ old('request_id') == $deliveredRequest->id ? 'selected' : '' }}>
+                                Solicitud #{{ $deliveredRequest->id }} - {{ $deliveredRequest->created_at->format('d/m/Y') }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
                 <!-- Selección de Insumo -->
                 <div>
                     <label for="equipment_id" class="block text-sm font-medium text-gray-700 mb-2">
@@ -240,21 +278,95 @@
 </div>
 
 <script>
-// Actualizar unidad cuando se selecciona un insumo
-document.getElementById('equipment_id').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const unit = selectedOption.getAttribute('data-unit') || 'unidades';
-    document.getElementById('unit-display').textContent = unit;
-});
+document.addEventListener('DOMContentLoaded', function() {
+    // Actualizar unidad cuando se selecciona un insumo
+    const equipmentSelect = document.getElementById('equipment_id');
+    if (equipmentSelect) {
+        equipmentSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const unit = selectedOption.getAttribute('data-unit') || 'unidades';
+            const unitDisplay = document.getElementById('unit-display');
+            if (unitDisplay) {
+                unitDisplay.textContent = unit;
+            }
+        });
+    }
 
-// Contador de caracteres para el textarea
-document.getElementById('reason').addEventListener('input', function() {
-    const charCount = this.value.length;
-    document.getElementById('char-count').textContent = charCount + '/500';
-    
-    if (charCount > 500) {
-        this.value = this.value.substring(0, 500);
-        document.getElementById('char-count').textContent = '500/500';
+    // Contador de caracteres para el textarea
+    const reasonTextarea = document.getElementById('reason');
+    if (reasonTextarea) {
+        // Inicializar contador con el valor existente
+        const initialCount = reasonTextarea.value.length;
+        const charCountDisplay = document.getElementById('char-count');
+        if (charCountDisplay) {
+            charCountDisplay.textContent = initialCount + '/500';
+        }
+        
+        reasonTextarea.addEventListener('input', function() {
+            const charCount = this.value.length;
+            if (charCountDisplay) {
+                charCountDisplay.textContent = charCount + '/500';
+            }
+            
+            if (charCount > 500) {
+                this.value = this.value.substring(0, 500);
+                if (charCountDisplay) {
+                    charCountDisplay.textContent = '500/500';
+                }
+            }
+        });
+    }
+
+    // Validar formulario antes de enviar
+    const surplusForm = document.getElementById('surplusForm');
+    if (surplusForm) {
+        surplusForm.addEventListener('submit', function(e) {
+            const equipmentId = document.getElementById('equipment_id');
+            const surplusAmount = document.getElementById('surplus_amount');
+            const reason = document.getElementById('reason');
+            const surplusDate = document.getElementById('surplus_date');
+            
+            // Validaciones básicas
+            if (!equipmentId || !equipmentId.value) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debe seleccionar un insumo.',
+                });
+                return false;
+            }
+            
+            if (!surplusAmount || !surplusAmount.value || parseInt(surplusAmount.value) < 1) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debe especificar una cantidad válida mayor a 0.',
+                });
+                return false;
+            }
+            
+            if (!reason || !reason.value.trim()) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debe especificar la causa del sobrante.',
+                });
+                return false;
+            }
+            
+            if (!surplusDate || !surplusDate.value) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debe seleccionar una fecha.',
+                });
+                return false;
+            }
+        });
     }
 });
 
@@ -332,3 +444,4 @@ function deleteSurplus(surplusId) {
 }
 </script>
 @endsection
+

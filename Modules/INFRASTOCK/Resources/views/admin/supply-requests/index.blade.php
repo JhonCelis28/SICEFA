@@ -16,7 +16,7 @@
         <div class="flex justify-between items-center mb-6">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Gestión de Solicitudes de Insumos</h2>
-                <p class="text-gray-600 mt-1">Administra las solicitudes del personal de aseo</p>
+                <p class="text-gray-600 mt-1">Administra las solicitudes de todos los usuarios</p>
             </div>
             <div class="flex items-center space-x-4">
                 <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
@@ -45,7 +45,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Personal de Aseo</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solicitante</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumos</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Total</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad Productiva</th>
@@ -65,8 +65,41 @@
                                                     <img class="h-8 w-8 rounded-full" src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" alt="">
                                                 </div>
                                                 <div class="ml-3">
-                                                    <div class="text-sm font-medium text-gray-900">{{ $request->user->name ?? 'Personal de Aseo' }}</div>
+                                                    @php
+                                                        $roleName = 'Usuario';
+                                                        if ($request->user && $request->user->relationLoaded('roles')) {
+                                                            $userRoles = $request->user->roles->pluck('name')->toArray();
+                                                        } else {
+                                                            // Si los roles no están cargados, cargarlos manualmente
+                                                            $user = $request->user;
+                                                            if ($user) {
+                                                                $user->load('roles');
+                                                                $userRoles = $user->roles->pluck('name')->toArray();
+                                                            } else {
+                                                                $userRoles = [];
+                                                            }
+                                                        }
+                                                        
+                                                        if (!empty($userRoles)) {
+                                                            if (in_array('Operario', $userRoles)) {
+                                                                $roleName = 'Operario';
+                                                            } elseif (in_array('Aseo', $userRoles)) {
+                                                                $roleName = 'Personal de Aseo';
+                                                            } elseif (in_array('Centro de Convivencia', $userRoles)) {
+                                                                $roleName = 'Centro de Convivencia';
+                                                            } elseif (in_array('Ganadería', $userRoles)) {
+                                                                $roleName = 'Ganadería';
+                                                            } else {
+                                                                // Si tiene roles pero no es uno de los esperados, mostrar el primero
+                                                                $roleName = $userRoles[0] ?? 'Usuario';
+                                                            }
+                                                        }
+                                                    @endphp
+                                                    <div class="text-sm font-medium text-gray-900">{{ $request->user->name ?? 'Usuario' }}</div>
                                                     <div class="text-sm text-gray-500">{{ $request->user->email ?? 'N/A' }}</div>
+                                                    <div class="mt-1">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{{ $roleName }}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>

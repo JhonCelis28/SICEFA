@@ -217,7 +217,6 @@
 // Validación de contraseña en tiempo real
 document.getElementById('password').addEventListener('input', function() {
     const password = this.value;
-    const confirmPassword = document.getElementById('password_confirmation');
     
     if (password.length > 0 && password.length < 8) {
         this.setCustomValidity('La contraseña debe tener al menos 8 caracteres');
@@ -238,3 +237,8 @@ document.getElementById('password_confirmation').addEventListener('input', funct
 });
 </script>
 @endsection
+
+
+
+
+

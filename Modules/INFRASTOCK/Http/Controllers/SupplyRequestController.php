@@ -36,7 +36,9 @@ class SupplyRequestController extends Controller
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
             'productiveUnitWarehouse.warehouse',
-            'user'
+            'user' => function($query) {
+                $query->with('roles');
+            }
         ])
         ->whereIn('status', ['pending', 'approved', 'rejected'])
         ->orderBy('created_at', 'desc')
@@ -192,16 +194,33 @@ class SupplyRequestController extends Controller
     }
 
     /**
-     * Enviar notificación al personal de aseo cuando se aprueba/rechaza una solicitud
+     * Enviar notificación al usuario cuando se aprueba/rechaza una solicitud
      */
     private function notifyCleaningStaffRequestStatus($requestData, $status)
     {
         try {
+            // Cargar el usuario con sus roles para determinar la ruta correcta
+            $requestData->load('user.roles');
+            
             $totalItems = $requestData->items->count();
             $equipmentNames = $requestData->items->pluck('equipment.name')->toArray();
             $equipmentList = implode(', ', array_slice($equipmentNames, 0, 3));
             if (count($equipmentNames) > 3) {
                 $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
+            }
+
+            // Determinar la ruta correcta según el rol del usuario
+            $userRoles = $requestData->user->roles->pluck('name')->toArray();
+            $actionUrl = route('infrastock.operator.requests.index'); // Por defecto
+            
+            if (in_array('Aseo', $userRoles)) {
+                $actionUrl = route('infrastock.cleaning-staff.requests.index');
+            } elseif (in_array('Operario', $userRoles)) {
+                $actionUrl = route('infrastock.operator.requests.index');
+            } elseif (in_array('Centro de Convivencia', $userRoles)) {
+                $actionUrl = route('infrastock.convivencia.requests.index');
+            } elseif (in_array('Ganadería', $userRoles)) {
+                $actionUrl = route('infrastock.ganaderia.requests.index');
             }
 
             if ($status === 'approved') {
@@ -215,7 +234,7 @@ class SupplyRequestController extends Controller
                         'request_id' => $requestData->id,
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
-                        'action_url' => route('infrastock.cleaning-staff.requests.index'),
+                        'action_url' => $actionUrl,
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
@@ -231,13 +250,13 @@ class SupplyRequestController extends Controller
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
                         'rejection_reason' => $requestData->rejection_reason,
-                        'action_url' => route('infrastock.cleaning-staff.requests.index'),
+                        'action_url' => $actionUrl,
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error('Error enviando notificación al personal de aseo: ' . $e->getMessage());
+            \Log::error('Error enviando notificación al usuario: ' . $e->getMessage());
         }
     }
 }

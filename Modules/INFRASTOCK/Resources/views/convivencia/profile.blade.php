@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.operator-master')
+@extends('infrastock::layouts.convivencia-master')
 
 @section('title', 'Mi Perfil')
 
@@ -37,7 +37,7 @@
                 </div>
             </div>
 
-            <form action="{{ route('infrastock.operator.profile.update') }}" method="POST" class="space-y-6">
+            <form action="{{ route('infrastock.convivencia.profile.update') }}" method="POST" class="space-y-6">
                 @csrf
                 @method('PUT')
                 
@@ -138,7 +138,7 @@
                     </div>
                 </div>
                 <span class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
-                    Operario
+                    Centro de Convivencia
                 </span>
             </div>
 
@@ -217,7 +217,6 @@
 // Validación de contraseña en tiempo real
 document.getElementById('password').addEventListener('input', function() {
     const password = this.value;
-    const confirmPassword = document.getElementById('password_confirmation');
     
     if (password.length > 0 && password.length < 8) {
         this.setCustomValidity('La contraseña debe tener al menos 8 caracteres');
@@ -238,3 +237,9 @@ document.getElementById('password_confirmation').addEventListener('input', funct
 });
 </script>
 @endsection
+
+
+
+
+
+

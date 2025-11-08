@@ -33,6 +33,7 @@ class INFRASTOCKDatabaseSeeder extends Seeder
 
         //$this->call(AppTableSeeder::class);
         $this->call(AppTableSeeder::class);
+        
 
         DB::commit();
     }

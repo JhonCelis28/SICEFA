@@ -69,6 +69,22 @@ class CreateINFRASTOCKRoles extends Command
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
+                [
+                    'name' => 'Centro de Convivencia',
+                    'slug' => 'centro-convivencia',
+                    'description' => 'Personal del Centro de Convivencia del módulo INFRASTOCK',
+                    'app_id' => $appId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+                [
+                    'name' => 'Ganadería',
+                    'slug' => 'ganaderia',
+                    'description' => 'Personal de Ganadería del módulo INFRASTOCK',
+                    'app_id' => $appId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
             ];
 
             foreach ($roles as $roleData) {

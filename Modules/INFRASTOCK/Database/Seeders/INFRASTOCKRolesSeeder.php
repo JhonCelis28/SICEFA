@@ -28,6 +28,18 @@ class INFRASTOCKRolesSeeder extends Seeder
                 'description' => 'Personal de aseo del módulo INFRASTOCK',
                 'app_id' => 23,
             ],
+            [
+                'name' => 'Centro de Convivencia',
+                'slug' => 'centro-convivencia',
+                'description' => 'Personal del Centro de Convivencia del módulo INFRASTOCK',
+                'app_id' => 23,
+            ],
+            [
+                'name' => 'Ganadería',
+                'slug' => 'ganaderia',
+                'description' => 'Personal de Ganadería del módulo INFRASTOCK',
+                'app_id' => 23,
+            ],
         ];
 
         foreach ($roles as $roleData) {

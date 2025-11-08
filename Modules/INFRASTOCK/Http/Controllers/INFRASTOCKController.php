@@ -201,6 +201,12 @@ class INFRASTOCKController extends Controller
         // Verificar el rol del usuario y redirigir al dashboard correspondiente
         if (in_array('Aseo', $userRoles)) {
             return redirect()->route('infrastock.cleaning-staff.dashboard');
+        } elseif (in_array('Operario', $userRoles)) {
+            return redirect()->route('infrastock.operator.dashboard');
+        } elseif (in_array('Centro de Convivencia', $userRoles)) {
+            return redirect()->route('infrastock.convivencia.dashboard');
+        } elseif (in_array('Ganadería', $userRoles)) {
+            return redirect()->route('infrastock.ganaderia.dashboard');
         } else {
             // Para administradores o usuarios sin rol específico
             return redirect()->route('cefa.infrastock.admin.dashboard');

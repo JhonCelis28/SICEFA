@@ -305,3 +305,111 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::get('/infrastock/cleaning-staff/profile', 'CleaningStaffController@profile')->name('infrastock.cleaning-staff.profile');
     Route::put('/infrastock/cleaning-staff/profile', 'CleaningStaffController@updateProfile')->name('infrastock.cleaning-staff.profile.update');
 });
+
+/**
+ * Grupo de rutas para el Operario con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal del operario
+    Route::get('/infrastock/operator/dashboard', 'OperatorController@dashboard')->name('infrastock.operator.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/operator/stock', 'OperatorController@stock')->name('infrastock.operator.stock');
+    Route::get('/infrastock/operator/equipment/{id}', 'OperatorController@showEquipment')->name('infrastock.operator.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/operator/requests/create', 'OperatorController@createRequest')->name('infrastock.operator.requests.create');
+    Route::post('/infrastock/operator/requests', 'OperatorController@storeRequest')->name('infrastock.operator.requests.store');
+    Route::get('/infrastock/operator/requests', 'OperatorController@myRequests')->name('infrastock.operator.requests.index');
+    Route::get('/infrastock/operator/requests/{id}', 'OperatorController@showRequest')->name('infrastock.operator.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/operator/notifications', 'OperatorController@notifications')->name('infrastock.operator.notifications');
+    Route::post('/infrastock/operator/notifications/{id}/mark-read', 'OperatorController@markNotificationAsRead')->name('infrastock.operator.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/operator/profile', 'OperatorController@profile')->name('infrastock.operator.profile');
+    Route::put('/infrastock/operator/profile', 'OperatorController@updateProfile')->name('infrastock.operator.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/operator/surplus-report', 'OperatorController@surplusReport')->name('infrastock.operator.surplus-report');
+    Route::post('/infrastock/operator/surplus', 'OperatorController@storeSurplus')->name('infrastock.operator.surplus.store');
+    Route::get('/infrastock/operator/surplus/{id}', 'OperatorController@showSurplus')->name('infrastock.operator.surplus.show');
+    Route::delete('/infrastock/operator/surplus/{id}', 'OperatorController@destroySurplus')->name('infrastock.operator.surplus.destroy');
+    
+    // Logout del operario
+    Route::post('/infrastock/operator/logout', 'OperatorController@logout')->name('infrastock.operator.logout');
+});
+
+/**
+ * Grupo de rutas para el Centro de Convivencia con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal del centro de convivencia
+    Route::get('/infrastock/convivencia/dashboard', 'ConvivenciaController@dashboard')->name('infrastock.convivencia.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/convivencia/stock', 'ConvivenciaController@stock')->name('infrastock.convivencia.stock');
+    Route::get('/infrastock/convivencia/equipment/{id}', 'ConvivenciaController@showEquipment')->name('infrastock.convivencia.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/convivencia/requests/create', 'ConvivenciaController@createRequest')->name('infrastock.convivencia.requests.create');
+    Route::post('/infrastock/convivencia/requests', 'ConvivenciaController@storeRequest')->name('infrastock.convivencia.requests.store');
+    Route::get('/infrastock/convivencia/requests', 'ConvivenciaController@myRequests')->name('infrastock.convivencia.requests.index');
+    Route::get('/infrastock/convivencia/requests/{id}', 'ConvivenciaController@showRequest')->name('infrastock.convivencia.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/convivencia/notifications', 'ConvivenciaController@notifications')->name('infrastock.convivencia.notifications');
+    Route::post('/infrastock/convivencia/notifications/{id}/mark-read', 'ConvivenciaController@markNotificationAsRead')->name('infrastock.convivencia.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/convivencia/profile', 'ConvivenciaController@profile')->name('infrastock.convivencia.profile');
+    Route::put('/infrastock/convivencia/profile', 'ConvivenciaController@updateProfile')->name('infrastock.convivencia.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/convivencia/surplus-report', 'ConvivenciaController@surplusReport')->name('infrastock.convivencia.surplus-report');
+    Route::post('/infrastock/convivencia/surplus', 'ConvivenciaController@storeSurplus')->name('infrastock.convivencia.surplus.store');
+    Route::get('/infrastock/convivencia/surplus/{id}', 'ConvivenciaController@showSurplus')->name('infrastock.convivencia.surplus.show');
+    Route::delete('/infrastock/convivencia/surplus/{id}', 'ConvivenciaController@destroySurplus')->name('infrastock.convivencia.surplus.destroy');
+    
+    // Logout del centro de convivencia
+    Route::post('/infrastock/convivencia/logout', 'ConvivenciaController@logout')->name('infrastock.convivencia.logout');
+});
+
+/**
+ * Grupo de rutas para Ganadería con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal de ganadería
+    Route::get('/infrastock/ganaderia/dashboard', 'GanaderiaController@dashboard')->name('infrastock.ganaderia.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/ganaderia/stock', 'GanaderiaController@stock')->name('infrastock.ganaderia.stock');
+    Route::get('/infrastock/ganaderia/equipment/{id}', 'GanaderiaController@showEquipment')->name('infrastock.ganaderia.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/ganaderia/requests/create', 'GanaderiaController@createRequest')->name('infrastock.ganaderia.requests.create');
+    Route::post('/infrastock/ganaderia/requests', 'GanaderiaController@storeRequest')->name('infrastock.ganaderia.requests.store');
+    Route::get('/infrastock/ganaderia/requests', 'GanaderiaController@myRequests')->name('infrastock.ganaderia.requests.index');
+    Route::get('/infrastock/ganaderia/requests/{id}', 'GanaderiaController@showRequest')->name('infrastock.ganaderia.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/ganaderia/notifications', 'GanaderiaController@notifications')->name('infrastock.ganaderia.notifications');
+    Route::post('/infrastock/ganaderia/notifications/{id}/mark-read', 'GanaderiaController@markNotificationAsRead')->name('infrastock.ganaderia.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/ganaderia/profile', 'GanaderiaController@profile')->name('infrastock.ganaderia.profile');
+    Route::put('/infrastock/ganaderia/profile', 'GanaderiaController@updateProfile')->name('infrastock.ganaderia.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/ganaderia/surplus-report', 'GanaderiaController@surplusReport')->name('infrastock.ganaderia.surplus-report');
+    Route::post('/infrastock/ganaderia/surplus', 'GanaderiaController@storeSurplus')->name('infrastock.ganaderia.surplus.store');
+    Route::get('/infrastock/ganaderia/surplus/{id}', 'GanaderiaController@showSurplus')->name('infrastock.ganaderia.surplus.show');
+    Route::delete('/infrastock/ganaderia/surplus/{id}', 'GanaderiaController@destroySurplus')->name('infrastock.ganaderia.surplus.destroy');
+    
+    // Logout de ganadería
+    Route::post('/infrastock/ganaderia/logout', 'GanaderiaController@logout')->name('infrastock.ganaderia.logout');
+});

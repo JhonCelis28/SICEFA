@@ -12,9 +12,9 @@
     * @author [Tu Nombre/Equipo]
     * @date [Fecha de Creación/Última Modificación]
 -->
-@extends('infrastock::layouts.cleaning-staff-master')
+@extends('infrastock::layouts.operator-master')
 
-@section('title', 'Notificaciones - Personal de Aseo INFRASTOCK')
+@section('title', 'Notificaciones - Operario INFRASTOCK')
 
 @section('content')
 <!-- Breadcrumb -->
@@ -156,7 +156,7 @@
                     <i class="fas fa-bell-slash text-gray-400 text-4xl mb-4"></i>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">No hay notificaciones</h3>
                     <p class="text-gray-500 mb-6">No tienes notificaciones pendientes en este momento.</p>
-                    <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
+                    <a href="{{ route('infrastock.operator.requests.create') }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
                         <i class="fas fa-plus mr-2"></i>
                         Crear nueva solicitud
                     </a>

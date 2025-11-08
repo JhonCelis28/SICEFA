@@ -8,7 +8,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">Gestión de Solicitudes de Insumos</h1>
-            <p class="text-muted">Administra las solicitudes del personal de aseo</p>
+            <p class="text-muted">Administra las solicitudes de todos los usuarios</p>
         </div>
         <div class="d-flex align-items-center">
             <span class="badge badge-warning mr-2">
@@ -36,7 +36,7 @@
                         <thead class="thead-light">
                             <tr>
                                 <th>ID</th>
-                                <th>Personal de Aseo</th>
+                                <th>Solicitante</th>
                                 <th>Insumos</th>
                                 <th>Cantidad Total</th>
                                 <th>Unidad Productiva</th>
@@ -55,8 +55,41 @@
                                             <img src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" 
                                                  class="rounded-circle mr-2" width="30" height="30" alt="User">
                                             <div>
-                                                <div class="font-weight-bold">{{ $request->user->name ?? 'Personal de Aseo' }}</div>
+                                                @php
+                                                    $roleName = 'Usuario';
+                                                    if ($request->user && $request->user->relationLoaded('roles')) {
+                                                        $userRoles = $request->user->roles->pluck('name')->toArray();
+                                                    } else {
+                                                        // Si los roles no están cargados, cargarlos manualmente
+                                                        $user = $request->user;
+                                                        if ($user) {
+                                                            $user->load('roles');
+                                                            $userRoles = $user->roles->pluck('name')->toArray();
+                                                        } else {
+                                                            $userRoles = [];
+                                                        }
+                                                    }
+                                                    
+                                                    if (!empty($userRoles)) {
+                                                        if (in_array('Operario', $userRoles)) {
+                                                            $roleName = 'Operario';
+                                                        } elseif (in_array('Aseo', $userRoles)) {
+                                                            $roleName = 'Personal de Aseo';
+                                                        } elseif (in_array('Centro de Convivencia', $userRoles)) {
+                                                            $roleName = 'Centro de Convivencia';
+                                                        } elseif (in_array('Ganadería', $userRoles)) {
+                                                            $roleName = 'Ganadería';
+                                                        } else {
+                                                            // Si tiene roles pero no es uno de los esperados, mostrar el primero
+                                                            $roleName = $userRoles[0] ?? 'Usuario';
+                                                        }
+                                                    }
+                                                @endphp
+                                                <div class="font-weight-bold">{{ $request->user->name ?? 'Usuario' }}</div>
                                                 <small class="text-muted">{{ $request->user->email ?? 'N/A' }}</small>
+                                                <div>
+                                                    <span class="badge badge-info badge-sm">{{ $roleName }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>

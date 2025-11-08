@@ -28,17 +28,17 @@ class UserManagementController extends Controller
      */
     public function create()
     {
-        // Obtener roles disponibles para el módulo INFRASTOCK (solo Aseo y Operario)
+        // Obtener roles disponibles para el módulo INFRASTOCK (Operario, Aseo, Centro de Convivencia, Ganadería)
         try {
-            // Primero intentar con app_id específico
-            $roles = Role::whereIn('name', ['Operario', 'Aseo'])
-                ->where('app_id', 20)
+            // Primero intentar con app_id específico (23 para INFRASTOCK)
+            $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
+                ->where('app_id', 23)
                 ->orderBy('name')
                 ->get();
 
-            // Si no se encuentran roles con app_id 20, buscar solo por nombre
+            // Si no se encuentran roles con app_id 23, buscar solo por nombre
             if ($roles->isEmpty()) {
-                $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
                     ->orderBy('name')
                     ->get();
             }
@@ -51,7 +51,9 @@ class UserManagementController extends Controller
         if ($roles->isEmpty()) {
             $roles = collect([
                 (object)['id' => 1, 'name' => 'Operario'],
-                (object)['id' => 2, 'name' => 'Aseo']
+                (object)['id' => 2, 'name' => 'Aseo'],
+                (object)['id' => 3, 'name' => 'Centro de Convivencia'],
+                (object)['id' => 4, 'name' => 'Ganadería']
             ]);
         }
 
@@ -191,23 +193,23 @@ class UserManagementController extends Controller
      */
     public function index()
     {
-        // Obtener usuarios con roles específicos de INFRASTOCK (Aseo y Operario)
+        // Obtener usuarios con roles específicos de INFRASTOCK (Operario, Aseo, Centro de Convivencia, Ganadería)
         // Primero intentar con app_id específico, si no hay resultados, buscar solo por nombre
         $users = User::with(['person', 'roles'])
             ->withTrashed() // Incluir usuarios eliminados (inactivos)
             ->whereHas('roles', function($query) {
-                $query->whereIn('name', ['Operario', 'Aseo'])
-                      ->where('app_id', 20);
+                $query->whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
+                      ->where('app_id', 23);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
-        // Si no se encuentran usuarios con app_id 20, buscar solo por nombre de rol
+        // Si no se encuentran usuarios con app_id 23, buscar solo por nombre de rol
         if ($users->isEmpty()) {
             $users = User::with(['person', 'roles'])
                 ->withTrashed()
                 ->whereHas('roles', function($query) {
-                    $query->whereIn('name', ['Operario', 'Aseo']);
+                    $query->whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería']);
                 })
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
@@ -216,14 +218,14 @@ class UserManagementController extends Controller
         // Obtener roles disponibles para filtros (solo los roles de INFRASTOCK)
         try {
             // Primero intentar con app_id específico
-            $roles = Role::whereIn('name', ['Operario', 'Aseo'])
-                ->where('app_id', 20)
+            $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
+                ->where('app_id', 23)
                 ->orderBy('name')
                 ->get();
 
-            // Si no se encuentran roles con app_id 20, buscar solo por nombre
+            // Si no se encuentran roles con app_id 23, buscar solo por nombre
             if ($roles->isEmpty()) {
-                $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
                     ->orderBy('name')
                     ->get();
             }
@@ -236,7 +238,9 @@ class UserManagementController extends Controller
         if ($roles->isEmpty()) {
             $roles = collect([
                 (object)['id' => 1, 'name' => 'Operario'],
-                (object)['id' => 2, 'name' => 'Aseo']
+                (object)['id' => 2, 'name' => 'Aseo'],
+                (object)['id' => 3, 'name' => 'Centro de Convivencia'],
+                (object)['id' => 4, 'name' => 'Ganadería']
             ]);
         }
 
@@ -310,17 +314,17 @@ class UserManagementController extends Controller
         \Log::info('Document type: ' . ($user->person ? $user->person->document_type : 'N/A'));
         \Log::info('Phone: ' . ($user->person ? $user->person->phone : 'N/A'));
 
-        // Obtener roles disponibles para el módulo INFRASTOCK (solo Aseo y Operario)
+        // Obtener roles disponibles para el módulo INFRASTOCK (Operario, Aseo, Centro de Convivencia, Ganadería)
         try {
-            // Primero intentar con app_id específico
-            $roles = Role::whereIn('name', ['Operario', 'Aseo'])
-                ->where('app_id', 20)
+            // Primero intentar con app_id específico (23 para INFRASTOCK)
+            $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
+                ->where('app_id', 23)
                 ->orderBy('name')
                 ->get();
 
-            // Si no se encuentran roles con app_id 20, buscar solo por nombre
+            // Si no se encuentran roles con app_id 23, buscar solo por nombre
             if ($roles->isEmpty()) {
-                $roles = Role::whereIn('name', ['Operario', 'Aseo'])
+                $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
                     ->orderBy('name')
                     ->get();
             }
@@ -333,7 +337,9 @@ class UserManagementController extends Controller
         if ($roles->isEmpty()) {
             $roles = collect([
                 (object)['id' => 1, 'name' => 'Operario'],
-                (object)['id' => 2, 'name' => 'Aseo']
+                (object)['id' => 2, 'name' => 'Aseo'],
+                (object)['id' => 3, 'name' => 'Centro de Convivencia'],
+                (object)['id' => 4, 'name' => 'Ganadería']
             ]);
         }
 
