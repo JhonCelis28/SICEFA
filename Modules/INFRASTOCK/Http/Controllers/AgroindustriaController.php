@@ -18,12 +18,13 @@ use Modules\SICA\Entities\Role;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 /**
- * @class GanaderiaController
- * @brief Controlador para el dashboard de Ganadería en el módulo INFRASTOCK.
+ * @class AgroindustriaController
+ * @brief Controlador para el dashboard de Agroindustria en el módulo INFRASTOCK.
  *
- * Este controlador maneja todas las funcionalidades específicas para el Ganadería:
+ * Este controlador maneja todas las funcionalidades específicas para el personal de Agroindustria:
  * - Dashboard principal con estadísticas
  * - Visualización de stock en tiempo real
  * - Solicitud de insumos
@@ -31,10 +32,10 @@ use Illuminate\Support\Facades\Validator;
  * - Gestión de perfil del usuario
  * - Generación de reportes de sobrantes
  */
-class GanaderiaController extends Controller
+class AgroindustriaController extends Controller
 {
     /**
-     * Verifica que el usuario tenga el rol de Ganadería.
+     * Verifica que el usuario tenga el rol de Agroindustria.
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
     private function verifyRole()
@@ -42,13 +43,13 @@ class GanaderiaController extends Controller
         $user = auth()->user();
         $userRoles = $user->roles->pluck('name')->toArray();
         
-        if (!in_array('Ganaderia', $userRoles)) {
-            abort(403, 'No tienes permiso para acceder a esta sección. Solo usuarios con rol de Ganaderia pueden acceder.');
+        if (!in_array('Agroindustria', $userRoles)) {
+            abort(403, 'No tienes permiso para acceder a esta sección. Solo usuarios con rol de Agroindustria pueden acceder.');
         }
     }
 
     /**
-     * Muestra el dashboard principal del Ganadería.
+     * Muestra el dashboard principal del personal de Agroindustria.
      * @return Renderable
      */
     public function dashboard()
@@ -106,7 +107,7 @@ class GanaderiaController extends Controller
 
         $mostRequestedSupplyData = $mostRequestedSupply;
 
-        return view('infrastock::ganaderia.dashboard', compact(
+        return view('infrastock::agroindustria.dashboard', compact(
             'pendingRequests',
             'approvedRequests', 
             'deliveredRequests',
@@ -128,7 +129,7 @@ class GanaderiaController extends Controller
         $query = Equipment::with('category')
             ->orderBy('name');
 
-        // Filtrar: excluir categorías de aseo para Ganadería (herramientas e insumos generales)
+        // Filtrar: excluir categorías de aseo para Agroindustria (herramientas e insumos generales)
         $query = $this->excludeCleaningCategories($query);
 
         // Filtro por categoría
@@ -177,7 +178,7 @@ class GanaderiaController extends Controller
             return $equipment->stock == 0;
         })->count();
 
-        return view('infrastock::ganaderia.stock', compact(
+        return view('infrastock::agroindustria.stock', compact(
             'equipments',
             'categories',
             'totalEquipment',
@@ -217,8 +218,8 @@ class GanaderiaController extends Controller
     }
 
     /**
-     * Helper: Excluye categorías de aseo para el Ganadería.
-     * El Ganadería puede solicitar herramientas e insumos generales, NO de aseo.
+     * Helper: Excluye categorías de aseo para Agroindustria.
+     * Agroindustria puede solicitar herramientas e insumos generales, NO de aseo.
      * 
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
@@ -295,7 +296,7 @@ class GanaderiaController extends Controller
         }
 
         // Si no es AJAX, redirigir a la página de solicitudes donde está el modal
-        return redirect()->route('infrastock.ganaderia.requests.index');
+        return redirect()->route('infrastock.agroindustria.requests.index');
     }
 
     /**
@@ -391,7 +392,7 @@ class GanaderiaController extends Controller
             $newRequest->load(['items.equipment', 'user']);
             $this->notifyAdminNewRequest($newRequest);
 
-            // Crear notificación para el Ganadería
+            // Crear notificación para Agroindustria
             Notification::create([
                 'type' => 'request_created',
                 'notifiable_type' => 'App\Models\User',
@@ -418,7 +419,7 @@ class GanaderiaController extends Controller
                 ]);
             }
 
-            return redirect()->route('infrastock.ganaderia.requests.index')
+            return redirect()->route('infrastock.agroindustria.requests.index')
                 ->with('success', $message);
 
         } catch (\Exception $e) {
@@ -480,7 +481,7 @@ class GanaderiaController extends Controller
             ->orderBy('id')
             ->get();
 
-        return view('infrastock::ganaderia.my-requests', compact('requests', 'equipments', 'productiveUnitWarehouses'));
+        return view('infrastock::agroindustria.my-requests', compact('requests', 'equipments', 'productiveUnitWarehouses'));
     }
 
     /**
@@ -504,7 +505,7 @@ class GanaderiaController extends Controller
             abort(404, 'Solicitud no encontrada');
         }
 
-        return view('infrastock::ganaderia.show-request', compact('request'));
+        return view('infrastock::agroindustria.show-request', compact('request'));
     }
 
     /**
@@ -536,7 +537,7 @@ class GanaderiaController extends Controller
             ])->whereIn('id', $requestIds)->get()->keyBy('id');
         }
 
-        return view('infrastock::ganaderia.notifications', compact('notifications', 'requests'));
+        return view('infrastock::agroindustria.notifications', compact('notifications', 'requests'));
     }
 
     /**
@@ -576,7 +577,7 @@ class GanaderiaController extends Controller
     {
         $this->verifyRole();
         $user = auth()->user();
-        return view('infrastock::ganaderia.profile', compact('user'));
+        return view('infrastock::agroindustria.profile', compact('user'));
     }
 
     /**
@@ -693,7 +694,7 @@ class GanaderiaController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('infrastock::ganaderia.surplus-report', compact('surpluses', 'deliveredRequests', 'equipments'));
+        return view('infrastock::agroindustria.surplus-report', compact('surpluses', 'deliveredRequests', 'equipments'));
     }
 
     /**
@@ -778,11 +779,11 @@ class GanaderiaController extends Controller
                 $this->notifyAdminSurplus($surplus);
             }
 
-            return redirect()->route('infrastock.ganaderia.surplus-report')
+            return redirect()->route('infrastock.agroindustria.surplus-report')
                 ->with('success', 'Reporte de sobrantes registrado exitosamente.');
 
         } catch (\Exception $e) {
-            \Log::error('Error al registrar sobrante: ' . $e->getMessage());
+            Log::error('Error al registrar sobrante: ' . $e->getMessage());
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error al registrar el reporte: ' . $e->getMessage());
@@ -831,16 +832,16 @@ class GanaderiaController extends Controller
             ->first();
 
         if (!$surplus) {
-            return redirect()->route('infrastock.ganaderia.surplus-report')
+            return redirect()->route('infrastock.agroindustria.surplus-report')
                 ->with('error', 'Sobrante no encontrado.');
         }
 
         try {
             $surplus->delete();
-            return redirect()->route('infrastock.ganaderia.surplus-report')
+            return redirect()->route('infrastock.agroindustria.surplus-report')
                 ->with('success', 'Sobrante eliminado exitosamente.');
         } catch (\Exception $e) {
-            return redirect()->route('infrastock.ganaderia.surplus-report')
+            return redirect()->route('infrastock.agroindustria.surplus-report')
                 ->with('error', 'Error al eliminar el sobrante: ' . $e->getMessage());
         }
     }
@@ -898,20 +899,20 @@ class GanaderiaController extends Controller
                     'notifiable_id' => $admin->id,
                     'data' => [
                         'title' => 'Nueva Solicitud de Insumos',
-                        'message' => "El Ganadería ha creado una nueva solicitud con {$totalItems} insumos: {$equipmentList}.",
+                        'message' => "Agroindustria ha creado una nueva solicitud con {$totalItems} insumos: {$equipmentList}.",
                         'request_id' => $request->id,
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
-                        'user_name' => $request->user->nickname ?? $request->user->name ?? 'Ganadería',
+                        'user_name' => $request->user->nickname ?? $request->user->name ?? 'Agroindustria',
                         'action_url' => route('infrastock.admin.requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
             }
             
-            \Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+            Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
         } catch (\Exception $e) {
-            \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
+            Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
         }
     }
 
@@ -940,18 +941,18 @@ class GanaderiaController extends Controller
                     'notifiable_id' => $admin->id,
                     'data' => [
                         'title' => 'Nuevo Reporte de Sobrantes',
-                        'message' => "El Ganadería ha generado un reporte de sobrantes para {$surplus->equipment->name}.",
+                        'message' => "Agroindustria ha generado un reporte de sobrantes para {$surplus->equipment->name}.",
                         'surplus_id' => $surplus->id,
                         'equipment_name' => $surplus->equipment->name,
                         'surplus_amount' => $surplus->surplus_amount,
-                        'user_name' => auth()->user()->nickname ?? auth()->user()->name ?? 'Ganadería',
+                        'user_name' => auth()->user()->nickname ?? auth()->user()->name ?? 'Agroindustria',
                         'action_url' => route('infrastock.admin.requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error('Error enviando notificación de sobrantes al administrador: ' . $e->getMessage());
+            Log::error('Error enviando notificación de sobrantes al administrador: ' . $e->getMessage());
         }
     }
 }

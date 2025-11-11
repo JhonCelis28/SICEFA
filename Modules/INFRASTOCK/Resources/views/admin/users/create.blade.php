@@ -40,6 +40,29 @@
                 </h5>
             </div>
             <div class="p-6">
+                <!-- Mostrar errores de validación -->
+                @if($errors->any())
+                    <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-500 text-xl"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">
+                                    Por favor, corrige los siguientes errores:
+                                </h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <ul class="list-disc list-inside space-y-1">
+                                        @foreach($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                
                 <form action="{{ route('infrastock.admin.users.store') }}" method="POST" id="userForm">
                     @csrf
                     
@@ -297,6 +320,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-focus en el primer campo
     document.getElementById('first_name').focus();
     
+    // Prevenir envío duplicado del formulario
+    const form = document.getElementById('userForm');
+    let isSubmitting = false;
+    
+    form.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+        
+        isSubmitting = true;
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Registrando...';
+        }
+    });
+    
     // Validación en tiempo real de confirmación de contraseña
     document.getElementById('password_confirmation').addEventListener('input', function() {
         const password = document.getElementById('password').value;
@@ -323,6 +364,16 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmPassword.dispatchEvent(new Event('input'));
         }
     });
+    
+    // Mostrar errores de validación si existen
+    @if($errors->any())
+        console.log('Errores de validación:', @json($errors->all()));
+    @endif
+    
+    // Verificar si hay mensajes de sesión
+    @if(session('error'))
+        console.log('Error de sesión:', '{{ session('error') }}');
+    @endif
 });
 </script>
 @endsection

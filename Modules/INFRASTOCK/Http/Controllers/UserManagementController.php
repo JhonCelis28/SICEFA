@@ -23,38 +23,56 @@ use Illuminate\Support\Facades\DB;
 class UserManagementController extends Controller
 {
     /**
+     * Obtiene los nombres de los roles de INFRASTOCK
+     * Solo incluye roles que realmente existen con app_id = 19
+     * @return array
+     */
+    private function getInfrastockRoleNames()
+    {
+        return [
+            'Operario',
+            'Aseo',
+            'Ganaderia', // Sin tilde, como está en la BD
+            'Centro de Convivencia',
+            'Vigilancia',
+            'Agroindustria',
+            'Administrador',
+            'Ciencias Basicas',
+            'Psicola'
+        ];
+    }
+
+    /**
+     * Obtiene todos los roles de INFRASTOCK (solo app_id = 19 y nombres específicos)
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    private function getInfrastockRoles()
+    {
+        $infrastockRoleNames = $this->getInfrastockRoleNames();
+        
+        // Obtener SOLO roles con app_id = 19 Y que estén en la lista de nombres
+        $roles = Role::where('app_id', 19)
+            ->whereIn('name', $infrastockRoleNames)
+            ->orderBy('name')
+            ->get();
+
+        return $roles;
+    }
+
+    /**
      * Muestra el formulario para registrar un nuevo usuario.
      * @return Renderable
      */
     public function create()
     {
-        // Obtener roles disponibles para el módulo INFRASTOCK (Operario, Aseo, Centro de Convivencia, Ganadería)
-        try {
-            // Primero intentar con app_id específico (23 para INFRASTOCK)
-            $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                ->where('app_id', 23)
-                ->orderBy('name')
-                ->get();
+        // Obtener todos los roles de INFRASTOCK
+        $roles = $this->getInfrastockRoles();
 
-            // Si no se encuentran roles con app_id 23, buscar solo por nombre
-            if ($roles->isEmpty()) {
-                $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                    ->orderBy('name')
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            // Si hay error de conexión, usar roles básicos
-            $roles = collect();
-        }
-
-        // Si aún no hay roles, crear roles básicos temporalmente
+        // Si no se encuentran roles, mostrar mensaje informativo pero permitir continuar
         if ($roles->isEmpty()) {
-            $roles = collect([
-                (object)['id' => 1, 'name' => 'Operario'],
-                (object)['id' => 2, 'name' => 'Aseo'],
-                (object)['id' => 3, 'name' => 'Centro de Convivencia'],
-                (object)['id' => 4, 'name' => 'Ganadería']
-            ]);
+            \Log::warning('No se encontraron roles de INFRASTOCK');
+        } else {
+            \Log::info('Roles de INFRASTOCK encontrados: ' . $roles->pluck('name')->implode(', '));
         }
 
         return view('infrastock::admin.users.create', compact('roles'));
@@ -67,6 +85,9 @@ class UserManagementController extends Controller
      */
     public function store(Request $request)
     {
+        // Log de los datos recibidos
+        \Log::info('Datos recibidos en store:', $request->all());
+        
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:50',
             'first_last_name' => 'required|string|max:50',
@@ -95,9 +116,20 @@ class UserManagementController extends Controller
         ]);
 
         if ($validator->fails()) {
+            \Log::error('Errores de validación:', $validator->errors()->toArray());
+            \Log::error('Datos recibidos:', $request->all());
+            
+            // Construir mensaje de error más específico
+            $errorMessages = [];
+            foreach ($validator->errors()->all() as $error) {
+                $errorMessages[] = $error;
+            }
+            $errorMessage = 'Por favor, corrige los siguientes errores: ' . implode(' ', $errorMessages);
+            
             return redirect()->back()
                 ->withErrors($validator)
-                ->withInput($request->except('password', 'password_confirmation'));
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->with('error', $errorMessage);
         }
 
         try {
@@ -106,8 +138,20 @@ class UserManagementController extends Controller
             // Verificar que el rol existe
             $role = Role::find($request->role_id);
             if (!$role) {
-                throw new \Exception('El rol seleccionado no existe.');
+                \Log::error('Rol no encontrado con ID: ' . $request->role_id);
+                throw new \Exception('El rol seleccionado no existe. Por favor, selecciona un rol válido.');
             }
+            
+            // Verificar que el rol pertenece a INFRASTOCK (app_id = 19 o nombre específico)
+            $infrastockRoleNames = $this->getInfrastockRoleNames();
+            
+            if ($role->app_id != 19 && !in_array($role->name, $infrastockRoleNames)) {
+                \Log::warning('Rol no válido para INFRASTOCK. Rol ID: ' . $role->id . ', Nombre: ' . $role->name . ', app_id: ' . $role->app_id);
+                throw new \Exception('El rol seleccionado no pertenece al módulo INFRASTOCK.');
+            }
+            
+            // Log para debugging
+            \Log::info('Registrando usuario con rol: ' . $role->name . ' (ID: ' . $role->id . ', app_id: ' . $role->app_id . ')');
 
             // Crear la persona
             $person = Person::create([
@@ -154,10 +198,15 @@ class UserManagementController extends Controller
 
             // Asignar rol
             $user->roles()->attach($request->role_id);
+            
+            // Verificar que el rol se asignó correctamente
+            $user->refresh();
+            \Log::info('Usuario creado ID: ' . $user->id . ', Roles asignados: ' . $user->roles->pluck('name')->implode(', '));
 
             // Marcar como activo/inactivo usando soft deletes
             if ($request->is_active == '0') {
                 $user->delete(); // Soft delete para marcar como inactivo
+                \Log::info('Usuario marcado como inactivo (soft delete)');
             }
 
             DB::commit();
@@ -180,9 +229,17 @@ class UserManagementController extends Controller
             // Log del error para debugging
             \Log::error('Error al registrar usuario: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            
+            $errorMessage = 'Error al registrar el usuario. ';
+            if (strpos($e->getMessage(), 'SQLSTATE') !== false) {
+                $errorMessage .= 'Error de base de datos. Por favor, verifica los datos e intenta nuevamente.';
+            } else {
+                $errorMessage .= $e->getMessage();
+            }
             
             return redirect()->back()
-                ->with('error', 'Error al registrar el usuario: ' . $e->getMessage())
+                ->with('error', $errorMessage)
                 ->withInput($request->except('password', 'password_confirmation'));
         }
     }
@@ -193,58 +250,96 @@ class UserManagementController extends Controller
      */
     public function index()
     {
-        // Obtener usuarios con roles específicos de INFRASTOCK (Operario, Aseo, Centro de Convivencia, Ganadería)
-        // Primero intentar con app_id específico, si no hay resultados, buscar solo por nombre
-        $users = User::with(['person', 'roles'])
-            ->withTrashed() // Incluir usuarios eliminados (inactivos)
-            ->whereHas('roles', function($query) {
-                $query->whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                      ->where('app_id', 23);
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        // Si no se encuentran usuarios con app_id 23, buscar solo por nombre de rol
-        if ($users->isEmpty()) {
-            $users = User::with(['person', 'roles'])
-                ->withTrashed()
-                ->whereHas('roles', function($query) {
-                    $query->whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería']);
-                })
-                ->orderBy('created_at', 'desc')
-                ->paginate(15);
-        }
-
-        // Obtener roles disponibles para filtros (solo los roles de INFRASTOCK)
         try {
-            // Primero intentar con app_id específico
-            $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                ->where('app_id', 23)
-                ->orderBy('name')
-                ->get();
-
-            // Si no se encuentran roles con app_id 23, buscar solo por nombre
-            if ($roles->isEmpty()) {
-                $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                    ->orderBy('name')
-                    ->get();
+            // Obtener todos los roles de INFRASTOCK
+            $roles = $this->getInfrastockRoles();
+            $infrastockRoleNames = $this->getInfrastockRoleNames();
+            
+            // Obtener SOLO los IDs de roles que tienen app_id = 19 Y están en la lista de nombres
+            $infrastockRoleIds = Role::where('app_id', 19)
+                ->whereIn('name', $infrastockRoleNames)
+                ->pluck('id')
+                ->toArray();
+            
+            // Si no hay roles de INFRASTOCK, retornar lista vacía
+            if (empty($infrastockRoleIds)) {
+                $users = new \Illuminate\Pagination\LengthAwarePaginator(
+                    collect([]),
+                    0,
+                    15,
+                    1,
+                    ['path' => request()->url(), 'query' => request()->query()]
+                );
+                return view('infrastock::admin.users.index', compact('users', 'roles'));
             }
+            
+            // Obtener usuarios que tienen al menos un rol de INFRASTOCK (app_id = 19)
+            $usersWithInfrastockRoles = User::with(['person', 'roles'])
+                ->withTrashed()
+                ->whereHas('roles', function($query) use ($infrastockRoleIds) {
+                    $query->whereIn('roles.id', $infrastockRoleIds);
+                })
+                ->get();
+            
+            // Filtrar usuarios que SOLO tienen roles de INFRASTOCK (app_id = 19 y nombre en la lista)
+            $filteredUsers = $usersWithInfrastockRoles->filter(function($user) use ($infrastockRoleNames) {
+                // Si el usuario no tiene roles, excluirlo
+                if ($user->roles->isEmpty()) {
+                    return false;
+                }
+                
+                // Verificar que TODOS los roles del usuario tienen app_id = 19 Y están en la lista
+                foreach ($user->roles as $role) {
+                    // Verificar que el rol tiene app_id = 19
+                    if ($role->app_id != 19) {
+                        \Log::info('Usuario excluido: ' . $user->id . ' tiene rol: ' . $role->name . ' con app_id: ' . ($role->app_id ?? 'null') . ' (debe ser 19)');
+                        return false;
+                    }
+                    
+                    // Verificar que el nombre del rol está en la lista
+                    if (!in_array($role->name, $infrastockRoleNames)) {
+                        \Log::info('Usuario excluido: ' . $user->id . ' tiene rol: ' . $role->name . ' que NO está en la lista de INFRASTOCK');
+                        return false;
+                    }
+                }
+                
+                // Si llegamos aquí, todos los roles tienen app_id = 19 y están en la lista
+                return true;
+            });
+            
+            // Convertir a paginación manual
+            $currentPage = request()->get('page', 1);
+            $perPage = 15;
+            $items = $filteredUsers->slice(($currentPage - 1) * $perPage, $perPage)->values();
+            $total = $filteredUsers->count();
+            
+            $users = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+
+            return view('infrastock::admin.users.index', compact('users', 'roles'));
+            
         } catch (\Exception $e) {
-            // Si hay error de conexión, usar roles básicos
-            $roles = collect();
+            \Log::error('Error en UserManagementController@index: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            // Retornar lista vacía en caso de error
+            $users = new \Illuminate\Pagination\LengthAwarePaginator(
+                collect([]),
+                0,
+                15,
+                1,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+            $roles = collect([]);
+            
+            return view('infrastock::admin.users.index', compact('users', 'roles'))
+                ->with('error', 'Error al cargar la lista de usuarios. Por favor, intenta nuevamente.');
         }
-
-        // Si aún no hay roles, crear roles básicos temporalmente
-        if ($roles->isEmpty()) {
-            $roles = collect([
-                (object)['id' => 1, 'name' => 'Operario'],
-                (object)['id' => 2, 'name' => 'Aseo'],
-                (object)['id' => 3, 'name' => 'Centro de Convivencia'],
-                (object)['id' => 4, 'name' => 'Ganadería']
-            ]);
-        }
-
-        return view('infrastock::admin.users.index', compact('users', 'roles'));
     }
 
     /**
@@ -314,34 +409,8 @@ class UserManagementController extends Controller
         \Log::info('Document type: ' . ($user->person ? $user->person->document_type : 'N/A'));
         \Log::info('Phone: ' . ($user->person ? $user->person->phone : 'N/A'));
 
-        // Obtener roles disponibles para el módulo INFRASTOCK (Operario, Aseo, Centro de Convivencia, Ganadería)
-        try {
-            // Primero intentar con app_id específico (23 para INFRASTOCK)
-            $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                ->where('app_id', 23)
-                ->orderBy('name')
-                ->get();
-
-            // Si no se encuentran roles con app_id 23, buscar solo por nombre
-            if ($roles->isEmpty()) {
-                $roles = Role::whereIn('name', ['Operario', 'Aseo', 'Centro de Convivencia', 'Ganadería'])
-                    ->orderBy('name')
-                    ->get();
-            }
-        } catch (\Exception $e) {
-            // Si hay error de conexión, usar roles básicos
-            $roles = collect();
-        }
-
-        // Si aún no hay roles, crear roles básicos temporalmente
-        if ($roles->isEmpty()) {
-            $roles = collect([
-                (object)['id' => 1, 'name' => 'Operario'],
-                (object)['id' => 2, 'name' => 'Aseo'],
-                (object)['id' => 3, 'name' => 'Centro de Convivencia'],
-                (object)['id' => 4, 'name' => 'Ganadería']
-            ]);
-        }
+        // Obtener todos los roles de INFRASTOCK
+        $roles = $this->getInfrastockRoles();
 
         return view('infrastock::admin.users.edit', compact('user', 'roles'));
     }
@@ -419,6 +488,19 @@ class UserManagementController extends Controller
             }
 
             $user->update($userData);
+
+            // Verificar que el rol existe y pertenece a INFRASTOCK
+            $role = Role::find($request->role_id);
+            if (!$role) {
+                throw new \Exception('El rol seleccionado no existe.');
+            }
+            
+            // Verificar que el rol pertenece a INFRASTOCK (app_id = 19 o nombre específico)
+            $infrastockRoleNames = $this->getInfrastockRoleNames();
+            
+            if ($role->app_id != 19 && !in_array($role->name, $infrastockRoleNames)) {
+                throw new \Exception('El rol seleccionado no pertenece al módulo INFRASTOCK.');
+            }
 
             // Actualizar rol
             $user->roles()->sync([$request->role_id]);

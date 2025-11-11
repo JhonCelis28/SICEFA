@@ -198,17 +198,32 @@ class INFRASTOCKController extends Controller
         // Obtener los roles del usuario
         $userRoles = $user->roles->pluck('name')->toArray();
         
+        // Log para debugging (puedes remover esto después)
+        \Log::info('Post-login - Usuario: ' . $user->id . ', Roles: ' . implode(', ', $userRoles));
+        
         // Verificar el rol del usuario y redirigir al dashboard correspondiente
-        if (in_array('Aseo', $userRoles)) {
+        // Orden importante: verificar roles específicos ANTES del rol de administrador
+        if (in_array('Psicola', $userRoles)) {
+            \Log::info('Redirigiendo a Psicola dashboard');
+            return redirect()->route('infrastock.psicola.dashboard');
+        } elseif (in_array('Ciencias Basicas', $userRoles)) {
+            \Log::info('Redirigiendo a Ciencias Basicas dashboard');
+            return redirect()->route('infrastock.ciencias-basicas.dashboard');
+        } elseif (in_array('Aseo', $userRoles)) {
             return redirect()->route('infrastock.cleaning-staff.dashboard');
         } elseif (in_array('Operario', $userRoles)) {
             return redirect()->route('infrastock.operator.dashboard');
         } elseif (in_array('Centro de Convivencia', $userRoles)) {
             return redirect()->route('infrastock.convivencia.dashboard');
-        } elseif (in_array('Ganadería', $userRoles)) {
+        } elseif (in_array('Ganaderia', $userRoles)) {
             return redirect()->route('infrastock.ganaderia.dashboard');
+        } elseif (in_array('Vigilancia', $userRoles)) {
+            return redirect()->route('infrastock.vigilancia.dashboard');
+        } elseif (in_array('Agroindustria', $userRoles)) {
+            return redirect()->route('infrastock.agroindustria.dashboard');
         } else {
             // Para administradores o usuarios sin rol específico
+            \Log::info('Redirigiendo a dashboard de administrador');
             return redirect()->route('cefa.infrastock.admin.dashboard');
         }
     }

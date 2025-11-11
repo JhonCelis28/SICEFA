@@ -413,3 +413,147 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     // Logout de ganadería
     Route::post('/infrastock/ganaderia/logout', 'GanaderiaController@logout')->name('infrastock.ganaderia.logout');
 });
+
+/**
+ * Grupo de rutas para Psicola con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal de Psicola
+    Route::get('/infrastock/psicola/dashboard', 'PsicolaController@dashboard')->name('infrastock.psicola.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/psicola/stock', 'PsicolaController@stock')->name('infrastock.psicola.stock');
+    Route::get('/infrastock/psicola/equipment/{id}', 'PsicolaController@showEquipment')->name('infrastock.psicola.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/psicola/requests/create', 'PsicolaController@createRequest')->name('infrastock.psicola.requests.create');
+    Route::post('/infrastock/psicola/requests', 'PsicolaController@storeRequest')->name('infrastock.psicola.requests.store');
+    Route::get('/infrastock/psicola/requests', 'PsicolaController@myRequests')->name('infrastock.psicola.requests.index');
+    Route::get('/infrastock/psicola/requests/{id}', 'PsicolaController@showRequest')->name('infrastock.psicola.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/psicola/notifications', 'PsicolaController@notifications')->name('infrastock.psicola.notifications');
+    Route::post('/infrastock/psicola/notifications/{id}/mark-read', 'PsicolaController@markNotificationAsRead')->name('infrastock.psicola.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/psicola/profile', 'PsicolaController@profile')->name('infrastock.psicola.profile');
+    Route::put('/infrastock/psicola/profile', 'PsicolaController@updateProfile')->name('infrastock.psicola.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/psicola/surplus-report', 'PsicolaController@surplusReport')->name('infrastock.psicola.surplus-report');
+    Route::post('/infrastock/psicola/surplus', 'PsicolaController@storeSurplus')->name('infrastock.psicola.surplus.store');
+    Route::get('/infrastock/psicola/surplus/{id}', 'PsicolaController@showSurplus')->name('infrastock.psicola.surplus.show');
+    Route::delete('/infrastock/psicola/surplus/{id}', 'PsicolaController@destroySurplus')->name('infrastock.psicola.surplus.destroy');
+    
+    // Logout de Psicola
+    Route::post('/infrastock/psicola/logout', 'PsicolaController@logout')->name('infrastock.psicola.logout');
+});
+
+/**
+ * Grupo de rutas para Ciencias Basicas con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal de Ciencias Basicas
+    Route::get('/infrastock/ciencias-basicas/dashboard', 'CienciasBasicasController@dashboard')->name('infrastock.ciencias-basicas.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/ciencias-basicas/stock', 'CienciasBasicasController@stock')->name('infrastock.ciencias-basicas.stock');
+    Route::get('/infrastock/ciencias-basicas/equipment/{id}', 'CienciasBasicasController@showEquipment')->name('infrastock.ciencias-basicas.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/ciencias-basicas/requests/create', 'CienciasBasicasController@createRequest')->name('infrastock.ciencias-basicas.requests.create');
+    Route::post('/infrastock/ciencias-basicas/requests', 'CienciasBasicasController@storeRequest')->name('infrastock.ciencias-basicas.requests.store');
+    Route::get('/infrastock/ciencias-basicas/requests', 'CienciasBasicasController@myRequests')->name('infrastock.ciencias-basicas.requests.index');
+    Route::get('/infrastock/ciencias-basicas/requests/{id}', 'CienciasBasicasController@showRequest')->name('infrastock.ciencias-basicas.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/ciencias-basicas/notifications', 'CienciasBasicasController@notifications')->name('infrastock.ciencias-basicas.notifications');
+    Route::post('/infrastock/ciencias-basicas/notifications/{id}/mark-read', 'CienciasBasicasController@markNotificationAsRead')->name('infrastock.ciencias-basicas.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/ciencias-basicas/profile', 'CienciasBasicasController@profile')->name('infrastock.ciencias-basicas.profile');
+    Route::put('/infrastock/ciencias-basicas/profile', 'CienciasBasicasController@updateProfile')->name('infrastock.ciencias-basicas.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/ciencias-basicas/surplus-report', 'CienciasBasicasController@surplusReport')->name('infrastock.ciencias-basicas.surplus-report');
+    Route::post('/infrastock/ciencias-basicas/surplus', 'CienciasBasicasController@storeSurplus')->name('infrastock.ciencias-basicas.surplus.store');
+    Route::get('/infrastock/ciencias-basicas/surplus/{id}', 'CienciasBasicasController@showSurplus')->name('infrastock.ciencias-basicas.surplus.show');
+    Route::delete('/infrastock/ciencias-basicas/surplus/{id}', 'CienciasBasicasController@destroySurplus')->name('infrastock.ciencias-basicas.surplus.destroy');
+    
+    // Logout de Ciencias Basicas
+    Route::post('/infrastock/ciencias-basicas/logout', 'CienciasBasicasController@logout')->name('infrastock.ciencias-basicas.logout');
+});
+
+/**
+ * Grupo de rutas para Agroindustria con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal de Agroindustria
+    Route::get('/infrastock/agroindustria/dashboard', 'AgroindustriaController@dashboard')->name('infrastock.agroindustria.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/agroindustria/stock', 'AgroindustriaController@stock')->name('infrastock.agroindustria.stock');
+    Route::get('/infrastock/agroindustria/equipment/{id}', 'AgroindustriaController@showEquipment')->name('infrastock.agroindustria.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/agroindustria/requests/create', 'AgroindustriaController@createRequest')->name('infrastock.agroindustria.requests.create');
+    Route::post('/infrastock/agroindustria/requests', 'AgroindustriaController@storeRequest')->name('infrastock.agroindustria.requests.store');
+    Route::get('/infrastock/agroindustria/requests', 'AgroindustriaController@myRequests')->name('infrastock.agroindustria.requests.index');
+    Route::get('/infrastock/agroindustria/requests/{id}', 'AgroindustriaController@showRequest')->name('infrastock.agroindustria.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/agroindustria/notifications', 'AgroindustriaController@notifications')->name('infrastock.agroindustria.notifications');
+    Route::post('/infrastock/agroindustria/notifications/{id}/mark-read', 'AgroindustriaController@markNotificationAsRead')->name('infrastock.agroindustria.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/agroindustria/profile', 'AgroindustriaController@profile')->name('infrastock.agroindustria.profile');
+    Route::put('/infrastock/agroindustria/profile', 'AgroindustriaController@updateProfile')->name('infrastock.agroindustria.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/agroindustria/surplus-report', 'AgroindustriaController@surplusReport')->name('infrastock.agroindustria.surplus-report');
+    Route::post('/infrastock/agroindustria/surplus', 'AgroindustriaController@storeSurplus')->name('infrastock.agroindustria.surplus.store');
+    Route::get('/infrastock/agroindustria/surplus/{id}', 'AgroindustriaController@showSurplus')->name('infrastock.agroindustria.surplus.show');
+    Route::delete('/infrastock/agroindustria/surplus/{id}', 'AgroindustriaController@destroySurplus')->name('infrastock.agroindustria.surplus.destroy');
+    
+    // Logout de Agroindustria
+    Route::post('/infrastock/agroindustria/logout', 'AgroindustriaController@logout')->name('infrastock.agroindustria.logout');
+});
+
+/**
+ * Grupo de rutas para Vigilancia con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal de Vigilancia
+    Route::get('/infrastock/vigilancia/dashboard', 'VigilanciaController@dashboard')->name('infrastock.vigilancia.dashboard');
+    
+    // Visualización de stock en tiempo real
+    Route::get('/infrastock/vigilancia/stock', 'VigilanciaController@stock')->name('infrastock.vigilancia.stock');
+    Route::get('/infrastock/vigilancia/equipment/{id}', 'VigilanciaController@showEquipment')->name('infrastock.vigilancia.equipment.show');
+    
+    // Gestión de solicitudes de insumos
+    Route::get('/infrastock/vigilancia/requests/create', 'VigilanciaController@createRequest')->name('infrastock.vigilancia.requests.create');
+    Route::post('/infrastock/vigilancia/requests', 'VigilanciaController@storeRequest')->name('infrastock.vigilancia.requests.store');
+    Route::get('/infrastock/vigilancia/requests', 'VigilanciaController@myRequests')->name('infrastock.vigilancia.requests.index');
+    Route::get('/infrastock/vigilancia/requests/{id}', 'VigilanciaController@showRequest')->name('infrastock.vigilancia.requests.show');
+    
+    // Notificaciones
+    Route::get('/infrastock/vigilancia/notifications', 'VigilanciaController@notifications')->name('infrastock.vigilancia.notifications');
+    Route::post('/infrastock/vigilancia/notifications/{id}/mark-read', 'VigilanciaController@markNotificationAsRead')->name('infrastock.vigilancia.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/vigilancia/profile', 'VigilanciaController@profile')->name('infrastock.vigilancia.profile');
+    Route::put('/infrastock/vigilancia/profile', 'VigilanciaController@updateProfile')->name('infrastock.vigilancia.profile.update');
+    
+    // Reporte de sobrantes
+    Route::get('/infrastock/vigilancia/surplus-report', 'VigilanciaController@surplusReport')->name('infrastock.vigilancia.surplus-report');
+    Route::post('/infrastock/vigilancia/surplus', 'VigilanciaController@storeSurplus')->name('infrastock.vigilancia.surplus.store');
+    Route::get('/infrastock/vigilancia/surplus/{id}', 'VigilanciaController@showSurplus')->name('infrastock.vigilancia.surplus.show');
+    Route::delete('/infrastock/vigilancia/surplus/{id}', 'VigilanciaController@destroySurplus')->name('infrastock.vigilancia.surplus.destroy');
+    
+    // Logout de Vigilancia
+    Route::post('/infrastock/vigilancia/logout', 'VigilanciaController@logout')->name('infrastock.vigilancia.logout');
+});

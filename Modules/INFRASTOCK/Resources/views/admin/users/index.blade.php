@@ -123,6 +123,7 @@
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Documento</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
@@ -136,23 +137,26 @@
                                     <tr class="hover:bg-gray-100 transition-colors duration-150">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $user->id }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->nickname ?? 'N/A' }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             @switch($user->person->document_type ?? '')
                                                 @case('1')
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">CC: {{ $user->person->document_number ?? 'N/A' }}</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Cédula de Ciudadanía</span>
                                                     @break
                                                 @case('2')
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">TI: {{ $user->person->document_number ?? 'N/A' }}</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Tarjeta de Identidad</span>
                                                     @break
                                                 @case('3')
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">CE: {{ $user->person->document_number ?? 'N/A' }}</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Cédula de Extranjería</span>
                                                     @break
                                                 @case('4')
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">PS: {{ $user->person->document_number ?? 'N/A' }}</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Pasaporte</span>
                                                     @break
                                                 @default
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ $user->person->document_type ?? 'N/A' }}: {{ $user->person->document_number ?? 'N/A' }}</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ $user->person->document_type ?? 'N/A' }}</span>
                                             @endswitch
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <span class="font-medium">{{ $user->person->document_number ?? 'N/A' }}</span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->email }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -169,7 +173,7 @@
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Activo</span>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->created_at->format('Y-m-d') }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->created_at ? $user->created_at->format('Y-m-d') : 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button @click="openEditModal({{ $user->id }}, '{{ addslashes($user->person->first_name ?? '') }}', '{{ addslashes($user->person->first_last_name ?? '') }}', '{{ addslashes($user->person->second_last_name ?? '') }}', '{{ $user->person->document_type ?? '' }}', '{{ $user->person->document_number ?? '' }}', '{{ $user->person->telephone1 ?? '' }}', '{{ $user->email }}', '{{ addslashes($user->person->address ?? '') }}', {{ $user->roles->first()->id ?? 0 }}, '{{ $user->trashed() ? '0' : '1' }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
                                                 <i class="fas fa-edit"></i> Editar
@@ -580,18 +584,20 @@ function setupAutoFilter() {
         const searchTerm = this.value.toLowerCase();
         
         rows.forEach(row => {
-            // Columnas a buscar: Usuario (col 1), Documento (col 2), Email (col 3), Rol (col 4)
+            // Columnas a buscar: Usuario (col 1), Tipo de Documento (col 2), Documento (col 3), Email (col 4), Rol (col 5)
             const userCell = row.cells[1];
-            const documentCell = row.cells[2];
-            const emailCell = row.cells[3];
-            const roleCell = row.cells[4];
+            const documentTypeCell = row.cells[2];
+            const documentCell = row.cells[3];
+            const emailCell = row.cells[4];
+            const roleCell = row.cells[5];
             
             const userText = userCell.textContent.toLowerCase();
+            const documentTypeText = documentTypeCell.textContent.toLowerCase();
             const documentText = documentCell.textContent.toLowerCase();
             const emailText = emailCell.textContent.toLowerCase();
             const roleText = roleCell.textContent.toLowerCase();
             
-            if (userText.includes(searchTerm) || documentText.includes(searchTerm) || emailText.includes(searchTerm) || roleText.includes(searchTerm)) {
+            if (userText.includes(searchTerm) || documentTypeText.includes(searchTerm) || documentText.includes(searchTerm) || emailText.includes(searchTerm) || roleText.includes(searchTerm)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
