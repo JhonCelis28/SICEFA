@@ -33,7 +33,7 @@
     <div x-data="{
         isCreateModalOpen: false,
         isEditModalOpen: false,
-        currentSupply: { id: null, inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '' },
+        currentSupply: { id: null, inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '', expiration_date: '' },
         
         init() {
             console.log('Alpine.js inicializado correctamente');
@@ -44,10 +44,10 @@
             this.isCreateModalOpen = true;
         },
         
-        openEditModal(id, inventory_id, name, labor_id, amount, price, category_id) {
-            console.log('Abriendo modal de edición:', { id, inventory_id, name, labor_id, amount, price, category_id });
+        openEditModal(id, inventory_id, name, labor_id, amount, price, category_id, expiration_date) {
+            console.log('Abriendo modal de edición:', { id, inventory_id, name, labor_id, amount, price, category_id, expiration_date });
             this.isEditModalOpen = true;
-            this.currentSupply = { id: id, inventory_id: inventory_id, name: name, labor_id: labor_id, amount: amount, price: price, category_id: category_id };
+            this.currentSupply = { id: id, inventory_id: inventory_id, name: name, labor_id: labor_id, amount: amount, price: price, category_id: category_id, expiration_date: expiration_date || '' };
         },
         
         closeModals() {
@@ -98,8 +98,11 @@
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inventario</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Labor</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Inicial</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Utilizada</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Disponible</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Vencimiento</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
@@ -118,8 +121,18 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->labor->description ?? 'N/A' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            {{ $supply->initial_amount }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                            {{ $supply->used_amount }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            {{ $supply->amount }}
+                                            {{ $supply->stock }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -128,13 +141,29 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        @if($supply->expiration_date)
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $supply->expiration_date->isPast() ? 'bg-red-100 text-red-800' : ($supply->expiration_date->diffInDays(now()) <= 30 ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800') }}">
+                                                {{ $supply->expiration_date->format('d/m/Y') }}
+                                            </span>
+                                            @if($supply->expiration_date->isPast())
+                                                <div class="text-xs text-red-600 mt-1">Vencido</div>
+                                            @elseif($supply->expiration_date->diffInDays(now()) <= 30)
+                                                <div class="text-xs text-orange-600 mt-1">Por vencer</div>
+                                            @endif
+                                        @else
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                                                N/A
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                                             {{ $supply->category->name ?? 'N/A' }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <!-- Botón para abrir el modal de edición, pasando los datos del insumo actual -->
-                                        <button @click="openEditModal({{ $supply->id }}, {{ $supply->inventory->id }}, '{{ addslashes($supply->name) }}', {{ $supply->labor->id }}, {{ $supply->amount }}, {{ $supply->price }}, {{ $supply->category->id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                                        <button @click="openEditModal({{ $supply->id }}, {{ $supply->inventory->id }}, '{{ addslashes($supply->name) }}', {{ $supply->labor->id }}, {{ $supply->amount }}, {{ $supply->price }}, {{ $supply->category->id }}, '{{ $supply->expiration_date ? $supply->expiration_date->format('Y-m-d') : '' }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
                                             <i class="fas fa-edit"></i> Editar
                                         </button>
                                         <!-- Formulario para eliminar un insumo -->
@@ -169,8 +198,8 @@
             </div>
 
             <!-- Modal de Creación -->
-            <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+            <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto" style="display: none;">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6 my-8 max-h-[90vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold text-gray-800">Registrar Nuevo Insumo</h3>
                         <button @click="closeModals()" class="text-gray-500 hover:text-gray-700">
@@ -225,6 +254,14 @@
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
+                        <div class="mb-4">
+                            <label for="expiration_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Vencimiento (Opcional):</label>
+                            <input type="date" name="expiration_date" id="expiration_date" value="{{ old('expiration_date') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('expiration_date') border-red-500 @enderror">
+                            <p class="text-xs text-gray-500 mt-1">Solo para insumos que tengan fecha de vencimiento</p>
+                            @error('expiration_date')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
                         <div class="mb-6">
                             <label for="category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
                             <select name="category_id" id="category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror" required>
@@ -246,8 +283,8 @@
             </div>
 
             <!-- Modal de Edición -->
-            <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+            <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto" style="display: none;">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6 my-8 max-h-[90vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-2xl font-bold text-gray-800">Editar Insumo</h3>
                         <button @click="closeModals()" class="text-gray-500 hover:text-gray-700">
@@ -287,6 +324,11 @@
                         <div class="mb-4">
                             <label for="edit_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
                             <input type="number" step="0.01" name="price" id="edit_price" :value="currentSupply.price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit_expiration_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Vencimiento (Opcional):</label>
+                            <input type="date" name="expiration_date" id="edit_expiration_date" :value="currentSupply.expiration_date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <p class="text-xs text-gray-500 mt-1">Solo para insumos que tengan fecha de vencimiento</p>
                         </div>
                         <div class="mb-6">
                             <label for="edit_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
@@ -385,7 +427,7 @@ function setupAutoFilter() {
             const inventoryCell = row.cells[1]; // Columna de inventario
             const nameCell = row.cells[2]; // Columna de nombre
             const laborCell = row.cells[3]; // Columna de labor
-            const categoryCell = row.cells[6]; // Columna de categoría
+            const categoryCell = row.cells[9]; // Columna de categoría (actualizada por nuevas columnas)
             
             const inventoryText = inventoryCell.textContent.toLowerCase();
             const nameText = nameCell.textContent.toLowerCase();

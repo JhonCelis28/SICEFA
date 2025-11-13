@@ -18,6 +18,7 @@ use Modules\SICA\Entities\Role;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * @class GanaderiaController
@@ -80,7 +81,7 @@ class GanaderiaController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $notificationCount = $notifications->count();
+        $notificationCount = $notifications->where('read_at', null)->count();
 
         // Obtener el insumo más solicitado (con más solicitudes)
         $mostRequestedSupply = InfrastockRequest::with('items.equipment.category')
@@ -891,7 +892,11 @@ class GanaderiaController extends Controller
                 $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
             }
 
+            $userName = $request->user->nickname ?? $request->user->name ?? 'Ganadería';
+            $roleName = 'Ganadería';
+
             foreach ($admins as $admin) {
+                // Crear notificación en el dashboard
                 Notification::create([
                     'type' => 'request_created',
                     'notifiable_type' => 'App\Models\User',
@@ -902,14 +907,31 @@ class GanaderiaController extends Controller
                         'request_id' => $request->id,
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
-                        'user_name' => $request->user->nickname ?? $request->user->name ?? 'Ganadería',
+                        'user_name' => $userName,
                         'action_url' => route('infrastock.admin.requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
+
+                // Enviar correo electrónico al administrador
+                if ($admin->email) {
+                    try {
+                        \Mail::to($admin->email)->send(
+                            new \Modules\INFRASTOCK\Mail\NewSupplyRequestNotification(
+                                $request,
+                                $userName,
+                                $roleName,
+                                $totalItems,
+                                $equipmentList
+                            )
+                        );
+                    } catch (\Exception $emailException) {
+                        \Log::error('Error enviando correo al administrador ' . $admin->email . ': ' . $emailException->getMessage());
+                    }
+                }
             }
             
-            \Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+            \Log::info('Notificación y correo enviados a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
         }

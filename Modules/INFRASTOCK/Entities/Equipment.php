@@ -40,7 +40,7 @@ class Equipment extends Model
     /**
      * @property array $dates Atributos que deben ser mutados a instancias de Carbon.
      */
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'expiration_date'];
 
     /**
      * Define la relación de pertenencia a una categoría.
@@ -73,20 +73,56 @@ class Equipment extends Model
     }
 
     /**
+     * Calcula la cantidad utilizada basada en los movimientos de almacén aprobados.
+     * @return int
+     */
+    public function getUsedAmountAttribute()
+    {
+        // Calcular las solicitudes aprobadas y entregadas para este equipo
+        // Excluir registros eliminados (soft deletes) y solo contar registros activos
+        // 'Entrega' suma al usado, 'Recibe' resta del usado (porque es material que vuelve)
+        $entregas = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('equipment_id', $this->id)
+            ->where('item_type', 'equipment')
+            ->where('role', 'Entrega')
+            ->withoutTrashed() // Excluir registros eliminados
+            ->sum('amount') ?: 0;
+        
+        $recibes = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('equipment_id', $this->id)
+            ->where('item_type', 'equipment')
+            ->where('role', 'Recibe')
+            ->withoutTrashed() // Excluir registros eliminados
+            ->sum('amount') ?: 0;
+        
+        // El usado es lo entregado menos lo recibido de vuelta
+        return max(0, $entregas - $recibes);
+    }
+
+    /**
+     * Obtiene la cantidad inicial del insumo.
+     * Si no hay cantidad inicial definida, usa la cantidad actual.
+     * @return int
+     */
+    public function getInitialAmountAttribute()
+    {
+        // Si hay cantidad inicial definida y es mayor a 0, usarla
+        // Acceder directamente a los atributos sin usar el accessor para evitar recursión
+        $initialAmount = isset($this->attributes['initial_amount']) ? $this->attributes['initial_amount'] : null;
+        if ($initialAmount !== null && $initialAmount > 0) {
+            return (int) $initialAmount;
+        }
+        // Si no, usar la cantidad actual como inicial
+        $amount = isset($this->attributes['amount']) ? $this->attributes['amount'] : 0;
+        return (int) $amount;
+    }
+
+    /**
      * Calcula el stock disponible basado en la cantidad inicial menos las solicitudes aprobadas.
      * @return int
      */
     public function getStockAttribute()
     {
-        // Si no hay cantidad inicial definida o es 0, usar la cantidad actual
-        $initialAmount = ($this->initial_amount && $this->initial_amount > 0) ? $this->initial_amount : $this->amount;
-        
-        // Calcular las solicitudes aprobadas y entregadas para este equipo
-        $consumedAmount = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('equipment_id', $this->id)
-            ->where('item_type', 'equipment')
-            ->whereIn('role', ['Entrega', 'Recibe'])
-            ->sum('amount');
-            
+        $initialAmount = $this->initial_amount;
+        $consumedAmount = $this->used_amount;
         return max(0, $initialAmount - $consumedAmount);
     }
 

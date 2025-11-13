@@ -43,7 +43,13 @@
         <!-- Tarjeta: Insumos en Stock (porcentaje o cantidad total) -->
         <div class="bg-white rounded-xl shadow-md p-6 flex items-center justify-between transition-transform transform hover:scale-105 duration-200 relative">
             <div>
-                <h3 class="text-3xl font-extrabold text-gray-800">{{ $suppliesPercentage }}<sup class="text-lg">%</sup></h3>
+                <h3 class="text-3xl font-extrabold text-gray-800">
+                    @if(is_numeric($suppliesPercentage) && $suppliesPercentage <= 100)
+                        {{ $suppliesPercentage }}<sup class="text-lg">%</sup>
+                    @else
+                        {{ number_format($suppliesPercentage, 0) }}
+                    @endif
+                </h3>
                 <p class="text-base text-gray-500 mt-1">Insumos en Stock</p>
             </div>
             <div class="text-blue-500 text-4xl opacity-75">

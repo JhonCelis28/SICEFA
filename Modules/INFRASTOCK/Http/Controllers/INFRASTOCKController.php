@@ -69,29 +69,35 @@ class INFRASTOCKController extends Controller
     {
         // Datos para las tarjetas de información en el dashboard:
 
-        // Conteo de nuevas solicitudes de insumos en los últimos 7 días.
-        $newSupplyRequestsCount = WarehouseMovement::where('item_type', 'equipment')
-                                                ->where('role', 'Solicitud')
-                                                ->where('created_at', '>=', Carbon::now()->subDays(7))
+        // Conteo de nuevas solicitudes de insumos pendientes (no solo de los últimos 7 días, sino todas las pendientes).
+        $newSupplyRequestsCount = \Modules\INFRASTOCK\Entities\Request::where('status', 'pending')
+                                                ->where('created_at', '>=', Carbon::now()->subDays(30))
                                                 ->count();
 
-        // Conteo total de equipos (insumos) registrados.
-        $totalEquipments = Equipment::count();
-        // Suma total de la cantidad inicial de todos los insumos.
-        $totalInitialAmount = Equipment::sum('initial_amount') ?: Equipment::sum('amount');
         // Calcula el stock total disponible usando el nuevo sistema.
         $totalStockAmount = Equipment::get()->sum('stock');
+        // Suma total de la cantidad inicial de todos los insumos.
+        $totalInitialAmount = Equipment::sum('initial_amount') ?: Equipment::sum('amount');
         // Calcula el porcentaje de insumos en stock respecto al total inicial.
         $suppliesPercentage = ($totalInitialAmount > 0) ? round(($totalStockAmount / $totalInitialAmount) * 100, 2) : 0;
+        
+        // Si el porcentaje es mayor a 100 o menor a 0, mostrar la cantidad total en lugar del porcentaje
+        if ($suppliesPercentage > 100 || $suppliesPercentage < 0) {
+            $suppliesPercentage = $totalStockAmount;
+        }
 
         // Conteo de herramientas que actualmente están en préstamo.
+        // Buscar préstamos activos (sin devolución)
         $toolsOnLoanCount = WarehouseMovement::where('item_type', 'tool')
-                                            ->where('role', 'Préstamo')
+                                            ->whereIn('role', ['Préstamo', 'Prestamo'])
+                                            ->whereNull('deleted_at')
                                             ->count();
 
         // Conteo de insumos próximos a vencer (con fecha de vencimiento dentro de los próximos 30 días).
+        // Incluir también los que ya vencieron recientemente (últimos 7 días) para alertar
         $expiringSuppliesCount = Equipment::whereNotNull('expiration_date')
                                         ->where('expiration_date', '<=', Carbon::now()->addDays(30))
+                                        ->where('expiration_date', '>=', Carbon::now()->subDays(7))
                                         ->count();
 
         // Datos para el gráfico de Consumo de Insumos por Área:
@@ -198,32 +204,40 @@ class INFRASTOCKController extends Controller
         // Obtener los roles del usuario
         $userRoles = $user->roles->pluck('name')->toArray();
         
-        // Log para debugging (puedes remover esto después)
-        \Log::info('Post-login - Usuario: ' . $user->id . ', Roles: ' . implode(', ', $userRoles));
+        // Log para debugging
+        \Log::info('Post-login - Usuario: ' . $user->id . ' (' . $user->name . '), Roles: ' . implode(', ', $userRoles));
         
         // Verificar el rol del usuario y redirigir al dashboard correspondiente
-        // Orden importante: verificar roles específicos ANTES del rol de administrador
-        if (in_array('Psicola', $userRoles)) {
+        // Orden importante: verificar roles específicos en orden de prioridad
+        // Aseo debe verificarse ANTES que Operario para evitar conflictos
+        
+        if (in_array('Aseo', $userRoles) || in_array('Personal de Aseo', $userRoles)) {
+            \Log::info('Redirigiendo a Personal de Aseo dashboard');
+            return redirect()->route('infrastock.cleaning-staff.dashboard');
+        } elseif (in_array('Psicola', $userRoles)) {
             \Log::info('Redirigiendo a Psicola dashboard');
             return redirect()->route('infrastock.psicola.dashboard');
         } elseif (in_array('Ciencias Basicas', $userRoles)) {
             \Log::info('Redirigiendo a Ciencias Basicas dashboard');
             return redirect()->route('infrastock.ciencias-basicas.dashboard');
-        } elseif (in_array('Aseo', $userRoles)) {
-            return redirect()->route('infrastock.cleaning-staff.dashboard');
         } elseif (in_array('Operario', $userRoles)) {
+            \Log::info('Redirigiendo a Operario dashboard');
             return redirect()->route('infrastock.operator.dashboard');
         } elseif (in_array('Centro de Convivencia', $userRoles)) {
+            \Log::info('Redirigiendo a Centro de Convivencia dashboard');
             return redirect()->route('infrastock.convivencia.dashboard');
         } elseif (in_array('Ganaderia', $userRoles)) {
+            \Log::info('Redirigiendo a Ganaderia dashboard');
             return redirect()->route('infrastock.ganaderia.dashboard');
         } elseif (in_array('Vigilancia', $userRoles)) {
+            \Log::info('Redirigiendo a Vigilancia dashboard');
             return redirect()->route('infrastock.vigilancia.dashboard');
         } elseif (in_array('Agroindustria', $userRoles)) {
+            \Log::info('Redirigiendo a Agroindustria dashboard');
             return redirect()->route('infrastock.agroindustria.dashboard');
         } else {
             // Para administradores o usuarios sin rol específico
-            \Log::info('Redirigiendo a dashboard de administrador');
+            \Log::info('Redirigiendo a dashboard de administrador (no se encontró rol específico)');
             return redirect()->route('cefa.infrastock.admin.dashboard');
         }
     }

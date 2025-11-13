@@ -70,15 +70,50 @@ class UserProfileController extends Controller
     }
 
     /**
-     * Actualiza el recurso especificado en el almacenamiento (placeholder).
-     * Este método es un placeholder y no implementa ninguna lógica de actualización de perfil.
+     * Actualiza el perfil del usuario autenticado.
      * @param Request $request La solicitud HTTP que contiene los datos actualizados.
-     * @param int $id El ID del recurso a actualizar (no utilizado activamente).
-     * @return Renderable
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, $id)
+    public function update(Request $request)
     {
-        // Este método es un placeholder. La lógica de actualización de perfil se implementaría aquí.
+        $user = auth()->user();
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'nickname' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:8|confirmed',
+        ], [
+            'name.required' => 'El nombre es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico debe ser válido.',
+            'email.unique' => 'Este correo electrónico ya está en uso.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'La confirmación de contraseña no coincide.',
+        ]);
+
+        try {
+            $data = [
+                'name' => $request->name,
+                'email' => $request->email,
+                'nickname' => $request->nickname,
+            ];
+
+            // Solo actualizar la contraseña si se proporciona
+            if ($request->filled('password')) {
+                $data['password'] = \Hash::make($request->password);
+            }
+
+            $user->update($data);
+
+            return redirect()->route('cefa.infrastock.admin.profile.edit')
+                ->with('success', 'Perfil actualizado exitosamente.');
+
+        } catch (\Exception $e) {
+            return redirect()->route('cefa.infrastock.admin.profile.edit')
+                ->with('error', 'Hubo un error al actualizar el perfil: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     /**

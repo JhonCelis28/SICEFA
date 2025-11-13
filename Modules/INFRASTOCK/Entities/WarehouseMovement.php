@@ -35,6 +35,9 @@ class WarehouseMovement extends Model
         'user_id',
         'item_type',
         'amount',
+        'status',
+        'surplus_id',
+        'description',
     ];
 
     /**
@@ -79,7 +82,7 @@ class WarehouseMovement extends Model
      */
     public function equipmentLegacy()
     {
-        return $this->belongsTo(Equipment::class, 'movement_id')->where('item_type', 'equipment');
+        return $this->belongsTo(Equipment::class, 'movement_id');
     }
 
     /**
@@ -89,6 +92,15 @@ class WarehouseMovement extends Model
      */
     public function tool()
     {
-        return $this->belongsTo(Tool::class, 'movement_id')->where('item_type', 'tool');
+        return $this->belongsTo(Tool::class, 'movement_id');
+    }
+
+    /**
+     * Define la relación de pertenencia a un sobrante.
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function surplus()
+    {
+        return $this->belongsTo(Surplus::class, 'surplus_id');
     }
 }

@@ -122,6 +122,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/infrastock/admin/loans/{loan}', 'LoanController@update')->name('infrastock.admin.loans.update');
     // Elimina un movimiento.
     Route::delete('/infrastock/admin/loans/{loan}', 'LoanController@destroy')->name('infrastock.admin.loans.destroy');
+    // Aprueba una devolución de insumos.
+    Route::post('/infrastock/admin/loans/{id}/approve-return', 'LoanController@approveReturn')->name('infrastock.admin.loans.approve-return');
+    // Rechaza una devolución de insumos.
+    Route::post('/infrastock/admin/loans/{id}/reject-return', 'LoanController@rejectReturn')->name('infrastock.admin.loans.reject-return');
 });
 
 /**
@@ -152,6 +156,8 @@ Route::middleware(['web', 'auth'])->group(function () {
 Route::middleware(['web', 'auth'])->group(function () {
     // Muestra el formulario para editar el perfil del usuario autenticado.
     Route::get('/infrastock/admin/profile/edit', 'UserProfileController@edit')->name('cefa.infrastock.admin.profile.edit');
+    // Actualiza el perfil del usuario autenticado.
+    Route::put('/infrastock/admin/profile', 'UserProfileController@update')->name('cefa.infrastock.admin.profile.update');
 });
 
 // Ruta para acceder al logo del módulo (si se requiere directamente).
@@ -290,6 +296,7 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::get('/infrastock/cleaning-staff/surplus', 'SurplusController@index')->name('infrastock.cleaning-staff.surplus.index');
     Route::post('/infrastock/cleaning-staff/surplus', 'SurplusController@store')->name('infrastock.cleaning-staff.surplus.store');
     Route::get('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@show')->name('infrastock.cleaning-staff.surplus.show');
+    Route::put('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@update')->name('infrastock.cleaning-staff.surplus.update');
     Route::delete('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@destroy')->name('infrastock.cleaning-staff.surplus.destroy');
     
     // Acciones específicas para solicitudes

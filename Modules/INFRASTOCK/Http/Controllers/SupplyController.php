@@ -62,6 +62,7 @@ class SupplyController extends Controller
             'price' => 'required|numeric|min:0', // Precio es obligatorio, numérico y mínimo 0.
             'category_id' => 'required|exists:infrastock_categories,id', // ID de categoría es obligatorio y debe existir.
             'labor_id' => 'required|exists:labors,id', // ID de labor es obligatorio y debe existir.
+            'expiration_date' => 'nullable|date', // Fecha de vencimiento es opcional, debe ser una fecha válida.
         ]);
 
         try {
@@ -119,6 +120,7 @@ class SupplyController extends Controller
             'price' => 'required|numeric|min:0',
             'category_id' => 'required|exists:infrastock_categories,id',
             'labor_id' => 'required|exists:labors,id',
+            'expiration_date' => 'nullable|date', // Fecha de vencimiento es opcional, debe ser una fecha válida.
         ]);
 
         $supply = Equipment::findOrFail($id); // Encuentra el insumo por su ID o lanza una excepción.

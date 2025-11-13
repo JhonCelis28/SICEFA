@@ -27,14 +27,28 @@ class LoanController extends Controller
      */
     public function index()
     {
-        $loans = WarehouseMovement::with('user', 'productiveUnitWarehouse', 'tool', 'equipment')
+        $loans = WarehouseMovement::with(['user', 'productiveUnitWarehouse', 'equipment', 'surplus'])
                                 ->whereIn('role', ['Préstamo', 'Devolución'])
+                                ->orderBy('created_at', 'desc')
                                 ->paginate(15);
+        
+        // Cargar herramientas solo para los movimientos que son de tipo 'tool'
+        $loans->getCollection()->each(function($loan) {
+            if ($loan->item_type === 'tool') {
+                $loan->load('tool');
+            }
+        });
+        
+        // Contar devoluciones pendientes
+        $pendingReturns = WarehouseMovement::where('role', 'Devolución')
+                                          ->where('status', 'pending')
+                                          ->count();
+        
         $tools = Tool::all();
         $equipments = Equipment::all();
         $users = User::all();
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
-        return view('infrastock::admin.loans.index', compact('loans', 'tools', 'equipments', 'users', 'productiveUnitWarehouses'));
+        return view('infrastock::admin.loans.index', compact('loans', 'tools', 'equipments', 'users', 'productiveUnitWarehouses', 'pendingReturns'));
     }
 
     /**
@@ -167,5 +181,127 @@ class LoanController extends Controller
             ]);
         }
         return redirect()->route('infrastock.admin.loans.index')->with('success', 'deleted');
+    }
+
+    /**
+     * Aprueba una devolución de insumos
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function approveReturn($id)
+    {
+        $returnMovement = WarehouseMovement::with('surplus', 'equipment')
+            ->where('id', $id)
+            ->where('role', 'Devolución')
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$returnMovement) {
+            return redirect()->back()->with('error', 'Devolución no encontrada o ya procesada.');
+        }
+
+        try {
+            $returnMovement->update([
+                'status' => 'approved',
+            ]);
+
+            // Si hay un sobrante asociado, actualizar el stock del equipo
+            if ($returnMovement->equipment && $returnMovement->amount > 0) {
+                $equipment = $returnMovement->equipment;
+                
+                // Crear un movimiento de tipo 'Recibe' para registrar la devolución en el historial
+                // Esto permite rastrear que se recibió material de vuelta
+                // El cálculo de stock (initial_amount - used_amount) se ajustará automáticamente
+                // porque 'Recibe' resta del used_amount, aumentando así el stock disponible
+                WarehouseMovement::create([
+                    'productive_unit_warehouse_id' => $returnMovement->productive_unit_warehouse_id,
+                    'movement_id' => null,
+                    'equipment_id' => $equipment->id,
+                    'item_type' => 'equipment',
+                    'user_id' => $returnMovement->user_id,
+                    'role' => 'Recibe', // Indica que se está recibiendo material de vuelta
+                    'amount' => $returnMovement->amount,
+                ]);
+            }
+
+            // Enviar notificación al usuario
+            $this->notifyUserReturnStatus($returnMovement, 'approved');
+
+            return redirect()->back()->with('success', 'Devolución aprobada exitosamente. El stock del insumo ha sido actualizado.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al aprobar la devolución: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rechaza una devolución de insumos
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function rejectReturn(Request $request, $id)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $returnMovement = WarehouseMovement::with('surplus', 'equipment')
+            ->where('id', $id)
+            ->where('role', 'Devolución')
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$returnMovement) {
+            return redirect()->back()->with('error', 'Devolución no encontrada o ya procesada.');
+        }
+
+        try {
+            $returnMovement->update([
+                'status' => 'rejected',
+                'description' => ($returnMovement->description ?? '') . ' | Motivo de rechazo: ' . $request->rejection_reason,
+            ]);
+
+            // Enviar notificación al usuario
+            $this->notifyUserReturnStatus($returnMovement, 'rejected', $request->rejection_reason);
+
+            return redirect()->back()->with('success', 'Devolución rechazada exitosamente.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al rechazar la devolución: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envía notificación al usuario sobre el estado de su devolución
+     * @param WarehouseMovement $returnMovement
+     * @param string $status
+     * @param string|null $rejectionReason
+     * @return void
+     */
+    private function notifyUserReturnStatus($returnMovement, $status, $rejectionReason = null)
+    {
+        try {
+            $user = $returnMovement->user;
+            if (!$user) {
+                return;
+            }
+
+            $equipmentName = $returnMovement->equipment ? $returnMovement->equipment->name : 'Insumo';
+            $unit = $returnMovement->equipment ? ($returnMovement->equipment->unit ?? 'unidades') : 'unidades';
+            
+            if ($status === 'approved') {
+                $title = 'Devolución Aprobada';
+                $message = "Tu devolución de {$returnMovement->amount} {$unit} de {$equipmentName} ha sido aprobada.";
+            } else {
+                $title = 'Devolución Rechazada';
+                $message = "Tu devolución de {$returnMovement->amount} {$unit} de {$equipmentName} ha sido rechazada.";
+                if ($rejectionReason) {
+                    $message .= " Motivo: {$rejectionReason}";
+                }
+            }
+
+            $user->notify(new \Modules\INFRASTOCK\Notifications\ReturnStatusNotification($returnMovement, $status, $title, $message));
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación de estado de devolución: ' . $e->getMessage());
+        }
     }
 }

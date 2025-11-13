@@ -18,6 +18,7 @@ use Modules\SICA\Entities\Role;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * @class OperatorController
@@ -34,7 +35,8 @@ use Illuminate\Support\Facades\Validator;
 class OperatorController extends Controller
 {
     /**
-     * Verifica que el usuario tenga el rol de Operario.
+     * Verifica que el usuario tenga el rol de Operario y NO tenga rol de Aseo.
+     * Esto previene que usuarios con múltiples roles accedan al dashboard incorrecto.
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
     private function verifyRole()
@@ -42,6 +44,12 @@ class OperatorController extends Controller
         $user = auth()->user();
         $userRoles = $user->roles->pluck('name')->toArray();
         
+        // Si tiene rol de Aseo, no puede acceder al dashboard de Operario
+        if (in_array('Aseo', $userRoles) || in_array('Personal de Aseo', $userRoles)) {
+            abort(403, 'No tienes permiso para acceder a esta sección. Usuarios con rol de Personal de Aseo deben usar su dashboard correspondiente.');
+        }
+        
+        // Debe tener rol de Operario
         if (!in_array('Operario', $userRoles)) {
             abort(403, 'No tienes permiso para acceder a esta sección. Solo usuarios con rol de Operario pueden acceder.');
         }
@@ -80,7 +88,7 @@ class OperatorController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $notificationCount = $notifications->count();
+        $notificationCount = $notifications->where('read_at', null)->count();
 
         // Obtener el insumo más solicitado (con más solicitudes)
         $mostRequestedSupply = InfrastockRequest::with('items.equipment.category')
@@ -891,7 +899,11 @@ class OperatorController extends Controller
                 $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
             }
 
+            $userName = $request->user->nickname ?? $request->user->name ?? 'Operario';
+            $roleName = 'Operario';
+
             foreach ($admins as $admin) {
+                // Crear notificación en el dashboard
                 Notification::create([
                     'type' => 'request_created',
                     'notifiable_type' => 'App\Models\User',
@@ -902,14 +914,31 @@ class OperatorController extends Controller
                         'request_id' => $request->id,
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
-                        'user_name' => $request->user->nickname ?? $request->user->name ?? 'Operario',
+                        'user_name' => $userName,
                         'action_url' => route('infrastock.admin.requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
+
+                // Enviar correo electrónico al administrador
+                if ($admin->email) {
+                    try {
+                        \Mail::to($admin->email)->send(
+                            new \Modules\INFRASTOCK\Mail\NewSupplyRequestNotification(
+                                $request,
+                                $userName,
+                                $roleName,
+                                $totalItems,
+                                $equipmentList
+                            )
+                        );
+                    } catch (\Exception $emailException) {
+                        \Log::error('Error enviando correo al administrador ' . $admin->email . ': ' . $emailException->getMessage());
+                    }
+                }
             }
             
-            \Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+            \Log::info('Notificación y correo enviados a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
         }

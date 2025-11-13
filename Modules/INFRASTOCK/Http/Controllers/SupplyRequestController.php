@@ -163,6 +163,41 @@ class SupplyRequestController extends Controller
         // Actualizar el estado de todos los items
         $supplyRequest->items()->update(['status' => $request->status]);
 
+        // Si se aprueba la solicitud, crear registros en WarehouseMovement para cada item
+        if ($request->status === 'approved') {
+            // Cargar los items con sus relaciones
+            $supplyRequest->load('items.equipment');
+            
+            foreach ($supplyRequest->items as $item) {
+                // Verificar que el equipo existe y tiene stock suficiente
+                $equipment = $item->equipment;
+                if ($equipment && $equipment->hasStockFor($item->requested_amount)) {
+                    WarehouseMovement::create([
+                        'productive_unit_warehouse_id' => $supplyRequest->productive_unit_warehouse_id,
+                        'movement_id' => null, // No hay un Movement tradicional para solicitudes de insumos
+                        'equipment_id' => $item->equipment_id,
+                        'item_type' => 'equipment',
+                        'user_id' => $supplyRequest->user_id,
+                        'role' => 'Entrega', // Indica que se está entregando/consumiendo el insumo
+                        'amount' => $item->requested_amount,
+                    ]);
+
+                    // Crear registro de sobrante para cada item aprobado
+                    // Inicialmente la cantidad sobrante es 0, el usuario la actualizará después
+                    \Modules\INFRASTOCK\Entities\Surplus::create([
+                        'equipment_id' => $item->equipment_id,
+                        'user_id' => $supplyRequest->user_id,
+                        'request_id' => $supplyRequest->id,
+                        'request_item_id' => $item->id,
+                        'surplus_amount' => 0, // Inicialmente 0, se actualizará cuando el usuario registre el sobrante
+                        'reason' => 'Sobrante de solicitud aprobada',
+                        'description' => null, // Se completará cuando el usuario edite el sobrante
+                        'surplus_date' => now(),
+                    ]);
+                }
+            }
+        }
+
         // Enviar notificación al personal de aseo
         $this->notifyCleaningStaffRequestStatus($supplyRequest, $request->status);
 

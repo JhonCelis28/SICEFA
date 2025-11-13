@@ -15,6 +15,7 @@ use Modules\SICA\Entities\Role;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * @class CleaningStaffController
@@ -180,69 +181,76 @@ class CleaningStaffController extends Controller
     }
 
     /**
+     * Verifica que el usuario tenga el rol de Personal de Aseo.
+     */
+    private function verifyRole()
+    {
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('name')->toArray();
+        
+        if (!in_array('Aseo', $userRoles) && !in_array('Personal de Aseo', $userRoles)) {
+            abort(403, 'No tienes permiso para acceder a esta sección. Solo usuarios con rol de Personal de Aseo pueden acceder.');
+        }
+    }
+
+    /**
      * Muestra el dashboard principal del personal de aseo.
      * @return Renderable
      */
     public function dashboard()
     {
+        $this->verifyRole();
         $user = auth()->user();
         
-        // Obtener estadísticas del usuario actual
-        $pendingRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'Entrega')
-            ->where('item_type', 'equipment')
+        // Obtener estadísticas del usuario actual basadas en solicitudes (Request)
+        $pendingRequests = \Modules\INFRASTOCK\Entities\Request::where('user_id', $user->id)
+            ->where('status', 'pending')
             ->count();
 
-        $approvedRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'Recibe')
-            ->where('item_type', 'equipment')
+        $approvedRequests = \Modules\INFRASTOCK\Entities\Request::where('user_id', $user->id)
+            ->where('status', 'approved')
             ->count();
 
-        $deliveredRequests = WarehouseMovement::where('user_id', $user->id)
-            ->where('role', 'Recibe')
-            ->where('item_type', 'equipment')
+        $rejectedRequests = \Modules\INFRASTOCK\Entities\Request::where('user_id', $user->id)
+            ->where('status', 'rejected')
             ->count();
-
-        $rejectedRequests = 0; // Por ahora no tenemos rechazos en el sistema actual
 
         // Obtener notificaciones recientes del usuario
-        $notifications = WarehouseMovement::with('equipment')
-            ->where('user_id', $user->id)
-            ->where('item_type', 'equipment')
-            ->whereIn('role', ['Entrega', 'Recibe'])
-            ->where('updated_at', '>=', Carbon::now()->subDays(7))
-            ->orderBy('updated_at', 'desc')
+        $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
+            ->where('notifiable_id', $user->id)
+            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        $notificationCount = $notifications->count();
+        $notificationCount = $notifications->where('read_at', null)->count();
 
         // Obtener el insumo más solicitado (con más solicitudes)
-        $mostRequestedSupply = WarehouseMovement::selectRaw('equipment_id, COUNT(*) as request_count')
-            ->with('equipment.category')
-            ->where('item_type', 'equipment')
-            ->whereIn('role', ['Entrega', 'Recibe']) // Solicitudes que han sido procesadas
+        $mostRequestedSupply = \Modules\INFRASTOCK\Entities\Request::with('items.equipment.category')
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['approved', 'delivered'])
+            ->get()
+            ->flatMap(function($request) {
+                return $request->items;
+            })
             ->groupBy('equipment_id')
-            ->orderBy('request_count', 'desc')
+            ->map(function($items) {
+                return [
+                    'equipment' => $items->first()->equipment ?? null,
+                    'request_count' => $items->count(),
+                    'total_amount_requested' => $items->sum('requested_amount')
+                ];
+            })
+            ->filter(function($item) {
+                return $item['equipment'] !== null;
+            })
+            ->sortByDesc('request_count')
             ->first();
 
-        // Si hay un insumo más solicitado, obtener sus detalles completos
-        if ($mostRequestedSupply && $mostRequestedSupply->equipment) {
-            $mostRequestedSupplyData = [
-                'equipment' => $mostRequestedSupply->equipment,
-                'request_count' => $mostRequestedSupply->request_count,
-                'total_amount_requested' => WarehouseMovement::where('equipment_id', $mostRequestedSupply->equipment_id)
-                    ->where('item_type', 'equipment')
-                    ->whereIn('role', ['Entrega', 'Recibe'])
-                    ->sum('amount')
-            ];
-        } else {
-            $mostRequestedSupplyData = null;
-        }
+        $mostRequestedSupplyData = $mostRequestedSupply;
 
         return view('infrastock::cleaning-staff.dashboard', compact(
             'pendingRequests',
-            'approvedRequests', 
-            'deliveredRequests',
+            'approvedRequests',
             'rejectedRequests',
             'notifications',
             'notificationCount',
@@ -622,7 +630,11 @@ class CleaningStaffController extends Controller
                 $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
             }
 
+            $userName = $request->user->name ?? 'Personal de Aseo';
+            $roleName = 'Personal de Aseo';
+
             foreach ($admins as $admin) {
+                // Crear notificación en el dashboard
                 Notification::create([
                     'type' => 'request_created',
                     'notifiable_type' => 'App\Models\User',
@@ -633,14 +645,31 @@ class CleaningStaffController extends Controller
                         'request_id' => $request->id,
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
-                        'user_name' => $request->user->name ?? 'Personal de Aseo',
+                        'user_name' => $userName,
                         'action_url' => route('infrastock.admin.requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
+
+                // Enviar correo electrónico al administrador
+                if ($admin->email) {
+                    try {
+                        Mail::to($admin->email)->send(
+                            new \Modules\INFRASTOCK\Mail\NewSupplyRequestNotification(
+                                $request,
+                                $userName,
+                                $roleName,
+                                $totalItems,
+                                $equipmentList
+                            )
+                        );
+                    } catch (\Exception $emailException) {
+                        \Log::error('Error enviando correo al administrador ' . $admin->email . ': ' . $emailException->getMessage());
+                    }
+                }
             }
             
-            \Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+            \Log::info('Notificación y correo enviados a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
         } catch (\Exception $e) {
             // Log del error pero no interrumpir el flujo principal
             \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
@@ -700,16 +729,31 @@ class CleaningStaffController extends Controller
      */
     public function notifications()
     {
+        $this->verifyRole();
         $user = auth()->user();
         
-        $notifications = WarehouseMovement::with('equipment')
-            ->where('user_id', $user->id)
-            ->where('item_type', 'equipment')
-            ->whereIn('role', ['approved', 'rejected', 'delivered'])
-            ->orderBy('updated_at', 'desc')
-            ->paginate(10);
+        // Obtener notificaciones del usuario usando el modelo Notification de Laravel
+        $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
+            ->where('notifiable_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
 
-        return view('infrastock::cleaning-staff.notifications', compact('notifications'));
+        // Cargar las solicitudes relacionadas con las notificaciones
+        $requestIds = $notifications->pluck('data')->filter(function($data) {
+            return isset($data['request_id']);
+        })->pluck('request_id')->unique()->toArray();
+
+        $requests = collect();
+        if (!empty($requestIds)) {
+            $requests = \Modules\INFRASTOCK\Entities\Request::with([
+                'items.equipment.category',
+                'productiveUnitWarehouse.productiveUnit',
+                'productiveUnitWarehouse.warehouse',
+                'user'
+            ])->whereIn('id', $requestIds)->get()->keyBy('id');
+        }
+
+        return view('infrastock::cleaning-staff.notifications', compact('notifications', 'requests'));
     }
 
     /**

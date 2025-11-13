@@ -10,8 +10,11 @@ class Surplus extends Model
     protected $fillable = [
         'equipment_id',
         'user_id',
+        'request_id',
+        'request_item_id',
         'surplus_amount',
         'reason',
+        'description',
         'surplus_date',
     ];
 
@@ -33,6 +36,22 @@ class Surplus extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class);
+    }
+
+    /**
+     * Relación con la solicitud
+     */
+    public function request(): BelongsTo
+    {
+        return $this->belongsTo(Request::class);
+    }
+
+    /**
+     * Relación con el item de la solicitud
+     */
+    public function requestItem(): BelongsTo
+    {
+        return $this->belongsTo(RequestItem::class);
     }
 
     /**

@@ -124,8 +124,10 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Elemento</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Área/Bodega</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Movimiento</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                 </tr>
@@ -149,6 +151,13 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->user->person->first_name ?? 'N/A' }} {{ $loan->user->person->first_last_name ?? '' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            @if($loan->amount)
+                                                {{ $loan->amount }} {{ $loan->equipment->unit ?? 'unidades' }}
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->productiveUnitWarehouse->productiveUnit->name ?? 'N/A' }} ({{ $loan->productiveUnitWarehouse->warehouse->name ?? 'N/A' }})</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             @if($loan->role == 'Préstamo')
@@ -157,18 +166,44 @@
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Devolución</span>
                                             @endif
                                         </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            @if($loan->role == 'Devolución' && $loan->status)
+                                                @if($loan->status == 'pending')
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendiente</span>
+                                                @elseif($loan->status == 'approved')
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aprobada</span>
+                                                @elseif($loan->status == 'rejected')
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rechazada</span>
+                                                @endif
+                                            @else
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->created_at->format('Y-m-d') }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </button>
-                                            <form method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($loan->role) }}')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">
-                                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                            @if($loan->role == 'Devolución' && $loan->status == 'pending')
+                                                <!-- Botones para aprobar/rechazar devolución -->
+                                                <form method="POST" action="{{ route('infrastock.admin.loans.approve-return', $loan->id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de aprobar esta devolución?')">
+                                                    @csrf
+                                                    <button type="submit" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar devolución">
+                                                        <i class="fas fa-check-circle"></i> Aprobar
+                                                    </button>
+                                                </form>
+                                                <button onclick="openRejectModal({{ $loan->id }})" class="text-red-600 hover:text-red-900 mr-2" title="Rechazar devolución">
+                                                    <i class="fas fa-times-circle"></i> Rechazar
                                                 </button>
-                                            </form>
+                                            @else
+                                                <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </button>
+                                                <form method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($loan->role) }}')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900">
+                                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
@@ -348,6 +383,39 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Modal para Rechazar Devolución -->
+            <div id="rejectReturnModal" class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-800">Rechazar Devolución</h3>
+                        <button onclick="closeRejectModal()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <form id="rejectReturnForm" method="POST">
+                        @csrf
+                        <div class="mb-4">
+                            <label for="rejection_reason" class="block text-gray-700 text-sm font-bold mb-2">
+                                Motivo del Rechazo *
+                            </label>
+                            <textarea name="rejection_reason" id="rejection_reason" rows="4" required
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                      placeholder="Describe el motivo por el cual se rechaza esta devolución..."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Máximo 500 caracteres</p>
+                        </div>
+                        <div class="flex justify-end space-x-4">
+                            <button type="button" onclick="closeRejectModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Rechazar Devolución
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
@@ -416,6 +484,20 @@ document.addEventListener('DOMContentLoaded', function() {
     setupAutoFilter();
 });
 
+// Función para abrir modal de rechazo
+function openRejectModal(returnId) {
+    document.getElementById('rejectReturnForm').action = `{{ route('infrastock.admin.loans.reject-return', '') }}/${returnId}`;
+    document.getElementById('rejectReturnModal').classList.remove('hidden');
+    document.getElementById('rejectReturnModal').classList.add('flex');
+}
+
+// Función para cerrar modal de rechazo
+function closeRejectModal() {
+    document.getElementById('rejectReturnModal').classList.add('hidden');
+    document.getElementById('rejectReturnModal').classList.remove('flex');
+    document.getElementById('rejectReturnForm').reset();
+}
+
 // Función para configurar el filtro automático
 function setupAutoFilter() {
     const searchInput = document.getElementById('searchInput');
@@ -426,20 +508,24 @@ function setupAutoFilter() {
         const searchTerm = this.value.toLowerCase();
         
         rows.forEach(row => {
-            // Columnas a buscar: Elemento (col 1), Tipo (col 2), Usuario (col 3), Área/Bodega (col 4), Movimiento (col 5)
+            // Columnas a buscar: Elemento (col 1), Tipo (col 2), Usuario (col 3), Cantidad (col 4), Área/Bodega (col 5), Movimiento (col 6), Estado (col 7)
             const elementCell = row.cells[1];
             const typeCell = row.cells[2];
             const userCell = row.cells[3];
-            const areaCell = row.cells[4];
-            const movementCell = row.cells[5];
+            const amountCell = row.cells[4];
+            const areaCell = row.cells[5];
+            const movementCell = row.cells[6];
+            const statusCell = row.cells[7];
             
             const elementText = elementCell.textContent.toLowerCase();
             const typeText = typeCell.textContent.toLowerCase();
             const userText = userCell.textContent.toLowerCase();
+            const amountText = amountCell.textContent.toLowerCase();
             const areaText = areaCell.textContent.toLowerCase();
             const movementText = movementCell.textContent.toLowerCase();
+            const statusText = statusCell.textContent.toLowerCase();
             
-            if (elementText.includes(searchTerm) || typeText.includes(searchTerm) || userText.includes(searchTerm) || areaText.includes(searchTerm) || movementText.includes(searchTerm)) {
+            if (elementText.includes(searchTerm) || typeText.includes(searchTerm) || userText.includes(searchTerm) || amountText.includes(searchTerm) || areaText.includes(searchTerm) || movementText.includes(searchTerm) || statusText.includes(searchTerm)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

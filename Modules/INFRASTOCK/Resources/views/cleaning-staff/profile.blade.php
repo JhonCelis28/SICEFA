@@ -37,7 +37,7 @@
                 </div>
             </div>
 
-            <form action="{{ route('infrastock.operator.profile.update') }}" method="POST" class="space-y-6">
+            <form action="{{ route('infrastock.cleaning-staff.profile.update') }}" method="POST" class="space-y-6">
                 @csrf
                 @method('PUT')
                 
@@ -138,7 +138,7 @@
                     </div>
                 </div>
                 <span class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
-                    Operario
+                    Aseo
                 </span>
             </div>
 
