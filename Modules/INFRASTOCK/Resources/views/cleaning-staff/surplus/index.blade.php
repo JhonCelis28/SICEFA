@@ -45,8 +45,8 @@
                     <i class="fas fa-clipboard-check text-blue-600 text-xl"></i>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold text-gray-800">Solicitudes Aprobadas</h3>
-                    <p class="text-gray-600">Selecciona una solicitud para registrar los sobrantes</p>
+                    <h3 class="text-xl font-bold text-gray-800">Historial de Sobrantes</h3>
+                    <p class="text-gray-600">Visualiza y gestiona tus sobrantes registrados</p>
                 </div>
             </div>
             <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
@@ -57,15 +57,30 @@
         @if($surpluses->count() > 0)
             <div class="space-y-4">
                 @foreach($surpluses as $surplus)
-                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200 {{ $surplus->status !== 'pending' ? 'bg-gray-50 opacity-90' : '' }}">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
                                 <div class="flex items-center space-x-3 mb-3">
                                     <div class="bg-green-100 p-2 rounded-full">
                                         <i class="fas fa-box text-green-600 text-sm"></i>
                                     </div>
-                                    <div>
-                                        <h4 class="font-semibold text-gray-900">{{ $surplus->equipment->name }}</h4>
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2">
+                                            <h4 class="font-semibold text-gray-900">{{ $surplus->equipment->name }}</h4>
+                                            @if($surplus->status === 'approved')
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                    <i class="fas fa-check-circle mr-1"></i>Aprobado
+                                                </span>
+                                            @elseif($surplus->status === 'rejected')
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                    <i class="fas fa-times-circle mr-1"></i>Rechazado
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    <i class="fas fa-clock mr-1"></i>Pendiente
+                                                </span>
+                                            @endif
+                                        </div>
                                         <p class="text-sm text-gray-500">{{ $surplus->equipment->category->name ?? 'Sin categoría' }}</p>
                                     </div>
                                 </div>
@@ -96,16 +111,41 @@
                                     </div>
                                 @endif
                                 
+                                @if($surplus->status !== 'pending' && $surplus->processed_at)
+                                    <div class="mb-3 p-3 rounded-lg {{ $surplus->status === 'approved' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                                        <div class="flex items-center space-x-2">
+                                            @if($surplus->status === 'approved')
+                                                <i class="fas fa-check-circle text-green-600"></i>
+                                                <span class="text-sm font-medium text-green-800">Aprobado por: {{ $surplus->processed_by ?? 'Administrador' }}</span>
+                                            @else
+                                                <i class="fas fa-times-circle text-red-600"></i>
+                                                <span class="text-sm font-medium text-red-800">Rechazado por: {{ $surplus->processed_by ?? 'Administrador' }}</span>
+                                            @endif
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-1">
+                                            Procesado el {{ $surplus->processed_at->format('d/m/Y H:i') }}
+                                        </p>
+                                    </div>
+                                @endif
+                                
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs text-gray-400">
-                                        Aprobada el {{ $surplus->created_at->format('d/m/Y H:i') }}
+                                        Registrado el {{ $surplus->created_at->format('d/m/Y H:i') }}
                                     </span>
                                     <div class="flex space-x-2">
-                                        <button onclick="openEditModal({{ $surplus->id }})" 
-                                                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm">
-                                            <i class="fas fa-edit mr-1"></i>
-                                            {{ $surplus->surplus_amount > 0 ? 'Editar' : 'Registrar' }}
-                                        </button>
+                                        @if($surplus->status === 'pending')
+                                            <button onclick="openEditModal({{ $surplus->id }})" 
+                                                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm">
+                                                <i class="fas fa-edit mr-1"></i>
+                                                {{ $surplus->surplus_amount > 0 ? 'Editar' : 'Registrar' }}
+                                            </button>
+                                        @else
+                                            <button disabled
+                                                    class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed text-sm">
+                                                <i class="fas fa-lock mr-1"></i>
+                                                {{ $surplus->status === 'approved' ? 'Aprobado' : 'Rechazado' }}
+                                            </button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -123,8 +163,8 @@
         @else
             <div class="text-center py-12">
                 <i class="fas fa-clipboard-list text-gray-400 text-4xl mb-4"></i>
-                <h4 class="text-lg font-medium text-gray-900 mb-2">No hay solicitudes aprobadas</h4>
-                <p class="text-gray-500">Las solicitudes aprobadas aparecerán aquí para que puedas registrar los sobrantes.</p>
+                <h4 class="text-lg font-medium text-gray-900 mb-2">No hay sobrantes registrados</h4>
+                <p class="text-gray-500">Los sobrantes registrados aparecerán aquí. Puedes ver el historial de sobrantes aprobados y rechazados.</p>
             </div>
         @endif
     </div>

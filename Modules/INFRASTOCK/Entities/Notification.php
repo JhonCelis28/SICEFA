@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Notification extends Model
 {
+    public $incrementing = false;
+    protected $keyType = 'string';
+    
     protected $fillable = [
+        'id',
         'type',
         'notifiable_type',
         'notifiable_id',
@@ -19,6 +23,17 @@ class Notification extends Model
         'data' => 'array',
         'read_at' => 'datetime',
     ];
+    
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($notification) {
+            if (empty($notification->id)) {
+                $notification->id = \Illuminate\Support\Str::uuid()->toString();
+            }
+        });
+    }
 
     /**
      * Relación polimórfica con el modelo notificable (User)
@@ -59,7 +74,7 @@ class Notification extends Model
                 'equipment_name' => $equipmentName,
                 'amount' => $amount,
                 'request_id' => $requestId,
-                'action_url' => route('infrastock.admin.requests.index'),
+                'action_url' => route('infrastock.admin.supply-requests.index'),
             ],
         ]);
     }

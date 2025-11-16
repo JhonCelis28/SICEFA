@@ -3,9 +3,7 @@
 namespace Modules\INFRASTOCK\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Modules\INFRASTOCK\Database\Seeders\AppTableSeeder;
 
 /**
  * @class INFRASTOCKDatabaseSeeder
@@ -31,9 +29,8 @@ class INFRASTOCKDatabaseSeeder extends Seeder
         
         DB::beginTransaction();
 
-        //$this->call(AppTableSeeder::class);
-        $this->call(AppTableSeeder::class);
-        
+        $this->call(AppTableSeeder::class); // Ejecutar Seeder de aplicación
+        $this->call(INFRASTOCKRolesSeeder::class); // Ejecutar Seeder de roles para usuarios
 
         DB::commit();
     }

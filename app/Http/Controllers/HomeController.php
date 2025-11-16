@@ -22,6 +22,9 @@ class HomeController extends Controller
     {
         if (Auth::check()) {
             $user = Auth::user();
+            if (!$user->person) {
+                return redirect()->route('login')->with('error', 'Usuario sin datos de persona asociados.');
+            }
             $user_id = $user->person->id;
 
             // Verificar si hay una contraseña guardada en la sesión para este usuario
@@ -68,6 +71,9 @@ class HomeController extends Controller
     {
         if (Auth::check()) {
             $user = Auth::user();
+            if (!$user->person) {
+                return redirect()->route('login')->with('error', 'Usuario sin datos de persona asociados.');
+            }
             $user_id = $user->person->id;
 
             // Verificar si hay una contraseña guardada en la sesión para este usuario

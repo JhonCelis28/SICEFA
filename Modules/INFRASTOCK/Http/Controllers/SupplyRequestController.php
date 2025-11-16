@@ -193,6 +193,7 @@ class SupplyRequestController extends Controller
                         'reason' => 'Sobrante de solicitud aprobada',
                         'description' => null, // Se completará cuando el usuario edite el sobrante
                         'surplus_date' => now(),
+                        'status' => 'pending',
                     ]);
                 }
             }

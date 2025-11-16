@@ -17,13 +17,14 @@
 Route::get('/infrastock', 'INFRASTOCKController@index')->name('cefa.infrastock.index');
 
 // Ruta para manejar la redirección después del login desde SICA
-Route::get('/infrastock/post-login', 'INFRASTOCKController@postlogin')->name('infrastock.post-login');
+// Solo redirige, no hace nada más (igual que el admin)
+Route::get('/infrastock/post-login', 'INFRASTOCKController@postlogin')->name('infrastock.post-login')->middleware('auth');
 
 /**
  * Grupo de rutas para la administración de Áreas Productivas.
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Muestra todas las áreas productivas.
     Route::get('/infrastock/admin/areas', 'AreaController@index')->name('infrastock.admin.areas.index');
     // Muestra el formulario para crear una nueva área (gestionado vía modal).
@@ -44,7 +45,7 @@ Route::middleware(['web', 'auth'])->group(function () {
  * Grupo de rutas para la administración de Categorías.
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Muestra todas las categorías.
     Route::get('/infrastock/admin/categories', 'CategoryController@index')->name('infrastock.admin.categories.index');
     // Muestra el formulario para crear una nueva categoría (gestionado vía modal).
@@ -65,13 +66,19 @@ Route::middleware(['web', 'auth'])->group(function () {
  * Grupo de rutas para la administración de Insumos.
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Muestra todos los insumos.
     Route::get('/infrastock/admin/supplies', 'SupplyController@index')->name('infrastock.admin.supplies.index');
     // Muestra el formulario para crear un nuevo insumo (gestionado vía modal).
     Route::get('/infrastock/admin/supplies/create', 'SupplyController@create')->name('infrastock.admin.supplies.create');
     // Almacena un nuevo insumo.
     Route::post('/infrastock/admin/supplies', 'SupplyController@store')->name('infrastock.admin.supplies.store');
+    // Almacena un nuevo préstamo de insumo desde el perfil del admin.
+    Route::post('/infrastock/admin/supplies/loan', 'SupplyController@storeLoan')->name('infrastock.admin.supplies.store-loan');
+    // Muestra todos los préstamos de insumos registrados por el admin (debe ir ANTES de la ruta con parámetro).
+    Route::get('/infrastock/admin/supplies/loans', 'SupplyController@indexLoans')->name('infrastock.admin.supplies.loans.index');
+    // Procesa la devolución de un préstamo de insumo.
+    Route::post('/infrastock/admin/supplies/loans/{id}/return', 'SupplyController@returnLoan')->name('infrastock.admin.supplies.loans.return');
     // Muestra los detalles de un insumo específico.
     Route::get('/infrastock/admin/supplies/{supply}', 'SupplyController@show')->name('infrastock.admin.supplies.show');
     // Muestra el formulario para editar un insumo específico (gestionado vía modal).
@@ -86,7 +93,7 @@ Route::middleware(['web', 'auth'])->group(function () {
  * Grupo de rutas para la administración de Herramientas.
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Muestra todas las herramientas.
     Route::get('/infrastock/admin/tools', 'ToolController@index')->name('infrastock.admin.tools.index');
     // Muestra el formulario para crear una nueva herramienta (gestionado vía modal).
@@ -107,7 +114,7 @@ Route::middleware(['web', 'auth'])->group(function () {
  * Grupo de rutas para la gestión de Préstamos y Devoluciones.
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Muestra todos los préstamos y devoluciones.
     Route::get('/infrastock/admin/loans', 'LoanController@index')->name('infrastock.admin.loans.index');
     // Muestra el formulario para registrar un nuevo movimiento (gestionado vía modal).
@@ -129,10 +136,10 @@ Route::middleware(['web', 'auth'])->group(function () {
 });
 
 /**
- * Grupo de rutas para la gestión de Solicitudes de Insumos.
- * Todas estas rutas requieren que el usuario esté autenticado.
+ * Grupo de rutas para la gestión de Solicitudes de Insumos y Devoluciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Muestra todas las solicitudes de insumos.
     Route::get('/infrastock/admin/supply-requests', 'SupplyRequestController@index')->name('infrastock.admin.supply-requests.index');
     // Muestra el formulario para crear una nueva solicitud (gestionado vía modal).
@@ -147,6 +154,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/infrastock/admin/supply-requests/{supply_request}', 'SupplyRequestController@update')->name('infrastock.admin.supply-requests.update');
     // Elimina una solicitud de insumo.
     Route::delete('/infrastock/admin/supply-requests/{supply_request}', 'SupplyRequestController@destroy')->name('infrastock.admin.supply-requests.destroy');
+    
+    // Devoluciones de insumos
+    Route::get('/infrastock/admin/supply-returns', 'SupplyReturnController@index')->name('infrastock.admin.supply-returns.index');
+    Route::post('/infrastock/admin/supply-returns/{id}/approve', 'SupplyReturnController@approve')->name('infrastock.admin.supply-returns.approve');
+    Route::post('/infrastock/admin/supply-returns/{id}/reject', 'SupplyReturnController@reject')->name('infrastock.admin.supply-returns.reject');
 });
 
 /**
@@ -173,7 +185,7 @@ Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.post
  * Rutas para la gestión de usuarios (Solo para administradores).
  * Estas rutas requieren autenticación y permisos de administrador.
  */
-Route::middleware(['web', 'auth'])->prefix('infrastock/admin')->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->prefix('infrastock/admin')->group(function () {
     // Dashboard del administrador
     Route::get('/dashboard','INFRASTOCKController@dashboard')->name('cefa.infrastock.admin.dashboard');
     // Gestión de usuarios
@@ -209,22 +221,19 @@ Route::prefix('infrastock/cleaning-staff')->group(function () {
 });
 
 /**
- * Grupo de rutas para el Personal de Aseo.
- * Todas estas rutas requieren que el usuario esté autenticado.
+ * Grupo de rutas para logout del administrador.
+ * Estas rutas requieren autenticación para validar el CSRF token.
  */
 Route::middleware(['web', 'auth'])->group(function () {
-    // Logout del administrador
+    // Logout del administrador (debe ir ANTES de otras rutas con parámetros)
     Route::post('/infrastock/admin/logout', 'INFRASTOCKController@logout')->name('infrastock.admin.logout');
-    
-    // Logout del personal de aseo
-    Route::post('/infrastock/cleaning-staff/logout', 'CleaningStaffController@logout')->name('infrastock.cleaning-staff.logout');
 });
 
 /**
  * Grupo de rutas para el Administrador con middleware de notificaciones.
  * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
  */
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
     // Gestión de solicitudes del administrador
     Route::get('/infrastock/admin/requests', 'AdminRequestController@index')->name('infrastock.admin.requests.index');
     Route::post('/infrastock/admin/requests/{id}/approve', 'AdminRequestController@approve')->name('infrastock.admin.requests.approve');
@@ -267,14 +276,14 @@ Route::middleware(['web', 'auth'])->group(function () {
                     'total_items' => 1,
                     'equipment_list' => 'Prueba',
                     'user_name' => 'Usuario de Prueba',
-                    'action_url' => route('infrastock.admin.requests.index'),
+                    'action_url' => route('infrastock.admin.supply-requests.index'),
                     'created_at' => now()->format('d/m/Y H:i'),
                 ],
             ]);
             $notificationCount++;
         }
         
-        return redirect()->route('infrastock.admin.requests.index')
+        return redirect()->route('infrastock.admin.supply-requests.index')
             ->with('success', "Notificaciones de prueba creadas para {$notificationCount} administradores");
     })->name('infrastock.test.notification');
 });
@@ -284,6 +293,9 @@ Route::middleware(['web', 'auth'])->group(function () {
  * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Logout del personal de aseo (debe ir ANTES de otras rutas con parámetros)
+    Route::post('/infrastock/cleaning-staff/logout', 'CleaningStaffController@logout')->name('infrastock.cleaning-staff.logout');
+    
     // Dashboard principal del personal de aseo
     Route::get('/infrastock/cleaning-staff/dashboard', 'CleaningStaffController@dashboard')->name('infrastock.cleaning-staff.dashboard');
     

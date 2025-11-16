@@ -28,6 +28,7 @@ class LoginController extends Controller
     protected function authenticated(Request $request, $user)
     {
         // Redirige al usuario a la URL previa o a la HOME si no hay una URL previa
+        // Igual que el admin, sin lógica especial
         return redirect()->intended($this->redirectPath());
     }
 }

@@ -16,10 +16,14 @@ class Surplus extends Model
         'reason',
         'description',
         'surplus_date',
+        'status',
+        'processed_at',
+        'processed_by',
     ];
 
     protected $casts = [
         'surplus_date' => 'date',
+        'processed_at' => 'datetime',
     ];
 
     /**
@@ -76,5 +80,37 @@ class Surplus extends Model
     public function scopeByEquipment($query, $equipmentId)
     {
         return $query->where('equipment_id', $equipmentId);
+    }
+
+    /**
+     * Scope para filtrar por estado
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Verificar si el sobrante está pendiente
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Verificar si el sobrante está aprobado
+     */
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    /**
+     * Verificar si el sobrante está rechazado
+     */
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 }

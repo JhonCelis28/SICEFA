@@ -27,20 +27,16 @@ class LoanController extends Controller
      */
     public function index()
     {
-        $loans = WarehouseMovement::with(['user', 'productiveUnitWarehouse', 'equipment', 'surplus'])
+        // Solo mostrar préstamos y devoluciones de HERRAMIENTAS (tools), no de insumos
+        $loans = WarehouseMovement::with(['user', 'productiveUnitWarehouse', 'tool', 'surplus'])
                                 ->whereIn('role', ['Préstamo', 'Devolución'])
+                                ->where('item_type', 'tool') // Solo herramientas
                                 ->orderBy('created_at', 'desc')
                                 ->paginate(15);
         
-        // Cargar herramientas solo para los movimientos que son de tipo 'tool'
-        $loans->getCollection()->each(function($loan) {
-            if ($loan->item_type === 'tool') {
-                $loan->load('tool');
-            }
-        });
-        
-        // Contar devoluciones pendientes
+        // Contar devoluciones pendientes solo de herramientas
         $pendingReturns = WarehouseMovement::where('role', 'Devolución')
+                                          ->where('item_type', 'tool') // Solo herramientas
                                           ->where('status', 'pending')
                                           ->count();
         

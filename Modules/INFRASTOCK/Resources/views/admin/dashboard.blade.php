@@ -79,7 +79,7 @@
             <div class="text-red-500 text-4xl opacity-75">
                 <i class="fas fa-calendar-times"></i>
             </div>
-            <a href="{{ route('infrastock.admin.supplies.index') }}" class="absolute bottom-0 left-0 right-0 bg-red-100 text-red-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Vencimientos <i class="fas fa-arrow-circle-right ml-1"></i></a>
+            <a href="{{ route('infrastock.admin.supplies.index', ['filter_expiring' => true]) }}" class="absolute bottom-0 left-0 right-0 bg-red-100 text-red-700 text-center px-4 py-2 rounded-b-xl text-sm font-medium hover:brightness-95 transition-all duration-200">Ver Vencimientos <i class="fas fa-arrow-circle-right ml-1"></i></a>
         </div>
     </div>
 

@@ -772,6 +772,7 @@ class GanaderiaController extends Controller
                 'surplus_amount' => $request->surplus_amount,
                 'reason' => $request->reason,
                 'surplus_date' => $request->surplus_date,
+                'status' => 'pending',
             ]);
 
             // Notificar al administrador si existe el método
@@ -908,7 +909,7 @@ class GanaderiaController extends Controller
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
                         'user_name' => $userName,
-                        'action_url' => route('infrastock.admin.requests.index'),
+                        'action_url' => route('infrastock.admin.supply-requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
@@ -967,7 +968,7 @@ class GanaderiaController extends Controller
                         'equipment_name' => $surplus->equipment->name,
                         'surplus_amount' => $surplus->surplus_amount,
                         'user_name' => auth()->user()->nickname ?? auth()->user()->name ?? 'Ganadería',
-                        'action_url' => route('infrastock.admin.requests.index'),
+                        'action_url' => route('infrastock.admin.supply-requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);

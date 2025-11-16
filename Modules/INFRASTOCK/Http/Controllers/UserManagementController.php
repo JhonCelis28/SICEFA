@@ -32,7 +32,7 @@ class UserManagementController extends Controller
         return [
             'Operario',
             'Aseo',
-            'Ganaderia', // Sin tilde, como está en la BD
+            'Ganadería', // Con tilde, como está en la BD
             'Centro de Convivencia',
             'Vigilancia',
             'Agroindustria',

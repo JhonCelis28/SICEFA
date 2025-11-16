@@ -127,11 +127,19 @@ class INFRASTOCKController extends Controller
         $instructorNames = $toolsByInstructor->pluck('user_name')->toArray();
         $loanCounts = $toolsByInstructor->pluck('total_loans')->toArray();
 
+        // Verificar y crear notificaciones para insumos próximos a vencer
+        // Usar cache para evitar ejecutar en cada carga (cada 5 minutos)
+        $cacheKey = 'check_expiring_supplies_dashboard_' . auth()->id();
+        if (!\Cache::has($cacheKey)) {
+            $this->checkExpiringSupplies();
+            \Cache::put($cacheKey, true, now()->addMinutes(5)); // Cache por 5 minutos
+        }
+        
         // Cargar notificaciones para el usuario actual
         $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
             ->where('notifiable_id', auth()->id())
-            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'supply_expiring'])
+            ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -195,6 +203,8 @@ class INFRASTOCKController extends Controller
      * @return \Illuminate\Http\RedirectResponse
      */
     public function postlogin(){
+        // Igual que el admin, simplemente redirige al dashboard correspondiente
+        // Sin lógica compleja que pueda causar bucles
         $user = auth()->user();
         
         if (!$user) {
@@ -256,5 +266,98 @@ class INFRASTOCKController extends Controller
         
         return redirect()->route('cefa.welcome')
             ->with('success', 'Has cerrado sesión correctamente.');
+    }
+    
+    /**
+     * Verifica insumos próximos a vencer y crea notificaciones.
+     * @return void
+     */
+    private function checkExpiringSupplies()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return;
+        }
+        
+        // Verificar si el usuario es administrador - verificar también por slug
+        $userRoles = $user->roles->pluck('name')->toArray();
+        $userSlugs = $user->roles->pluck('slug')->toArray();
+        $isAdmin = in_array('Administrador', $userRoles) || in_array('infrastock.admin', $userSlugs);
+        
+        if (!$isAdmin) {
+            return; // Solo crear notificaciones para administradores
+        }
+        
+        // Obtener insumos que están próximos a vencer (30 días o menos) y no han vencido
+        $expiringSupplies = Equipment::whereNotNull('expiration_date')
+            ->where('expiration_date', '>', now())
+            ->where('expiration_date', '<=', now()->addDays(30))
+            ->get();
+        
+        // Optimización: Obtener todas las notificaciones de una vez para evitar N+1 queries
+        $allNotifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
+            ->where('notifiable_id', $user->id)
+            ->where('type', 'supply_expiring')
+            ->get();
+        
+        // Separar notificaciones leídas y no leídas
+        $unreadNotifications = $allNotifications->whereNull('read_at')->keyBy(function($notification) {
+            return $notification->data['equipment_id'] ?? null;
+        });
+        
+        $readNotifications = $allNotifications->whereNotNull('read_at')
+            ->groupBy(function($notification) {
+                return $notification->data['equipment_id'] ?? null;
+            })
+            ->map(function($group) {
+                return $group->sortByDesc('read_at')->first();
+            });
+        
+        foreach ($expiringSupplies as $supply) {
+            $daysUntilExpiration = now()->diffInDays($supply->expiration_date, false);
+            
+            // Verificar si ya existe una notificación NO LEÍDA para este insumo (usando colección en memoria)
+            $existingNotification = $unreadNotifications->get($supply->id);
+            
+            // Si no existe una notificación no leída, verificar si hay una leída para recrearla
+            // La frecuencia depende de cuántos días faltan para vencer:
+            // - Si faltan 10 días o menos: recrear diariamente
+            // - Si faltan más de 10 días: recrear cada 7 días
+            if (!$existingNotification) {
+                $lastReadNotification = $readNotifications->get($supply->id);
+                
+                // Determinar la frecuencia de recreación según los días restantes
+                $daysUntilExpiration = now()->diffInDays($supply->expiration_date, false);
+                $recreateInterval = $daysUntilExpiration <= 10 ? 1 : 7; // Diario si <= 10 días, cada 7 días si > 10 días
+                
+                // Si no hay notificación leída, o la última fue leída hace más del intervalo correspondiente, crear una nueva
+                $shouldCreate = !$lastReadNotification || 
+                               $lastReadNotification->read_at->diffInDays(now()) >= $recreateInterval;
+                
+                if ($shouldCreate) {
+                    try {
+                        // Crear notificación
+                        $notification = new \Modules\INFRASTOCK\Entities\Notification();
+                        $notification->id = \Illuminate\Support\Str::uuid()->toString();
+                        $notification->type = 'supply_expiring';
+                        $notification->notifiable_type = 'App\Models\User';
+                        $notification->notifiable_id = $user->id;
+                        $notification->data = [
+                            'title' => 'Insumo próximo a vencer',
+                            'message' => "El insumo '{$supply->name}' vence en {$daysUntilExpiration} día(s). Fecha: " . $supply->expiration_date->format('d/m/Y'),
+                            'equipment_id' => $supply->id,
+                            'expiration_date' => $supply->expiration_date->format('Y-m-d'),
+                            'days_until_expiration' => $daysUntilExpiration,
+                            'action_url' => route('infrastock.admin.supplies.index'),
+                        ];
+                        $notification->read_at = null;
+                        $notification->save();
+                        \Log::info('checkExpiringSupplies (INFRASTOCKController): Notificación creada para insumo ' . $supply->id . ' (' . $supply->name . ') con ID: ' . $notification->id);
+                    } catch (\Exception $e) {
+                        \Log::error('checkExpiringSupplies (INFRASTOCKController): Error al crear notificación: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
     }
 }

@@ -32,14 +32,13 @@ class SurplusController extends Controller
     {
         $this->verifyRole();
         
-        // Obtener sobrantes relacionados con solicitudes aprobadas del usuario actual
+        // Obtener todos los sobrantes del usuario actual (pendientes, aprobados y rechazados)
         $surpluses = Surplus::with([
             'equipment.category',
             'request',
             'requestItem'
         ])
             ->where('user_id', auth()->id())
-            ->whereNotNull('request_id')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -73,13 +72,17 @@ class SurplusController extends Controller
         ]);
 
         try {
-            Surplus::create([
+            $surplus = Surplus::create([
                 'equipment_id' => $request->equipment_id,
                 'user_id' => auth()->id(),
                 'surplus_amount' => $request->surplus_amount,
                 'reason' => $request->reason,
                 'surplus_date' => $request->surplus_date,
+                'status' => 'pending', // Por defecto pendiente
             ]);
+
+            // Notificar al administrador
+            $this->notifyAdminSurplus($surplus);
 
             return redirect()->route('infrastock.cleaning-staff.surplus.index')
                 ->with('success', 'Sobrante registrado exitosamente.');
@@ -146,6 +149,12 @@ class SurplusController extends Controller
         if (!$surplus) {
             return redirect()->route('infrastock.cleaning-staff.surplus.index')
                 ->with('error', 'Sobrante no encontrado.');
+        }
+
+        // Verificar que el sobrante esté pendiente (no se puede editar si ya fue procesado)
+        if (!$surplus->isPending()) {
+            return redirect()->route('infrastock.cleaning-staff.surplus.index')
+                ->with('error', 'No se puede editar un sobrante que ya fue procesado (aprobado o rechazado).');
         }
 
         $requestedAmount = $surplus->requestItem ? $surplus->requestItem->requested_amount : 0;
@@ -223,6 +232,89 @@ class SurplusController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('infrastock.cleaning-staff.surplus.index')
                 ->with('error', 'Error al actualizar el sobrante: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envía notificación al administrador sobre un nuevo sobrante
+     * @param Surplus $surplus
+     * @return void
+     */
+    private function notifyAdminSurplus($surplus)
+    {
+        try {
+            \Log::info('Iniciando notificación de sobrante #' . $surplus->id);
+            
+            // Cargar el equipo con su relación
+            $surplus->load('equipment.category');
+            $equipment = $surplus->equipment;
+            
+            if (!$equipment) {
+                \Log::error('Error: No se encontró el equipo para el sobrante #' . $surplus->id);
+                return;
+            }
+
+            $user = auth()->user();
+            $userName = $user->nickname ?? $user->name ?? ($user->email ?? 'Personal de Aseo');
+            
+            \Log::info('Usuario que reporta sobrante: ' . $userName . ' (ID: ' . $user->id . ')');
+            
+            // Buscar administradores - usando la misma lógica que CleaningStaffController
+            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38];
+            $admins = \App\Models\User::whereHas('roles', function($query) use ($adminRoleIds) {
+                $query->whereIn('roles.id', $adminRoleIds);
+            })->get();
+
+            \Log::info('Administradores encontrados (por IDs): ' . $admins->count());
+
+            if ($admins->isEmpty()) {
+                $admins = \App\Models\User::whereHas('roles', function($query) {
+                    $query->where('name', 'Administrador')
+                          ->orWhere('name', 'Super Administrador');
+                })->get();
+                \Log::info('Administradores encontrados (por nombre): ' . $admins->count());
+            }
+
+            // Si aún no hay administradores, usar el primer usuario del sistema como fallback
+            if ($admins->isEmpty()) {
+                $admins = \App\Models\User::take(1)->get();
+                \Log::info('Usando fallback: primer usuario del sistema (ID: ' . ($admins->first()->id ?? 'N/A') . ')');
+            }
+
+            if ($admins->isEmpty()) {
+                \Log::warning('No se encontraron administradores para enviar notificación de sobrante');
+                return;
+            }
+
+            $notificationsCreated = 0;
+            foreach ($admins as $admin) {
+                try {
+                    $notification = \Modules\INFRASTOCK\Entities\Notification::create([
+                        'type' => 'surplus_reported',
+                        'notifiable_type' => 'App\Models\User',
+                        'notifiable_id' => $admin->id,
+                        'data' => [
+                            'title' => 'Nueva Devolución de Insumo',
+                            'message' => "{$userName} ha registrado una devolución de {$surplus->surplus_amount} unidades de {$equipment->name}.",
+                            'surplus_id' => $surplus->id,
+                            'equipment_name' => $equipment->name,
+                            'surplus_amount' => $surplus->surplus_amount,
+                            'user_name' => $userName,
+                            'action_url' => route('infrastock.admin.supply-returns.index'),
+                            'created_at' => now()->format('d/m/Y H:i'),
+                        ],
+                    ]);
+                    $notificationsCreated++;
+                    \Log::info('Notificación creada para admin ID: ' . $admin->id . ', Notificación ID: ' . $notification->id);
+                } catch (\Exception $notificationError) {
+                    \Log::error('Error creando notificación para admin ID ' . $admin->id . ': ' . $notificationError->getMessage());
+                }
+            }
+            
+            \Log::info('Notificación de sobrante completada: ' . $notificationsCreated . ' notificaciones creadas para ' . $admins->count() . ' administrador(es)');
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación de sobrante al administrador: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
         }
     }
 

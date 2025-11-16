@@ -30,11 +30,14 @@ class Equipment extends Model
         'labor_id',
         'inventory_id',
         'name',
+        'characteristics',
         'amount',
         'initial_amount',
+        'unit_measure',
         'price',
         'category_id',
         'expiration_date',
+        'observations',
     ];
 
     /**

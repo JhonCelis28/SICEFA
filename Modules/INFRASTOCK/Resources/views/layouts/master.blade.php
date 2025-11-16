@@ -35,10 +35,66 @@
 
     <!-- SweetAlert2 CSS para alertas y notificaciones estéticas -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
 
     <style>
         /* Oculta elementos que usan x-cloak de Alpine.js hasta que Alpine.js los procese */
         [x-cloak] { display: none; }
+        
+        /* Estilos para DataTables con Tailwind */
+        .dataTables_wrapper {
+            padding: 1rem 0;
+        }
+        
+        .dataTables_filter input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            margin-left: 0.5rem;
+        }
+        
+        .dataTables_length select {
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            margin: 0 0.5rem;
+        }
+        
+        .dataTables_info {
+            padding-top: 0.75rem;
+            color: #6b7280;
+        }
+        
+        .dataTables_paginate {
+            padding-top: 0.75rem;
+        }
+        
+        .dataTables_paginate .paginate_button {
+            padding: 0.5rem 0.75rem;
+            margin: 0 0.25rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            color: #374151;
+            cursor: pointer;
+        }
+        
+        .dataTables_paginate .paginate_button:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        
+        .dataTables_paginate .paginate_button.current {
+            background-color: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        
+        .dataTables_paginate .paginate_button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         /* Estilos para elementos del menú principal del sidebar cuando están activos */
         .sidebar-menu-item.active {
             background-color: #10B981; /* green-500 */
@@ -141,12 +197,22 @@
         class="fixed inset-y-0 left-0 z-40 bg-green-800 shadow-xl transform transition-all duration-300 ease-in-out md:relative">
         
         <!-- Encabezado del Sidebar: Logo y Eslogan -->
-        <div class="flex flex-col items-center justify-center h-32 bg-green-900 text-white"
-            :class="{ 'py-4': !sidebarOpen, 'py-6': sidebarOpen }">
-            <img src="{{ asset('assets/img/logo.png') }}" alt="Logo" class="w-auto"
-                :class="{ 'h-16': !sidebarOpen, 'h-24': sidebarOpen }">
-            <div x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left mt-1 text-center">
-                <span class="text-lg font-bold text-green-200" style="font-family: 'Dancing Script', cursive;">Control Preciso, Gestión Eficiente</span>
+        <div class="flex flex-col items-center justify-center bg-green-900 text-white px-2 py-4" style="min-height: 128px;">
+            <div class="flex items-center justify-center w-full mb-2" style="height: 80px;">
+                <img src="{{ asset('assets/img/logo.png') }}" alt="Logo" 
+                    class="object-contain"
+                    style="width: 80px; height: 80px; max-width: 80px; max-height: 80px;">
+            </div>
+            <div class="h-8 flex items-center justify-center" style="min-height: 32px;">
+                <span x-show="sidebarOpen" 
+                      x-transition:enter="transition ease-out duration-300" 
+                      x-transition:enter-start="opacity-0 transform scale-x-0" 
+                      x-transition:enter-end="opacity-100 transform scale-x-100" 
+                      x-transition:leave="transition ease-in duration-200" 
+                      x-transition:leave-start="opacity-100 transform scale-x-100" 
+                      x-transition:leave-end="opacity-0 transform scale-x-0" 
+                      class="text-lg font-bold text-green-200 text-center" 
+                      style="font-family: 'Dancing Script', cursive;">Control Preciso, Gestión Eficiente</span>
             </div>
         </div>
 
@@ -191,7 +257,7 @@
                 
                 <!-- Grupo de navegación para Insumos -->
                 <li x-data="{ open: false }">
-                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs(['infrastock.admin.supplies.*', 'infrastock.admin.supply-requests.*'])) active @endif">
+                    <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs(['infrastock.admin.supplies.*', 'infrastock.admin.supply-requests.*', 'infrastock.admin.supply-returns.*'])) active @endif">
                         <i class="fas fa-boxes w-6 mr-3 text-lg text-green-300" :class="{'mr-0': !sidebarOpen, 'mr-3': sidebarOpen }"></i>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-x-0" x-transition:enter-end="opacity-100 transform scale-x-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-x-100" x-transition:leave-end="opacity-0 transform scale-x-0" class="origin-left">Insumos</span>
                         <i x-show="sidebarOpen" :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" class="fas ml-auto transition-transform duration-200 text-green-300"></i>
@@ -204,6 +270,16 @@
                                 @if($pendingSupplyRequestsCount > 0)
                                     <span class="ml-auto bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">{{ $pendingSupplyRequestsCount }}</span>
                                 @endif
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('infrastock.admin.supplies.loans.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.supplies.loans.*')) active @endif">
+                                <i class="far fa-circle text-xs mr-3"></i> Préstamos de Insumos
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('infrastock.admin.supply-returns.index') }}" class="sidebar-submenu-item text-gray-200 @if(Request::routeIs('infrastock.admin.supply-returns.*')) active @endif">
+                                <i class="far fa-circle text-xs mr-3"></i> Devoluciones
                             </a>
                         </li>
                     </ul>
@@ -271,8 +347,11 @@
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" class="relative text-gray-900 hover:text-gray-700 focus:outline-none focus:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors duration-200">
                         <i class="fas fa-bell text-2xl"></i>
-                        @if(isset($notificationCount) && $notificationCount > 0)
-                            <span class="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ $notificationCount }}</span>
+                        @php
+                            $unreadCount = isset($notifications) ? $notifications->whereNull('read_at')->count() : 0;
+                        @endphp
+                        @if($unreadCount > 0)
+                            <span class="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ $unreadCount }}</span>
                         @endif
                     </button>
                     <!-- Dropdown de notificaciones -->
@@ -280,10 +359,19 @@
                         <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100 font-semibold">
                             <i class="fas fa-bell mr-2"></i>Notificaciones
                         </div>
-                        @if(isset($notifications) && $notifications->count() > 0)
+                        @php
+                            $notificationsAvailable = isset($notifications) && is_object($notifications) && method_exists($notifications, 'count');
+                            $notificationsCount = $notificationsAvailable ? $notifications->count() : 0;
+                            $supplyExpiringCount = $notificationsAvailable ? $notifications->where('type', 'supply_expiring')->count() : 0;
+                            // Debug temporal - remover después
+                            if ($notificationsCount > 0) {
+                                \Log::info('Vista master: Notificaciones disponibles: ' . $notificationsCount . ', supply_expiring: ' . $supplyExpiringCount);
+                            }
+                        @endphp
+                        @if($notificationsAvailable && $notificationsCount > 0)
                             @foreach($notifications->take(5) as $notification)
                                 <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer {{ $notification->read_at ? 'opacity-75' : 'bg-blue-50' }}" 
-                                     onclick="markNotificationAsRead({{ $notification->id }})">
+                                     onclick="markNotificationAsRead('{{ $notification->id }}')">
                                     <div class="flex items-start space-x-3">
                                         <div class="flex-shrink-0">
                                             @if($notification->type === 'request_created')
@@ -292,6 +380,10 @@
                                                 <i class="fas fa-check-circle text-blue-500 text-lg"></i>
                                             @elseif($notification->type === 'request_rejected')
                                                 <i class="fas fa-times-circle text-red-500 text-lg"></i>
+                                            @elseif($notification->type === 'supply_expiring')
+                                                <i class="fas fa-exclamation-triangle text-orange-500 text-lg"></i>
+                                            @elseif($notification->type === 'surplus_reported')
+                                                <i class="fas fa-undo-alt text-purple-500 text-lg"></i>
                                             @else
                                                 <i class="fas fa-bell text-gray-500 text-lg"></i>
                                             @endif
@@ -478,13 +570,64 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Recargar la página para actualizar el contador
-                    location.reload();
+                    // Marcar como leída visualmente
+                    const notificationElement = document.querySelector(`[onclick*="${notificationId}"]`);
+                    if (notificationElement) {
+                        const notificationDiv = notificationElement.closest('.px-4.py-3');
+                        if (notificationDiv) {
+                            notificationDiv.classList.remove('bg-blue-50');
+                            notificationDiv.classList.add('opacity-75');
+                            // Remover el indicador de no leída
+                            const unreadIndicator = notificationDiv.querySelector('.w-2.h-2.bg-blue-500');
+                            if (unreadIndicator) {
+                                unreadIndicator.remove();
+                            }
+                        }
+                    }
+                    // Actualizar contador
+                    updateNotificationCount();
+                    
+                    // Si hay una URL de redirección (para cualquier tipo de notificación), redirigir
+                    if (data.redirect_url) {
+                        // Pequeño delay para que se vea el cambio visual antes de redirigir
+                        setTimeout(function() {
+                            window.location.href = data.redirect_url;
+                        }, 300);
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
             });
+        }
+        
+        // Función para actualizar el contador de notificaciones
+        function updateNotificationCount() {
+            const unreadNotifications = document.querySelectorAll('.px-4.py-3:not(.opacity-75)');
+            const unreadCount = Array.from(unreadNotifications).filter(el => {
+                return !el.classList.contains('opacity-75') && 
+                       el.querySelector('.w-2.h-2.bg-blue-500');
+            }).length;
+            
+            const countBadge = document.querySelector('.bg-red-500');
+            if (unreadCount > 0) {
+                if (countBadge) {
+                    countBadge.textContent = unreadCount;
+                } else {
+                    // Crear badge si no existe
+                    const bellButton = document.querySelector('button[class*="fa-bell"]');
+                    if (bellButton) {
+                        const badge = document.createElement('span');
+                        badge.className = 'absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full';
+                        badge.textContent = unreadCount;
+                        bellButton.appendChild(badge);
+                    }
+                }
+            } else {
+                if (countBadge) {
+                    countBadge.remove();
+                }
+            }
         }
 
         // Auto-refresh de notificaciones cada 30 segundos
@@ -498,6 +641,12 @@
             }
         }, 30000);
     </script>
+
+    <!-- jQuery (requerido para DataTables) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 
     {{-- Sección para scripts adicionales específicos de cada vista hija --}}
     @yield('script')

@@ -25,12 +25,14 @@ class ShareNotifications
             // Obtener notificaciones recientes del usuario desde la tabla notifications
             $notifications = Notification::where('notifiable_type', 'App\Models\User')
                 ->where('notifiable_id', $user->id)
-                ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
-                ->where('created_at', '>=', Carbon::now()->subDays(7))
+                ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'supply_expiring', 'surplus_reported'])
+                ->where('created_at', '>=', Carbon::now()->subDays(30))
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            $notificationCount = $notifications->where('read_at', null)->count();
+            $notificationCount = $notifications->whereNull('read_at')->count();
+            
+            \Log::info('ShareNotifications: Usuario ID ' . $user->id . ', Notificaciones encontradas: ' . $notifications->count() . ', No leídas: ' . $notificationCount);
 
             // Compartir las variables con todas las vistas
             view()->share([

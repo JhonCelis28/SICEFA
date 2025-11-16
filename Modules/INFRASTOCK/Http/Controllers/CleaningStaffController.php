@@ -176,7 +176,8 @@ class CleaningStaffController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        return redirect()->route('cefa.welcome')
+        // Redirigir a la página principal usando URL absoluta para evitar problemas de rutas
+        return redirect('/')
             ->with('success', 'Has cerrado sesión correctamente.');
     }
 
@@ -646,7 +647,7 @@ class CleaningStaffController extends Controller
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
                         'user_name' => $userName,
-                        'action_url' => route('infrastock.admin.requests.index'),
+                        'action_url' => route('infrastock.admin.supply-requests.index'),
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);

@@ -30,10 +30,21 @@
 
 @section('content')
     <!-- Contenedor principal de la vista de gestión de insumos -->
+    @php
+        $filteredEquipmentId = request('filter_equipment_id');
+        $filterExpiring = request('filter_expiring', false);
+        $isFiltered = !empty($filteredEquipmentId) || $filterExpiring;
+    @endphp
     <div x-data="{
         isCreateModalOpen: false,
         isEditModalOpen: false,
-        currentSupply: { id: null, inventory_id: '', name: '', labor_id: '', amount: '', price: '', category_id: '', expiration_date: '' },
+        isLoanModalOpen: false,
+        currentSupply: { id: null, name: '', category_id: '', characteristics: '', initial_amount: '', unit_measure: '', unit_measure_other: '', observations: '', expiration_date: '' },
+        currentLoan: { equipment_id: null, equipment_name: '', borrower_name: '', amount: '', loan_location: '', loan_date: '' },
+        createUnitMeasure: '',
+        createUnitMeasureOther: '',
+        isFiltered: {{ $isFiltered ? 'true' : 'false' }},
+        filteredEquipmentId: {{ $filteredEquipmentId ?? 'null' }},
         
         init() {
             console.log('Alpine.js inicializado correctamente');
@@ -42,40 +53,84 @@
         openCreateModal() {
             console.log('Abriendo modal de creación');
             this.isCreateModalOpen = true;
+            this.createUnitMeasure = '';
+            this.createUnitMeasureOther = '';
         },
         
-        openEditModal(id, inventory_id, name, labor_id, amount, price, category_id, expiration_date) {
-            console.log('Abriendo modal de edición:', { id, inventory_id, name, labor_id, amount, price, category_id, expiration_date });
+        openEditModal(id, name, category_id, characteristics, initial_amount, unit_measure, observations, expiration_date) {
+            console.log('Abriendo modal de edición:', { id, name, category_id, characteristics, initial_amount, unit_measure, observations, expiration_date });
             this.isEditModalOpen = true;
-            this.currentSupply = { id: id, inventory_id: inventory_id, name: name, labor_id: labor_id, amount: amount, price: price, category_id: category_id, expiration_date: expiration_date || '' };
+            
+            // Determinar si la unidad de medida es una de las predefinidas o personalizada
+            const predefinedUnits = ['Galón', 'Bulto', 'Caja', 'Kilos', 'Paquete', 'Pliego', 'Rollo', 'Unidad'];
+            const isPredefined = predefinedUnits.includes(unit_measure);
+            
+            this.currentSupply = { 
+                id: id, 
+                name: name || '', 
+                category_id: category_id || '', 
+                characteristics: characteristics || '', 
+                initial_amount: initial_amount || '', 
+                unit_measure: isPredefined ? (unit_measure || '') : 'otro',
+                unit_measure_other: isPredefined ? '' : (unit_measure || ''),
+                observations: observations || '',
+                expiration_date: expiration_date || ''
+            };
+        },
+        
+        openLoanModal(id, name, stock) {
+            console.log('Abriendo modal de préstamo:', { id, name, stock });
+            this.isLoanModalOpen = true;
+            this.currentLoan = {
+                equipment_id: id,
+                equipment_name: name,
+                borrower_name: '',
+                amount: '',
+                loan_location: '',
+                loan_date: new Date().toISOString().split('T')[0]
+            };
         },
         
         closeModals() {
             this.isCreateModalOpen = false;
             this.isEditModalOpen = false;
+            this.isLoanModalOpen = false;
+            this.createUnitMeasure = '';
+            this.createUnitMeasureOther = '';
+        },
+        
+        getUnitMeasureValue() {
+            if (this.createUnitMeasure === 'otro') {
+                return this.createUnitMeasureOther;
+            }
+            return this.createUnitMeasure;
+        },
+        
+        getEditUnitMeasureValue() {
+            if (this.currentSupply.unit_measure === 'otro') {
+                return this.currentSupply.unit_measure_other;
+            }
+            return this.currentSupply.unit_measure;
         }
     }">
     <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Listado de Insumos</h2>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Listado de Insumos</h2>
+                    @if($filterExpiring)
+                        <div class="mt-2 flex items-center space-x-2">
+                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
+                                <i class="fas fa-calendar-times mr-1"></i>Mostrando solo insumos próximos a vencer (30 días)
+                            </span>
+                            <a href="{{ route('infrastock.admin.supplies.index') }}" class="text-sm text-blue-600 hover:text-blue-800 underline">
+                                <i class="fas fa-times mr-1"></i>Quitar filtro
+                            </a>
+                        </div>
+                    @endif
+                </div>
                 <div class="flex space-x-2">
                     <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
-                        Registrar Nuevo Insumo
-                    </button>
-                </div>
-            </div>
-
-            <!-- Filtro de búsqueda automático -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex items-center space-x-4">
-                    <div class="flex-1">
-                        <input type="text" 
-                               id="searchInput"
-                               placeholder="Buscar por nombre, inventario, labor o categoría..." 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-                    <button onclick="clearSearch()" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
-                        <i class="fas fa-times"></i> Limpiar
+                        <i class="fas fa-plus mr-2"></i>Registrar Nuevo Insumo
                     </button>
                 </div>
             </div>
@@ -83,43 +138,51 @@
         <!-- Tabla de Insumos -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-700">Detalles de los Insumos</h3>
-                        <div class="text-sm text-gray-500">
-                            Mostrando {{ $supplies->firstItem() ?? 0 }} - {{ $supplies->lastItem() ?? 0 }} de {{ $supplies->total() }} registros
-                        </div>
-                    </div>
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <table id="suppliesTable" class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
                                 <!-- Encabezados de la tabla -->
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inventario</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Labor</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Inicial</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Utilizada</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Disponible</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Vencimiento</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Características</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Inicial</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consumos</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Restante</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad Medida</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Vencimiento</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <!-- Iteración sobre cada insumo para mostrar sus datos -->
                             @foreach($supplies as $supply)
-                                <tr class="hover:bg-gray-100 transition-colors duration-150">
+                                <tr class="hover:bg-gray-100 transition-colors duration-150" data-equipment-id="{{ $supply->id }}">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $supply->id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-semibold">{{ $supply->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                            ID: {{ $supply->inventory->id }}
+                                        @php
+                                            $categoryName = strtolower($supply->category->name ?? '');
+                                            $badgeClass = 'px-2 py-1 text-xs font-semibold rounded-full ';
+                                            if (strpos($categoryName, 'ferretería') !== false || strpos($categoryName, 'ferreteria') !== false) {
+                                                $badgeClass .= 'bg-orange-100 text-orange-600';
+                                            } elseif (strpos($categoryName, 'aseo') !== false) {
+                                                $badgeClass .= 'bg-sky-100 text-sky-600';
+                                            } else {
+                                                $badgeClass .= 'bg-purple-100 text-purple-800';
+                                            }
+                                        @endphp
+                                        <span class="{{ $badgeClass }}">
+                                            {{ $supply->category->name ?? 'N/A' }}
                                         </span>
-                                        <div class="text-xs text-gray-400 mt-1">{{ $supply->inventory->description ?? 'N/A' }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supply->labor->description ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                                        <div class="truncate" title="{{ $supply->characteristics ?? 'N/A' }}">
+                                            {{ $supply->characteristics ?? 'N/A' }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                                             {{ $supply->initial_amount }}
@@ -136,19 +199,24 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            ${{ number_format($supply->price, 2) }}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                                            {{ $supply->unit_measure ?? 'N/A' }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if($supply->expiration_date)
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $supply->expiration_date->isPast() ? 'bg-red-100 text-red-800' : ($supply->expiration_date->diffInDays(now()) <= 30 ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800') }}">
+                                            @php
+                                                $daysUntilExpiration = now()->diffInDays($supply->expiration_date, false);
+                                                $isExpired = $supply->expiration_date->isPast();
+                                                $isExpiringSoon = !$isExpired && $daysUntilExpiration <= 30;
+                                            @endphp
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $isExpired ? 'bg-red-100 text-red-800' : ($isExpiringSoon ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800') }}">
                                                 {{ $supply->expiration_date->format('d/m/Y') }}
                                             </span>
-                                            @if($supply->expiration_date->isPast())
+                                            @if($isExpired)
                                                 <div class="text-xs text-red-600 mt-1">Vencido</div>
-                                            @elseif($supply->expiration_date->diffInDays(now()) <= 30)
-                                                <div class="text-xs text-orange-600 mt-1">Por vencer</div>
+                                            @elseif($isExpiringSoon)
+                                                <div class="text-xs text-orange-600 mt-1">Por vencer ({{ $daysUntilExpiration }} días)</div>
                                             @endif
                                         @else
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
@@ -156,24 +224,26 @@
                                             </span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                                            {{ $supply->category->name ?? 'N/A' }}
-                                        </span>
+                                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                                        <div class="truncate" title="{{ $supply->observations ?? 'N/A' }}">
+                                            {{ $supply->observations ?? 'N/A' }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <!-- Botón para abrir el modal de edición, pasando los datos del insumo actual -->
-                                        <button @click="openEditModal({{ $supply->id }}, {{ $supply->inventory->id }}, '{{ addslashes($supply->name) }}', {{ $supply->labor->id }}, {{ $supply->amount }}, {{ $supply->price }}, {{ $supply->category->id }}, '{{ $supply->expiration_date ? $supply->expiration_date->format('Y-m-d') : '' }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                            <i class="fas fa-edit"></i> Editar
-                                        </button>
-                                        <!-- Formulario para eliminar un insumo -->
-                                        <form method="POST" action="{{ route('infrastock.admin.supplies.destroy', $supply->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($supply->name) }}')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900">
-                                                <i class="fas fa-trash-alt"></i> Eliminar
+                                        <div class="flex items-center justify-end space-x-2">
+                                            <!-- Botón para abrir el modal de préstamo -->
+                                            <button @click="openLoanModal({{ $supply->id }}, '{{ addslashes($supply->name) }}', {{ $supply->stock }})" class="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50 transition-colors" title="Registrar Préstamo">
+                                                <i class="fas fa-hand-holding"></i>
                                             </button>
-                                        </form>
+                                            <!-- Botón para abrir el modal de edición, pasando los datos del insumo actual -->
+                                            <button @click="openEditModal({{ $supply->id }}, '{{ addslashes($supply->name) }}', {{ $supply->category_id ?? 'null' }}, '{{ addslashes($supply->characteristics ?? '') }}', {{ $supply->initial_amount }}, '{{ addslashes($supply->unit_measure ?? '') }}', '{{ addslashes($supply->observations ?? '') }}', '{{ $supply->expiration_date ? $supply->expiration_date->format('Y-m-d') : '' }}')" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <!-- Botón para eliminar un insumo -->
+                                            <button type="button" onclick="confirmDeleteSync('{{ $supply->id }}', '{{ addslashes($supply->name) }}')" class="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50 transition-colors" title="Eliminar">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -181,19 +251,6 @@
                         </table>
                     </div>
                     
-                    <!-- Mensaje cuando no hay resultados -->
-                    <div id="noResultsMessage" class="text-center py-8" style="display: none;">
-                        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
-                        <p class="text-gray-500">No hay insumos que coincidan con tu búsqueda</p>
-                    </div>
-                    
-                    <!-- Paginación -->
-                    @if($supplies->hasPages())
-                    <div class="px-6 py-4 border-t border-gray-200">
-                        {{ $supplies->appends(request()->query())->links() }}
-                    </div>
-                    @endif
                 </div>
             </div>
 
@@ -210,60 +267,14 @@
                     <form method="POST" action="{{ route('infrastock.admin.supplies.store') }}">
                         @csrf
                         <div class="mb-4">
-                            <label for="inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                            <select name="inventory_id" id="inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('inventory_id') border-red-500 @enderror" required>
-                                <option value="">Seleccione un inventario</option>
-                                @foreach($inventories as $inventory)
-                                    <option value="{{ $inventory->id }}" {{ old('inventory_id') == $inventory->id ? 'selected' : '' }}>ID: {{ $inventory->id }} - {{ $inventory->description ?? 'N/A' }}</option>
-                                @endforeach
-                            </select>
-                            @error('inventory_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo:</label>
+                            <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo: <span class="text-red-500">*</span></label>
                             <input type="text" name="name" id="name" value="{{ old('name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('name') border-red-500 @enderror" required>
                             @error('name')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                            <select name="labor_id" id="labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('labor_id') border-red-500 @enderror" required>
-                                <option value="">Seleccione una labor</option>
-                                @foreach($labors as $labor)
-                                    <option value="{{ $labor->id }}" {{ old('labor_id') == $labor->id ? 'selected' : '' }}>{{ $labor->description ?? 'N/A' }}</option>
-                                @endforeach
-                            </select>
-                            @error('labor_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                            <input type="number" name="amount" id="amount" value="{{ old('amount') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" required>
-                            @error('amount')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                            <input type="number" step="0.01" name="price" id="price" value="{{ old('price') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('price') border-red-500 @enderror" required>
-                            @error('price')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="expiration_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Vencimiento (Opcional):</label>
-                            <input type="date" name="expiration_date" id="expiration_date" value="{{ old('expiration_date') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('expiration_date') border-red-500 @enderror">
-                            <p class="text-xs text-gray-500 mt-1">Solo para insumos que tengan fecha de vencimiento</p>
-                            @error('expiration_date')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-6">
-                            <label for="category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
+                            <label for="category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría: <span class="text-red-500">*</span></label>
                             <select name="category_id" id="category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror" required>
                                 <option value="">Seleccione una categoría</option>
                                 @foreach($categories as $category)
@@ -271,6 +282,57 @@
                                 @endforeach
                             </select>
                             @error('category_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="mb-4">
+                            <label for="characteristics" class="block text-gray-700 text-sm font-bold mb-2">Características:</label>
+                            <textarea name="characteristics" id="characteristics" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('characteristics') border-red-500 @enderror">{{ old('characteristics') }}</textarea>
+                            @error('characteristics')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="mb-4">
+                            <label for="initial_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Inicial: <span class="text-red-500">*</span></label>
+                            <input type="number" name="initial_amount" id="initial_amount" value="{{ old('initial_amount') }}" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('initial_amount') border-red-500 @enderror" required>
+                            @error('initial_amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="mb-4">
+                            <label for="unit_measure" class="block text-gray-700 text-sm font-bold mb-2">Unidad de Medida:</label>
+                            <select name="unit_measure" id="unit_measure" x-model="createUnitMeasure" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('unit_measure') border-red-500 @enderror">
+                                <option value="">Seleccione una unidad</option>
+                                <option value="Galón">Galón</option>
+                                <option value="Bulto">Bulto</option>
+                                <option value="Caja">Caja</option>
+                                <option value="Kilos">Kilos</option>
+                                <option value="Paquete">Paquete</option>
+                                <option value="Pliego">Pliego</option>
+                                <option value="Rollo">Rollo</option>
+                                <option value="Unidad">Unidad</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                            <div x-show="createUnitMeasure === 'otro'" x-transition class="mt-2">
+                                <input type="text" name="unit_measure_other" id="unit_measure_other" x-model="createUnitMeasureOther" placeholder="Ingrese la unidad de medida" maxlength="50" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                            <input type="hidden" name="unit_measure_final" :value="getUnitMeasureValue()">
+                            @error('unit_measure')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="mb-4">
+                            <label for="expiration_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Vencimiento:</label>
+                            <input type="date" name="expiration_date" id="expiration_date" value="{{ old('expiration_date') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('expiration_date') border-red-500 @enderror">
+                            <p class="text-xs text-gray-500 mt-1">Opcional. El sistema notificará cuando el insumo esté por vencer.</p>
+                            @error('expiration_date')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="mb-6">
+                            <label for="observations" class="block text-gray-700 text-sm font-bold mb-2">Observaciones:</label>
+                            <textarea name="observations" id="observations" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('observations') border-red-500 @enderror">{{ old('observations') }}</textarea>
+                            @error('observations')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -296,52 +358,131 @@
                         @csrf
                         @method('PUT')
                         <div class="mb-4">
-                            <label for="edit_inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                            <select name="inventory_id" id="edit_inventory_id" :value="currentSupply.inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                                <option value="">Seleccione un inventario</option>
-                                @foreach($inventories as $inventory)
-                                    <option value="{{ $inventory->id }}" :selected="currentSupply.inventory_id == {{ $inventory->id }}">ID: {{ $inventory->id }} - {{ $inventory->description ?? 'N/A' }}</option>
-                                @endforeach
-                            </select>
+                            <label for="edit_name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo: <span class="text-red-500">*</span></label>
+                            <input type="text" name="name" id="edit_name" x-model="currentSupply.name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                         </div>
                         <div class="mb-4">
-                            <label for="edit_name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo:</label>
-                            <input type="text" name="name" id="edit_name" :value="currentSupply.name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                            <select name="labor_id" id="edit_labor_id" :value="currentSupply.labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                                <option value="">Seleccione una labor</option>
-                                @foreach($labors as $labor)
-                                    <option value="{{ $labor->id }}" :selected="currentSupply.labor_id == {{ $labor->id }}">{{ $labor->description ?? 'N/A' }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                            <input type="number" name="amount" id="edit_amount" :value="currentSupply.amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                            <input type="number" step="0.01" name="price" id="edit_price" :value="currentSupply.price" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_expiration_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Vencimiento (Opcional):</label>
-                            <input type="date" name="expiration_date" id="edit_expiration_date" :value="currentSupply.expiration_date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                            <p class="text-xs text-gray-500 mt-1">Solo para insumos que tengan fecha de vencimiento</p>
-                        </div>
-                        <div class="mb-6">
-                            <label for="edit_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
-                            <select name="category_id" id="edit_category_id" :value="currentSupply.category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <label for="edit_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría: <span class="text-red-500">*</span></label>
+                            <select name="category_id" id="edit_category_id" x-model="currentSupply.category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                                 <option value="">Seleccione una categoría</option>
                                 @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" :selected="currentSupply.category_id == {{ $category->id }}">{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit_characteristics" class="block text-gray-700 text-sm font-bold mb-2">Características:</label>
+                            <textarea name="characteristics" id="edit_characteristics" rows="3" x-model="currentSupply.characteristics" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit_initial_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Inicial: <span class="text-red-500">*</span></label>
+                            <input type="number" name="initial_amount" id="edit_initial_amount" x-model="currentSupply.initial_amount" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit_unit_measure" class="block text-gray-700 text-sm font-bold mb-2">Unidad de Medida:</label>
+                            <select name="unit_measure" id="edit_unit_measure" x-model="currentSupply.unit_measure" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="">Seleccione una unidad</option>
+                                <option value="Galón">Galón</option>
+                                <option value="Bulto">Bulto</option>
+                                <option value="Caja">Caja</option>
+                                <option value="Kilos">Kilos</option>
+                                <option value="Paquete">Paquete</option>
+                                <option value="Pliego">Pliego</option>
+                                <option value="Rollo">Rollo</option>
+                                <option value="Unidad">Unidad</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                            <div x-show="currentSupply.unit_measure === 'otro'" x-transition class="mt-2">
+                                <input type="text" name="unit_measure_other" id="edit_unit_measure_other" x-model="currentSupply.unit_measure_other" placeholder="Ingrese la unidad de medida" maxlength="50" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                            <input type="hidden" name="unit_measure_final" :value="getEditUnitMeasureValue()">
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit_expiration_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Vencimiento:</label>
+                            <input type="date" name="expiration_date" id="edit_expiration_date" x-model="currentSupply.expiration_date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <p class="text-xs text-gray-500 mt-1">Opcional. El sistema notificará cuando el insumo esté por vencer.</p>
+                        </div>
+                        <div class="mb-6">
+                            <label for="edit_observations" class="block text-gray-700 text-sm font-bold mb-2">Observaciones:</label>
+                            <textarea name="observations" id="edit_observations" rows="3" x-model="currentSupply.observations" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
                         </div>
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="closeModals()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Actualizar Insumo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal de Préstamo -->
+            <div x-show="isLoanModalOpen" x-cloak class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto" style="display: none;">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6 my-8 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-800">Registrar Préstamo</h3>
+                        <button @click="closeModals()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Nota visible sobre préstamos -->
+                    <div class="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
+                        <div class="flex items-start">
+                            <i class="fas fa-info-circle text-blue-500 mt-1 mr-2"></i>
+                            <p class="text-sm text-blue-700 font-semibold">
+                                <strong>Nota:</strong> Estos no cuentan como consumo ya que estos regresan a bodega.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulario de préstamo -->
+                    <form method="POST" action="{{ route('infrastock.admin.supplies.store-loan') }}">
+                        @csrf
+                        <input type="hidden" name="equipment_id" :value="currentLoan.equipment_id">
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Insumo:</label>
+                            <input type="text" :value="currentLoan.equipment_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-100" readonly>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="loan_borrower_name" class="block text-gray-700 text-sm font-bold mb-2">Prestatario: <span class="text-red-500">*</span></label>
+                            <input type="text" name="borrower_name" id="loan_borrower_name" x-model="currentLoan.borrower_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('borrower_name') border-red-500 @enderror" placeholder="Ingrese el nombre del prestatario" required>
+                            @error('borrower_name')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="loan_location" class="block text-gray-700 text-sm font-bold mb-2">Lugar de Préstamo: <span class="text-red-500">*</span></label>
+                            <input type="text" name="loan_location" id="loan_location" x-model="currentLoan.loan_location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('loan_location') border-red-500 @enderror" placeholder="Ej: Área de producción, Oficina administrativa, etc." required>
+                            @error('loan_location')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <input type="hidden" name="productive_unit_warehouse_id" value="{{ $productiveUnitWarehouses->first()->id ?? '' }}">
+                        
+                        <div class="mb-4">
+                            <label for="loan_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad: <span class="text-red-500">*</span></label>
+                            <input type="number" name="amount" id="loan_amount" x-model="currentLoan.amount" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" required>
+                            @error('amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="loan_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha: <span class="text-red-500">*</span></label>
+                            <input type="date" name="loan_date" id="loan_date" x-model="currentLoan.loan_date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('loan_date') border-red-500 @enderror" required>
+                            @error('loan_date')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4">
+                            <button type="button" @click="closeModals()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                                <i class="fas fa-hand-holding mr-2"></i>Registrar Préstamo
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -352,10 +493,8 @@
 
 @section('script')
 <script>
-// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
-function confirmDeleteSync(supplyName) {
-    let confirmed = false;
-    
+// Función para confirmar eliminación con SweetAlert2 (versión AJAX)
+function confirmDeleteSync(supplyId, supplyName) {
     Swal.fire({
         title: '¿Estás seguro?',
         text: `¿Quieres eliminar el insumo "${supplyName}"?`,
@@ -378,15 +517,51 @@ function confirmDeleteSync(supplyName) {
                 }
             });
             
-            // Permitir que el formulario se envíe
-            confirmed = true;
-            // Enviar el formulario manualmente
-            event.target.submit();
+            // Enviar petición AJAX para eliminar
+            fetch(`/infrastock/admin/supplies/${supplyId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Error al eliminar el insumo');
+            })
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Eliminado!',
+                        text: data.message || 'El insumo ha sido eliminado correctamente.',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        // Recargar la página para actualizar la tabla
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudo eliminar el insumo.'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Ocurrió un error al eliminar el insumo. Por favor, intenta nuevamente.'
+                });
+            });
         }
     });
-    
-    // Retornar false para prevenir el envío inmediato del formulario
-    return false;
 }
 
 // Verificar si hay mensajes de sesión
@@ -410,80 +585,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     @endif
     
-    // Configurar filtro automático
-    setupAutoFilter();
+    @if(session('success') && session('success') !== 'deleted')
+        Swal.fire({
+            icon: 'success',
+            title: '¡Éxito!',
+            text: '{{ session('success') }}',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    @endif
+    
+    // Inicializar DataTables
+    @php
+        $filteredEquipmentId = request('filter_equipment_id');
+    @endphp
+    
+    var table = $('#suppliesTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
+            search: "Buscar:",
+            lengthMenu: "Mostrar _MENU_ registros",
+            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            infoEmpty: "Mostrando 0 a 0 de 0 registros",
+            infoFiltered: "(filtrado de _MAX_ registros totales)",
+            paginate: {
+                first: "Primero",
+                last: "Último",
+                next: "Siguiente",
+                previous: "Anterior"
+            }
+        },
+        pageLength: 15,
+        order: [[0, 'desc']], // Ordenar por ID descendente
+        columnDefs: [
+            { orderable: false, targets: -1 } // Deshabilitar ordenamiento en columna de acciones
+        ],
+        @if($filteredEquipmentId)
+        // Si hay un filtro activo, buscar automáticamente el ID del insumo
+        initComplete: function() {
+            // Buscar el ID del insumo en la primera columna
+            this.api().column(0).search('^{!! $filteredEquipmentId !!}$', true, false).draw();
+            
+            // Hacer scroll a la fila después de que se dibuje la tabla
+            setTimeout(function() {
+                var row = $('tr[data-equipment-id="{{ $filteredEquipmentId }}"]');
+                if (row.length) {
+                    $('html, body').animate({
+                        scrollTop: row.offset().top - 200
+                    }, 500);
+                    row.addClass('bg-yellow-50');
+                }
+            }, 100);
+        },
+        @endif
+        responsive: true
+    });
 });
 
-// Función para configurar el filtro automático
-function setupAutoFilter() {
-    const searchInput = document.getElementById('searchInput');
-    const table = document.querySelector('table tbody');
-    const rows = table.querySelectorAll('tr');
-    
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        rows.forEach(row => {
-            const inventoryCell = row.cells[1]; // Columna de inventario
-            const nameCell = row.cells[2]; // Columna de nombre
-            const laborCell = row.cells[3]; // Columna de labor
-            const categoryCell = row.cells[9]; // Columna de categoría (actualizada por nuevas columnas)
-            
-            const inventoryText = inventoryCell.textContent.toLowerCase();
-            const nameText = nameCell.textContent.toLowerCase();
-            const laborText = laborCell.textContent.toLowerCase();
-            const categoryText = categoryCell.textContent.toLowerCase();
-            
-            if (inventoryText.includes(searchTerm) || nameText.includes(searchTerm) || laborText.includes(searchTerm) || categoryText.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        // Actualizar contador de resultados visibles
-        updateVisibleCount();
-    });
-}
-
-// Función para limpiar la búsqueda
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.value = '';
-    
-    const rows = document.querySelectorAll('table tbody tr');
-    rows.forEach(row => {
-        row.style.display = '';
-    });
-    
-    updateVisibleCount();
-}
-
-// Función para actualizar el contador de resultados visibles
-function updateVisibleCount() {
-    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
-    const totalRows = document.querySelectorAll('table tbody tr').length;
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    
-    const counterElement = document.querySelector('.text-sm.text-gray-500');
-    if (counterElement) {
-        if (document.getElementById('searchInput').value) {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
-        } else {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros`;
-        }
-    }
-    
-    // Mostrar/ocultar mensaje de "no hay resultados"
-    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
-        noResultsMessage.style.display = 'block';
-    } else {
-        noResultsMessage.style.display = 'none';
-    }
-}
-
 // Verificar si hay errores de validación y abrir modal automáticamente
-@if($errors->hasAny(['inventory_id', 'name', 'labor_id', 'amount', 'price', 'category_id']) || session('error'))
+@if($errors->hasAny(['name', 'category_id', 'initial_amount', 'characteristics', 'unit_measure', 'observations']) || session('error'))
     document.addEventListener('DOMContentLoaded', function() {
         // Buscar el componente Alpine.js y abrir el modal de creación
         const alpineComponent = document.querySelector('[x-data]');
