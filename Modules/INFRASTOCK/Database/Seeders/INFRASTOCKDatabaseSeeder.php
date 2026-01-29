@@ -31,6 +31,8 @@ class INFRASTOCKDatabaseSeeder extends Seeder
 
         $this->call(AppTableSeeder::class); // Ejecutar Seeder de aplicación
         $this->call(INFRASTOCKRolesSeeder::class); // Ejecutar Seeder de roles para usuarios
+        $this->call(INFRASTOCKCategoriesSeeder::class); // Ejecutar Seeder de categorías
+        $this->call(INFRASTOCKSuppliesSeeder::class); // Ejecutar Seeder de insumos
 
         DB::commit();
     }

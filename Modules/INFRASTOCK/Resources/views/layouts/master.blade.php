@@ -324,25 +324,10 @@
                 </button>
                 <!-- Título de la página actual o "Dashboard" por defecto -->
                 <h1 class="text-xl font-bold text-gray-800 ml-4">@yield('title', 'Dashboard')</h1>
-                <!-- Sección de búsqueda y filtro (comentada, movida a la derecha del navbar) -->
-                {{-- <div class="ml-6 flex items-center space-x-3">
-                    <input type="text" placeholder="Buscar..." class="px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm">
-                    <!-- Example Filter Button/Dropdown (can be expanded) -->
-                    <button class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm">
-                        <i class="fas fa-filter mr-1"></i> Filtro
-                    </button>
-                </div> --}}
             </div>
 
             <!-- Menú de usuario y notificaciones en la barra superior -->
             <div class="flex items-center space-x-4">
-                <!-- Campo de búsqueda y botón de filtro (visible en escritorio) -->
-                <div class="hidden md:flex items-center space-x-3">
-                    <input type="text" placeholder="Buscar..." class="px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm w-48">
-                    <button class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm">
-                        <i class="fas fa-filter mr-1"></i> Filtro
-                    </button>
-                </div>
                 <!-- Icono de notificaciones con contador y dropdown -->
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" class="relative text-gray-900 hover:text-gray-700 focus:outline-none focus:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors duration-200">
