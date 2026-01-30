@@ -76,6 +76,8 @@
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.ciencias-basicas.dashboard') }}">Ciencias Basicas</a>
                         @elseif(in_array('Psicola', $userRoles))
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.psicola.dashboard') }}">Psicola</a>
+                        @elseif(in_array('Instructor', $userRoles))
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.instructor.dashboard') }}">Instructor</a>
                         @else
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
                         @endif
@@ -114,6 +116,8 @@
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.ciencias-basicas.dashboard') }}">Ciencias Basicas</a>
                     @elseif(in_array('Psicola', $userRoles))
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.psicola.dashboard') }}">Psicola</a>
+                    @elseif(in_array('Instructor', $userRoles))
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.instructor.dashboard') }}">Instructor</a>
                     @else
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('cefa.infrastock.admin.dashboard') }}">Administrador</a>
                     @endif

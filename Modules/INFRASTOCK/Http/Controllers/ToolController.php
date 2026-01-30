@@ -53,24 +53,82 @@ class ToolController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'inventory_id' => 'required|exists:inventories,id',
-            'labor_id' => 'required|exists:labors,id',
-            'amount' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
-            'category_id' => 'required|exists:infrastock_categories,id',
-        ]);
+        try {
+            $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'placa' => 'nullable|string|max:255',
+            'descripcion' => 'nullable|string',
+            'descripcion_actual' => 'nullable|string',
+            'marca' => 'nullable|string|max:255',
+            'modelo' => 'nullable|string|max:255',
+            'categoria_id' => 'nullable|exists:infrastock_categories,id',
+            'category_id' => 'nullable|exists:infrastock_categories,id',
+            'estado' => 'nullable|in:disponible,en_prestamo,mantenimiento,no_disponible',
+            'cantidad_total' => 'nullable|integer|min:0',
+            'cantidad_disponible' => 'nullable|integer|min:0',
+            'fecha_mantenimiento' => 'nullable|date',
+            'proximo_mantenimiento' => 'nullable|date',
+            'fecha_adquisicion' => 'nullable|date',
+            'atributos' => 'nullable|string',
+            'descripcion_mantenimiento' => 'nullable|string',
+            'inventory_id' => 'nullable|exists:inventories,id',
+            'labor_id' => 'nullable|exists:labors,id',
+            'amount' => 'nullable|integer|min:0',
+            'price' => 'nullable|numeric|min:0',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Siempre devolver JSON si tiene el header X-Requested-With
+            if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            throw $e;
+        }
 
         try {
-            Tool::create($request->all());
+            $data = $request->all();
+            
+            // Manejar categoria_id si se envía
+            if (isset($data['categoria_id']) && !isset($data['category_id'])) {
+                $data['category_id'] = $data['categoria_id'];
+            }
+            
+            // Manejar la carga de imagen
+            if ($request->hasFile('imagen')) {
+                $imagen = $request->file('imagen');
+                $imagenPath = $imagen->store('tools', 'public');
+                $data['imagen'] = $imagenPath;
+            }
+            
+            Tool::create($data);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                // Siempre devolver JSON si tiene el header X-Requested-With
+                if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ya existe una herramienta con estos datos. Por favor, verifica la información.'
+                    ], 422);
+                }
                 return redirect()->route('infrastock.admin.tools.index')
                     ->with('error', 'Ya existe una herramienta con estos datos. Por favor, verifica la información.')
                     ->withInput();
             }
             throw $e;
         }
+        
+        // Siempre devolver JSON si tiene el header X-Requested-With
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Herramienta registrada exitosamente.'
+            ]);
+        }
+        
         return redirect()->route('infrastock.admin.tools.index')->with('success', 'Herramienta registrada exitosamente.');
     }
 
@@ -106,17 +164,52 @@ class ToolController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'inventory_id' => 'required|exists:inventories,id',
-            'labor_id' => 'required|exists:labors,id',
-            'amount' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
-            'category_id' => 'required|exists:infrastock_categories,id',
+            'nombre' => 'required|string|max:255',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'placa' => 'nullable|string|max:255',
+            'descripcion' => 'nullable|string',
+            'descripcion_actual' => 'nullable|string',
+            'marca' => 'nullable|string|max:255',
+            'modelo' => 'nullable|string|max:255',
+            'categoria_id' => 'nullable|exists:infrastock_categories,id',
+            'category_id' => 'nullable|exists:infrastock_categories,id',
+            'estado' => 'nullable|in:disponible,en_prestamo,mantenimiento,no_disponible',
+            'cantidad_total' => 'nullable|integer|min:0',
+            'cantidad_disponible' => 'nullable|integer|min:0',
+            'fecha_mantenimiento' => 'nullable|date',
+            'proximo_mantenimiento' => 'nullable|date',
+            'fecha_adquisicion' => 'nullable|date',
+            'atributos' => 'nullable|string',
+            'descripcion_mantenimiento' => 'nullable|string',
+            'inventory_id' => 'nullable|exists:inventories,id',
+            'labor_id' => 'nullable|exists:labors,id',
+            'amount' => 'nullable|integer|min:0',
+            'price' => 'nullable|numeric|min:0',
         ]);
 
         $tool = Tool::findOrFail($id);
         
         try {
-            $tool->update($request->all());
+            $data = $request->all();
+            
+            // Manejar categoria_id si se envía
+            if (isset($data['categoria_id']) && !isset($data['category_id'])) {
+                $data['category_id'] = $data['categoria_id'];
+            }
+            
+            // Manejar la carga de imagen
+            if ($request->hasFile('imagen')) {
+                // Eliminar imagen anterior si existe
+                if ($tool->imagen && \Storage::disk('public')->exists($tool->imagen)) {
+                    \Storage::disk('public')->delete($tool->imagen);
+                }
+                
+                $imagen = $request->file('imagen');
+                $imagenPath = $imagen->store('tools', 'public');
+                $data['imagen'] = $imagenPath;
+            }
+            
+            $tool->update($data);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
                 return redirect()->route('infrastock.admin.tools.index')

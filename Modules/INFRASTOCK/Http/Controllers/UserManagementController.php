@@ -38,7 +38,8 @@ class UserManagementController extends Controller
             'Agroindustria',
             'Administrador',
             'Ciencias Basicas',
-            'Psicola'
+            'Psicola',
+            'Instructor'
         ];
     }
 

@@ -10,6 +10,8 @@ class Notification extends Model
     public $incrementing = false;
     protected $keyType = 'string';
     
+    protected $table = 'notifications';
+    
     protected $fillable = [
         'id',
         'type',

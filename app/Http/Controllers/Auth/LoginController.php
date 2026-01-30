@@ -27,8 +27,37 @@ class LoginController extends Controller
 
     protected function authenticated(Request $request, $user)
     {
-        // Redirige al usuario a la URL previa o a la HOME si no hay una URL previa
-        // Igual que el admin, sin lógica especial
+        // Si hay una URL intended, usarla (para casos donde el usuario viene de una página específica)
+        if ($request->session()->has('url.intended')) {
+            $intendedUrl = $request->session()->get('url.intended');
+            // Si la URL intended es la ruta de post-login de INFRASTOCK, permitirla
+            if (strpos($intendedUrl, 'infrastock/post-login') !== false) {
+                return redirect()->intended();
+            }
+        }
+        
+        // Verificar si el usuario tiene roles de INFRASTOCK y redirigir a la página principal
+        $userRoles = $user->roles->pluck('name')->toArray();
+        
+        // Verificar roles de INFRASTOCK (app_id = 19)
+        $infrastockRoles = ['Aseo', 'Personal de Aseo', 'Psicola', 'Ciencias Basicas', 'Operario', 
+                           'Centro de Convivencia', 'Ganaderia', 'Vigilancia', 'Agroindustria', 
+                           'Instructor', 'Administrador'];
+        
+        $hasInfrastockRole = false;
+        foreach ($userRoles as $roleName) {
+            if (in_array($roleName, $infrastockRoles)) {
+                $hasInfrastockRole = true;
+                break;
+            }
+        }
+        
+        // Si tiene rol de INFRASTOCK, redirigir a la página principal de SICEFA
+        if ($hasInfrastockRole) {
+            return redirect()->route('cefa.welcome');
+        }
+        
+        // Para otros usuarios, usar la redirección estándar
         return redirect()->intended($this->redirectPath());
     }
 }

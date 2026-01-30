@@ -133,6 +133,10 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/admin/loans/{id}/approve-return', 'LoanController@approveReturn')->name('infrastock.admin.loans.approve-return');
     // Rechaza una devolución de insumos.
     Route::post('/infrastock/admin/loans/{id}/reject-return', 'LoanController@rejectReturn')->name('infrastock.admin.loans.reject-return');
+    // Aprueba un préstamo de herramienta.
+    Route::post('/infrastock/admin/loans/{id}/approve-loan', 'LoanController@approveLoan')->name('infrastock.admin.loans.approve-loan');
+    // Rechaza un préstamo de herramienta.
+    Route::post('/infrastock/admin/loans/{id}/reject-loan', 'LoanController@rejectLoan')->name('infrastock.admin.loans.reject-loan');
 });
 
 /**
@@ -575,4 +579,32 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     
     // Logout de Vigilancia
     Route::post('/infrastock/vigilancia/logout', 'VigilanciaController@logout')->name('infrastock.vigilancia.logout');
+});
+
+/**
+ * Grupo de rutas para Instructores con middleware de notificaciones.
+ * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
+ * Los instructores solo pueden hacer préstamos de herramientas (HERRAMIENTAS).
+ */
+Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->group(function () {
+    // Dashboard principal de Instructores
+    Route::get('/infrastock/instructor/dashboard', 'InstructorController@dashboard')->name('infrastock.instructor.dashboard');
+    
+    // Gestión de préstamos de herramientas
+    Route::get('/infrastock/instructor/my-loans', 'InstructorController@myLoans')->name('infrastock.instructor.my-loans');
+    Route::post('/infrastock/instructor/store-loan', 'InstructorController@storeLoan')->name('infrastock.instructor.store-loan');
+    Route::put('/infrastock/instructor/update-loan/{id}', 'InstructorController@updateLoan')->name('infrastock.instructor.update-loan');
+    Route::delete('/infrastock/instructor/delete-loan/{id}', 'InstructorController@destroyLoan')->name('infrastock.instructor.delete-loan');
+    Route::post('/infrastock/instructor/return-loan/{id}', 'InstructorController@returnLoan')->name('infrastock.instructor.return-loan');
+    
+    // Notificaciones
+    Route::get('/infrastock/instructor/notifications', 'InstructorController@notifications')->name('infrastock.instructor.notifications');
+    Route::post('/infrastock/instructor/notifications/{id}/mark-read', 'InstructorController@markNotificationAsRead')->name('infrastock.instructor.notifications.mark-read');
+    
+    // Gestión de perfil
+    Route::get('/infrastock/instructor/profile', 'InstructorController@profile')->name('infrastock.instructor.profile');
+    Route::put('/infrastock/instructor/profile', 'InstructorController@updateProfile')->name('infrastock.instructor.profile.update');
+    
+    // Logout de Instructores
+    Route::post('/infrastock/instructor/logout', 'InstructorController@logout')->name('infrastock.instructor.logout');
 });

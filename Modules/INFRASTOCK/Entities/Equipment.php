@@ -33,11 +33,13 @@ class Equipment extends Model
         'characteristics',
         'amount',
         'initial_amount',
+        'minimum_stock',
         'unit_measure',
         'price',
         'category_id',
         'expiration_date',
         'observations',
+        'status',
     ];
 
     /**
@@ -137,5 +139,142 @@ class Equipment extends Model
     public function hasStockFor($requestedAmount)
     {
         return $this->stock >= $requestedAmount;
+    }
+
+    /**
+     * Calcula automáticamente el estado del insumo basado en:
+     * - Vencido: si expiration_date < hoy (prioridad máxima)
+     * - Agotado: si stock = 0
+     * - Crítico: si stock = mínimo o máximo 1 unidad por encima (stock <= mínimo + 1)
+     * - Bajo Stock: si stock > mínimo pero diferencia de 1 a 10 unidades (mínimo + 1 < stock <= mínimo + 10)
+     * - Disponible: si stock > mínimo + 10 unidades
+     * 
+     * @return string
+     */
+    public function calculateStatus()
+    {
+        // Verificar si está vencido - usar atributos directamente para evitar recursión
+        $expirationDate = isset($this->attributes['expiration_date']) ? $this->attributes['expiration_date'] : null;
+        if ($expirationDate) {
+            try {
+                $expDate = \Carbon\Carbon::parse($expirationDate);
+                if ($expDate->isPast()) {
+                    return 'vencido';
+                }
+            } catch (\Exception $e) {
+                // Si hay error al parsear la fecha, continuar con otras validaciones
+            }
+        }
+
+        // Obtener el stock usando el accessor, pero accediendo directamente a los atributos
+        // para evitar recursión infinita
+        $initialAmount = isset($this->attributes['initial_amount']) ? (int)$this->attributes['initial_amount'] : (isset($this->attributes['amount']) ? (int)$this->attributes['amount'] : 0);
+        
+        // Obtener el valor mínimo permitido
+        $minimumStock = isset($this->attributes['minimum_stock']) ? (int)$this->attributes['minimum_stock'] : 0;
+        
+        // Calcular stock usado directamente desde la BD (igual que en getUsedAmountAttribute)
+        // Usar $this->id si está disponible, sino usar $this->attributes['id']
+        $equipmentId = $this->id ?? (isset($this->attributes['id']) ? $this->attributes['id'] : null);
+        $usedAmount = 0;
+        if ($equipmentId) {
+            $entregas = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('equipment_id', $equipmentId)
+                ->where('item_type', 'equipment')
+                ->where('role', 'Entrega')
+                ->withoutTrashed()
+                ->sum('amount') ?: 0;
+            
+            $recibes = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('equipment_id', $equipmentId)
+                ->where('item_type', 'equipment')
+                ->where('role', 'Recibe')
+                ->withoutTrashed()
+                ->sum('amount') ?: 0;
+            
+            $usedAmount = max(0, $entregas - $recibes);
+        }
+        
+        // Calcular stock actual (cantidad restante)
+        $stock = max(0, $initialAmount - $usedAmount);
+
+        // Verificar estados en orden de prioridad (de más crítico a menos crítico)
+        
+        // 1. Agotado: si stock = 0
+        if ($stock <= 0) {
+            return 'agotado';
+        }
+
+        // 2. Crítico: si stock = mínimo o máximo 1 unidad por encima (stock <= mínimo + 1)
+        if ($stock <= ($minimumStock + 1)) {
+            return 'critico';
+        }
+
+        // 3. Bajo Stock: si stock > mínimo pero diferencia de 1 a 10 unidades
+        // (mínimo + 1 < stock <= mínimo + 10)
+        if ($stock <= ($minimumStock + 10)) {
+            return 'bajo_stock';
+        }
+
+        // 4. Disponible: si stock > mínimo + 10 unidades
+        return 'disponible';
+    }
+
+    /**
+     * Accessor para obtener el estado calculado automáticamente.
+     * Siempre calcula el estado basándose en los datos actuales para asegurar precisión.
+     * 
+     * @return string
+     */
+    public function getStatusAttribute($value)
+    {
+        // Siempre recalcular el estado para asegurar que esté actualizado
+        // basándose en el stock actual, fecha de vencimiento, etc.
+        return $this->calculateStatus();
+    }
+
+    /**
+     * Boot method para actualizar automáticamente el status antes de guardar.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($equipment) {
+            // Calcular y actualizar el status antes de guardar
+            $equipment->status = $equipment->calculateStatus();
+        });
+    }
+
+    /**
+     * Obtiene el color del badge según el estado.
+     * 
+     * @return string
+     */
+    public function getStatusColorAttribute()
+    {
+        return match($this->status) {
+            'disponible' => 'bg-green-100 text-green-800',
+            'agotado' => 'bg-red-100 text-red-800',
+            'vencido' => 'bg-orange-100 text-orange-800',
+            'bajo_stock' => 'bg-yellow-100 text-yellow-800',
+            'critico' => 'bg-red-200 text-red-900',
+            default => 'bg-gray-100 text-gray-800',
+        };
+    }
+
+    /**
+     * Obtiene el texto legible del estado.
+     * 
+     * @return string
+     */
+    public function getStatusTextAttribute()
+    {
+        return match($this->status) {
+            'disponible' => 'Disponible',
+            'agotado' => 'Agotado',
+            'vencido' => 'Vencido',
+            'bajo_stock' => 'Bajo Stock',
+            'critico' => 'Crítico',
+            default => 'Desconocido',
+        };
     }
 }

@@ -25,7 +25,7 @@ class ShareNotifications
             // Obtener notificaciones recientes del usuario desde la tabla notifications
             $notifications = Notification::where('notifiable_type', 'App\Models\User')
                 ->where('notifiable_id', $user->id)
-                ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'supply_expiring', 'surplus_reported'])
+                ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'supply_expiring', 'surplus_reported', 'loan_created', 'loan_approved', 'loan_rejected'])
                 ->where('created_at', '>=', Carbon::now()->subDays(30))
                 ->orderBy('created_at', 'desc')
                 ->get();

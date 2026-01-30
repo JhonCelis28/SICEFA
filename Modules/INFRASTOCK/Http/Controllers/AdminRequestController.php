@@ -32,7 +32,7 @@ class AdminRequestController extends Controller
         // Cargar notificaciones para el usuario actual
         $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
             ->where('notifiable_id', auth()->id())
-            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
+            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'loan_created', 'loan_approved', 'loan_rejected'])
             ->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7))
             ->orderBy('created_at', 'desc')
             ->get();

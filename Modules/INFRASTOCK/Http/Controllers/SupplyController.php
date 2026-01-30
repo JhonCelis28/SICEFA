@@ -195,6 +195,7 @@ class SupplyController extends Controller
             'category_id' => 'required|exists:infrastock_categories,id', // ID de categoría es obligatorio y debe existir.
             'characteristics' => 'nullable|string', // Características es opcional.
             'initial_amount' => 'required|integer|min:0', // Cantidad inicial es obligatoria, entera y mínimo 0.
+            'minimum_stock' => 'nullable|integer|min:0', // Valor mínimo permitido es opcional, entero y mínimo 0.
             'unit_measure' => 'nullable|string|max:50', // Unidad de medida es opcional.
             'observations' => 'nullable|string', // Observaciones es opcional.
             // Campos opcionales para INFRASTOCK (otros sistemas pueden requerirlos)
@@ -208,7 +209,7 @@ class SupplyController extends Controller
             // Preparar datos para crear, asegurando que los campos opcionales sean null si no se proporcionan
             $data = $request->only([
                 'name', 'category_id', 'characteristics', 'initial_amount', 
-                'observations', 'expiration_date'
+                'minimum_stock', 'observations', 'expiration_date'
             ]);
             
             // Manejar unidad de medida: si viene unit_measure_final, usarlo; si no, usar unit_measure
@@ -304,6 +305,7 @@ class SupplyController extends Controller
             'category_id' => 'required|exists:infrastock_categories,id',
             'characteristics' => 'nullable|string',
             'initial_amount' => 'required|integer|min:0',
+            'minimum_stock' => 'nullable|integer|min:0',
             'unit_measure' => 'nullable|string|max:50',
             'observations' => 'nullable|string',
             // Campos opcionales para INFRASTOCK (otros sistemas pueden requerirlos)
@@ -319,7 +321,7 @@ class SupplyController extends Controller
             // Preparar datos para actualizar, asegurando que los campos opcionales sean null si no se proporcionan
             $data = $request->only([
                 'name', 'category_id', 'characteristics', 'initial_amount', 
-                'observations', 'expiration_date'
+                'minimum_stock', 'observations', 'expiration_date'
             ]);
             
             // Manejar unidad de medida: si viene unit_measure_final, usarlo; si no, usar unit_measure

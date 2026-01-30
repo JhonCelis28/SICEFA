@@ -369,6 +369,12 @@
                                                 <i class="fas fa-exclamation-triangle text-orange-500 text-lg"></i>
                                             @elseif($notification->type === 'surplus_reported')
                                                 <i class="fas fa-undo-alt text-purple-500 text-lg"></i>
+                                            @elseif($notification->type === 'loan_created')
+                                                <i class="fas fa-tools text-indigo-500 text-lg"></i>
+                                            @elseif($notification->type === 'loan_approved')
+                                                <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                                            @elseif($notification->type === 'loan_rejected')
+                                                <i class="fas fa-times-circle text-red-500 text-lg"></i>
                                             @else
                                                 <i class="fas fa-bell text-gray-500 text-lg"></i>
                                             @endif
@@ -616,6 +622,9 @@
         }
 
         // Auto-refresh de notificaciones cada 30 segundos
+        // DESHABILITADO: Causaba recargas inesperadas de la página
+        // Si necesitas actualizar notificaciones, usa AJAX en lugar de recargar toda la página
+        /*
         setInterval(function() {
             if (document.visibilityState === 'visible') {
                 // Solo recargar si hay notificaciones no leídas
@@ -625,6 +634,7 @@
                 }
             }
         }, 30000);
+        */
     </script>
 
     <!-- jQuery (requerido para DataTables) -->

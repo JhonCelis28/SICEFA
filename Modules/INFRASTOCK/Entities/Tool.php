@@ -26,17 +26,33 @@ class Tool extends Model
      * @property array $fillable Atributos que son asignables masivamente.
      */
     protected $fillable = [
+        'nombre',
+        'imagen',
+        'placa',
+        'descripcion',
+        'descripcion_actual',
+        'marca',
+        'modelo',
+        'categoria_id',
+        'category_id',
+        'estado',
+        'cantidad_total',
+        'cantidad_disponible',
+        'fecha_mantenimiento',
+        'proximo_mantenimiento',
+        'fecha_adquisicion',
+        'atributos',
+        'descripcion_mantenimiento',
         'inventory_id',
         'labor_id',
         'amount',
         'price',
-        'category_id',
     ];
 
     /**
      * @property array $dates Atributos que deben ser mutados a instancias de Carbon.
      */
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'fecha_adquisicion', 'fecha_mantenimiento', 'proximo_mantenimiento'];
 
     /**
      * Define la relación de pertenencia a una categoría.

@@ -104,6 +104,15 @@ class INFRASTOCKRolesSeeder extends Seeder
             'app_id' => $app->id
         ]);
 
+        // Registrar o actualizar rol de INSTRUCTOR
+        $role_instructor = Role::updateOrCreate(['slug' => 'infrastock.instructor'], [
+            'name' => 'Instructor',
+            'description' => 'Rol de Instructor del módulo INFRASTOCK',
+            'description_english' => 'Instructor role of INFRASTOCK module',
+            'full_access' => 'No',
+            'app_id' => $app->id
+        ]);
+
         $this->command->info('Roles de INFRASTOCK registrados/actualizados correctamente.');
     }
 }

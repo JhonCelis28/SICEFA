@@ -267,6 +267,76 @@ class LoanController extends Controller
     }
 
     /**
+     * Aprueba un préstamo de herramienta
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function approveLoan($id)
+    {
+        $loanMovement = WarehouseMovement::with('tool')
+            ->where('id', $id)
+            ->where('role', 'Préstamo')
+            ->where('item_type', 'tool')
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$loanMovement) {
+            return redirect()->back()->with('error', 'Préstamo no encontrado o ya procesado.');
+        }
+
+        try {
+            $loanMovement->update([
+                'status' => 'approved',
+            ]);
+
+            // Enviar notificación al instructor
+            $this->notifyUserLoanStatus($loanMovement, 'approved');
+
+            return redirect()->back()->with('success', 'Préstamo aprobado exitosamente.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al aprobar el préstamo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rechaza un préstamo de herramienta
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function rejectLoan(Request $request, $id)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $loanMovement = WarehouseMovement::with('tool')
+            ->where('id', $id)
+            ->where('role', 'Préstamo')
+            ->where('item_type', 'tool')
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$loanMovement) {
+            return redirect()->back()->with('error', 'Préstamo no encontrado o ya procesado.');
+        }
+
+        try {
+            $loanMovement->update([
+                'status' => 'rejected',
+                'description' => ($loanMovement->description ?? '') . ' | Motivo de rechazo: ' . $request->rejection_reason,
+            ]);
+
+            // Enviar notificación al instructor
+            $this->notifyUserLoanStatus($loanMovement, 'rejected', $request->rejection_reason);
+
+            return redirect()->back()->with('success', 'Préstamo rechazado exitosamente.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al rechazar el préstamo: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Envía notificación al usuario sobre el estado de su devolución
      * @param WarehouseMovement $returnMovement
      * @param string $status
@@ -298,6 +368,64 @@ class LoanController extends Controller
             $user->notify(new \Modules\INFRASTOCK\Notifications\ReturnStatusNotification($returnMovement, $status, $title, $message));
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de estado de devolución: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envía notificación al instructor sobre el estado de su préstamo
+     * @param WarehouseMovement $loanMovement
+     * @param string $status
+     * @param string|null $rejectionReason
+     * @return void
+     */
+    private function notifyUserLoanStatus($loanMovement, $status, $rejectionReason = null)
+    {
+        try {
+            $user = $loanMovement->user;
+            if (!$user) {
+                return;
+            }
+
+            $toolName = $loanMovement->tool ? ($loanMovement->tool->nombre ?? $loanMovement->tool->name ?? 'Herramienta') : 'Herramienta';
+            
+            if ($status === 'approved') {
+                $title = 'Préstamo Aprobado';
+                $message = "Tu préstamo de la herramienta: {$toolName} ha sido aprobado.";
+            } else {
+                $title = 'Préstamo Rechazado';
+                $message = "Tu préstamo de la herramienta: {$toolName} ha sido rechazado.";
+                if ($rejectionReason) {
+                    $message .= " Motivo: {$rejectionReason}";
+                }
+            }
+
+            // Crear notificación usando el modelo Notification de INFRASTOCK
+            try {
+                $notification = new \Modules\INFRASTOCK\Entities\Notification();
+                // El ID se genera automáticamente en el boot() del modelo
+                $notification->type = $status === 'approved' ? 'loan_approved' : 'loan_rejected';
+                $notification->notifiable_type = 'App\Models\User';
+                $notification->notifiable_id = $user->id;
+                $notification->data = [
+                    'title' => $title,
+                    'message' => $message,
+                    'tool_id' => $loanMovement->tool ? $loanMovement->tool->id : null,
+                    'tool_name' => $loanMovement->tool ? ($loanMovement->tool->nombre ?? $loanMovement->tool->name ?? 'Herramienta') : 'Herramienta',
+                    'loan_id' => $loanMovement->id,
+                    'status' => $status,
+                    'rejection_reason' => $rejectionReason,
+                    'created_at' => now()->format('d/m/Y H:i'),
+                    'action_url' => route('infrastock.instructor.my-loans'),
+                ];
+                $notification->read_at = null;
+                $notification->save();
+                \Log::info('Notificación de préstamo ' . $status . ' creada exitosamente para usuario ID: ' . $user->id);
+            } catch (\Exception $notificationError) {
+                \Log::error('Error al crear la notificación del préstamo: ' . $notificationError->getMessage());
+                \Log::error('Stack trace: ' . $notificationError->getTraceAsString());
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error enviando notificación de estado de préstamo: ' . $e->getMessage());
         }
     }
 }

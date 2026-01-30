@@ -128,6 +128,7 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Área/Bodega</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Movimiento</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                 </tr>
@@ -138,7 +139,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $loan->id }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             @if($loan->item_type == 'tool')
-                                                {{ $loan->tool->name ?? 'N/A' }}
+                                                {{ $loan->tool->nombre ?? $loan->tool->name ?? 'N/A' }}
                                             @else
                                                 {{ $loan->equipment->name ?? 'N/A' }}
                                             @endif
@@ -167,31 +168,64 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                            @if($loan->role == 'Devolución' && $loan->status)
+                                            @if($loan->status)
                                                 @if($loan->status == 'pending')
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendiente</span>
                                                 @elseif($loan->status == 'approved')
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aprobada</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aprobado</span>
                                                 @elseif($loan->status == 'rejected')
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rechazada</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Rechazado</span>
                                                 @endif
                                             @else
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">N/A</span>
                                             @endif
                                         </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500">
+                                            @if($loan->description)
+                                                <div class="max-w-xs">
+                                                    <p class="text-sm text-gray-700 truncate" title="{{ $loan->description }}">
+                                                        {{ Str::limit($loan->description, 50) }}
+                                                    </p>
+                                                    @if(strlen($loan->description) > 50)
+                                                        <button onclick="showDescriptionModal('{{ addslashes($loan->description) }}', '{{ $loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta' }}')" class="text-blue-600 hover:text-blue-800 text-xs mt-1">
+                                                            Ver completa
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-gray-400">-</span>
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->created_at->format('Y-m-d') }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            @if($loan->role == 'Devolución' && $loan->status == 'pending')
-                                                <!-- Botones para aprobar/rechazar devolución -->
-                                                <form method="POST" action="{{ route('infrastock.admin.loans.approve-return', $loan->id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de aprobar esta devolución?')">
-                                                    @csrf
-                                                    <button type="submit" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar devolución">
-                                                        <i class="fas fa-check-circle"></i> Aprobar
+                                            @if($loan->status == 'pending')
+                                                <!-- Botones para aprobar/rechazar préstamo o devolución pendiente -->
+                                                @if($loan->role == 'Préstamo')
+                                                    <form method="POST" action="{{ route('infrastock.admin.loans.approve-loan', $loan->id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de aprobar este préstamo?')">
+                                                        @csrf
+                                                        <button type="submit" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar préstamo">
+                                                            <i class="fas fa-check-circle"></i> Aprobar
+                                                        </button>
+                                                    </form>
+                                                    <button onclick="openRejectLoanModal({{ $loan->id }})" class="text-red-600 hover:text-red-900 mr-2" title="Rechazar préstamo">
+                                                        <i class="fas fa-times-circle"></i> Rechazar
                                                     </button>
-                                                </form>
-                                                <button onclick="openRejectModal({{ $loan->id }})" class="text-red-600 hover:text-red-900 mr-2" title="Rechazar devolución">
-                                                    <i class="fas fa-times-circle"></i> Rechazar
-                                                </button>
+                                                @elseif($loan->role == 'Devolución')
+                                                    @if($loan->description || $loan->imagen)
+                                                        <button onclick="showReturnDescriptionModal({{ $loan->id }}, '{{ addslashes($loan->description ?? '') }}', '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}', '{{ $loan->imagen ? asset('storage/' . $loan->imagen) : '' }}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Ver descripción de devolución">
+                                                            <i class="fas fa-eye"></i> Ver Descripción
+                                                        </button>
+                                                    @endif
+                                                    <form method="POST" action="{{ route('infrastock.admin.loans.approve-return', $loan->id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de aprobar esta devolución?')">
+                                                        @csrf
+                                                        <button type="submit" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar devolución">
+                                                            <i class="fas fa-check-circle"></i> Aprobar
+                                                        </button>
+                                                    </form>
+                                                    <button onclick="openRejectModal({{ $loan->id }})" class="text-red-600 hover:text-red-900 mr-2" title="Rechazar devolución">
+                                                        <i class="fas fa-times-circle"></i> Rechazar
+                                                    </button>
+                                                @endif
                                             @else
                                                 <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
                                                     <i class="fas fa-edit"></i> Editar
@@ -416,6 +450,106 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Modal para Rechazar Préstamo -->
+            <div id="rejectLoanModal" class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-800">Rechazar Préstamo</h3>
+                        <button onclick="closeRejectLoanModal()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <form id="rejectLoanForm" method="POST">
+                        @csrf
+                        <div class="mb-4">
+                            <label for="rejection_reason_loan" class="block text-gray-700 text-sm font-bold mb-2">
+                                Motivo del Rechazo *
+                            </label>
+                            <textarea name="rejection_reason" id="rejection_reason_loan" rows="4" required
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                      placeholder="Describe el motivo por el cual se rechaza este préstamo..."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Máximo 500 caracteres</p>
+                        </div>
+                        <div class="flex justify-end space-x-4">
+                            <button type="button" onclick="closeRejectLoanModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Rechazar Préstamo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal para Ver Descripción de Devolución -->
+            <div id="returnDescriptionModal" class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-800">Descripción de Devolución</h3>
+                        <button onclick="closeReturnDescriptionModal()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2"><strong>Herramienta:</strong> <span id="modalToolName"></span></p>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Descripción de Entrega:
+                            </label>
+                            <p id="modalDescription" class="text-gray-700 whitespace-pre-wrap"></p>
+                        </div>
+                        <!-- Imagen de la devolución -->
+                        <div id="modalImageContainer" class="hidden">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Imagen de la Devolución:
+                            </label>
+                            <div class="mt-2">
+                                <img id="modalReturnImage" src="" alt="Imagen de devolución" class="max-w-full h-auto rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity" onclick="showImageFullscreen(this.src)">
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Haz clic en la imagen para verla en tamaño completo</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-4">
+                        <button onclick="closeReturnDescriptionModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">
+                            Cerrar
+                        </button>
+                        <form id="approveReturnFromModalForm" method="POST" style="display: inline;">
+                            @csrf
+                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                                <i class="fas fa-check-circle mr-2"></i> Aprobar Devolución
+                            </button>
+                        </form>
+                        <button onclick="openRejectModalFromDescription()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                            <i class="fas fa-times-circle mr-2"></i> Rechazar Devolución
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal para Ver Descripción Completa (genérico) -->
+            <div id="descriptionModal" class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-800">Descripción</h3>
+                        <button onclick="closeDescriptionModal()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <p id="modalDescriptionText" class="text-gray-700 whitespace-pre-wrap"></p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button onclick="closeDescriptionModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
@@ -484,18 +618,102 @@ document.addEventListener('DOMContentLoaded', function() {
     setupAutoFilter();
 });
 
-// Función para abrir modal de rechazo
+// Función para abrir modal de rechazo de devolución
 function openRejectModal(returnId) {
     document.getElementById('rejectReturnForm').action = `{{ route('infrastock.admin.loans.reject-return', '') }}/${returnId}`;
     document.getElementById('rejectReturnModal').classList.remove('hidden');
     document.getElementById('rejectReturnModal').classList.add('flex');
 }
 
-// Función para cerrar modal de rechazo
+// Función para cerrar modal de rechazo de devolución
 function closeRejectModal() {
     document.getElementById('rejectReturnModal').classList.add('hidden');
     document.getElementById('rejectReturnModal').classList.remove('flex');
     document.getElementById('rejectReturnForm').reset();
+}
+
+// Función para abrir modal de rechazo de préstamo
+function openRejectLoanModal(loanId) {
+    const baseUrl = '{{ route("infrastock.admin.loans.reject-loan", 0) }}';
+    document.getElementById('rejectLoanForm').action = baseUrl.replace('/0', '/' + loanId);
+    document.getElementById('rejectLoanModal').classList.remove('hidden');
+    document.getElementById('rejectLoanModal').classList.add('flex');
+}
+
+// Función para cerrar modal de rechazo de préstamo
+function closeRejectLoanModal() {
+    document.getElementById('rejectLoanModal').classList.add('hidden');
+    document.getElementById('rejectLoanModal').classList.remove('flex');
+    document.getElementById('rejectLoanForm').reset();
+}
+
+// Variables globales para el modal de descripción de devolución
+let currentReturnLoanId = null;
+
+// Función para mostrar el modal de descripción de devolución
+function showReturnDescriptionModal(loanId, description, toolName, imagenUrl) {
+    currentReturnLoanId = loanId;
+    document.getElementById('modalToolName').textContent = toolName;
+    document.getElementById('modalDescription').textContent = description || 'Sin descripción';
+    const baseUrl = '{{ route("infrastock.admin.loans.approve-return", 0) }}';
+    document.getElementById('approveReturnFromModalForm').action = baseUrl.replace('/0', '/' + loanId);
+    
+    // Mostrar u ocultar la imagen según si existe
+    const imageContainer = document.getElementById('modalImageContainer');
+    const modalImage = document.getElementById('modalReturnImage');
+    if (imagenUrl && imagenUrl.trim() !== '') {
+        modalImage.src = imagenUrl;
+        imageContainer.classList.remove('hidden');
+    } else {
+        imageContainer.classList.add('hidden');
+    }
+    
+    document.getElementById('returnDescriptionModal').classList.remove('hidden');
+    document.getElementById('returnDescriptionModal').classList.add('flex');
+}
+
+// Función para cerrar el modal de descripción de devolución
+function closeReturnDescriptionModal() {
+    document.getElementById('returnDescriptionModal').classList.add('hidden');
+    document.getElementById('returnDescriptionModal').classList.remove('flex');
+    currentReturnLoanId = null;
+}
+
+// Función para abrir modal de rechazo desde el modal de descripción
+function openRejectModalFromDescription() {
+    closeReturnDescriptionModal();
+    if (currentReturnLoanId) {
+        openRejectModal(currentReturnLoanId);
+    }
+}
+
+// Función para mostrar imagen en pantalla completa
+function showImageFullscreen(imageSrc) {
+    Swal.fire({
+        imageUrl: imageSrc,
+        imageAlt: 'Imagen de devolución',
+        showConfirmButton: false,
+        showCloseButton: true,
+        width: '90%',
+        padding: '0',
+        customClass: {
+            popup: 'image-popup',
+            image: 'max-w-full h-auto'
+        }
+    });
+}
+
+// Función para mostrar descripción completa (genérico)
+function showDescriptionModal(description, toolName) {
+    document.getElementById('modalDescriptionText').textContent = description;
+    document.getElementById('descriptionModal').classList.remove('hidden');
+    document.getElementById('descriptionModal').classList.add('flex');
+}
+
+// Función para cerrar modal de descripción (genérico)
+function closeDescriptionModal() {
+    document.getElementById('descriptionModal').classList.add('hidden');
+    document.getElementById('descriptionModal').classList.remove('flex');
 }
 
 // Función para configurar el filtro automático
@@ -508,7 +726,7 @@ function setupAutoFilter() {
         const searchTerm = this.value.toLowerCase();
         
         rows.forEach(row => {
-            // Columnas a buscar: Elemento (col 1), Tipo (col 2), Usuario (col 3), Cantidad (col 4), Área/Bodega (col 5), Movimiento (col 6), Estado (col 7)
+            // Columnas a buscar: Elemento (col 1), Tipo (col 2), Usuario (col 3), Cantidad (col 4), Área/Bodega (col 5), Movimiento (col 6), Estado (col 7), Descripción (col 8)
             const elementCell = row.cells[1];
             const typeCell = row.cells[2];
             const userCell = row.cells[3];
@@ -516,16 +734,18 @@ function setupAutoFilter() {
             const areaCell = row.cells[5];
             const movementCell = row.cells[6];
             const statusCell = row.cells[7];
+            const descriptionCell = row.cells[8];
             
-            const elementText = elementCell.textContent.toLowerCase();
-            const typeText = typeCell.textContent.toLowerCase();
-            const userText = userCell.textContent.toLowerCase();
-            const amountText = amountCell.textContent.toLowerCase();
-            const areaText = areaCell.textContent.toLowerCase();
-            const movementText = movementCell.textContent.toLowerCase();
-            const statusText = statusCell.textContent.toLowerCase();
+            const elementText = elementCell ? elementCell.textContent.toLowerCase() : '';
+            const typeText = typeCell ? typeCell.textContent.toLowerCase() : '';
+            const userText = userCell ? userCell.textContent.toLowerCase() : '';
+            const amountText = amountCell ? amountCell.textContent.toLowerCase() : '';
+            const areaText = areaCell ? areaCell.textContent.toLowerCase() : '';
+            const movementText = movementCell ? movementCell.textContent.toLowerCase() : '';
+            const statusText = statusCell ? statusCell.textContent.toLowerCase() : '';
+            const descriptionText = descriptionCell ? descriptionCell.textContent.toLowerCase() : '';
             
-            if (elementText.includes(searchTerm) || typeText.includes(searchTerm) || userText.includes(searchTerm) || amountText.includes(searchTerm) || areaText.includes(searchTerm) || movementText.includes(searchTerm) || statusText.includes(searchTerm)) {
+            if (elementText.includes(searchTerm) || typeText.includes(searchTerm) || userText.includes(searchTerm) || amountText.includes(searchTerm) || areaText.includes(searchTerm) || movementText.includes(searchTerm) || statusText.includes(searchTerm) || descriptionText.includes(searchTerm)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

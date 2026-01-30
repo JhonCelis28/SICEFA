@@ -38,12 +38,17 @@ class WarehouseMovement extends Model
         'status',
         'surplus_id',
         'description',
+        'imagen',
+        'purpose',
+        'required_date',
+        'delivery_image',
+        'return_image',
     ];
 
     /**
      * @property array $dates Atributos que deben ser mutados a instancias de Carbon.
      */
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'required_date'];
 
     /**
      * Define la relación de pertenencia a una unidad productiva/almacén.

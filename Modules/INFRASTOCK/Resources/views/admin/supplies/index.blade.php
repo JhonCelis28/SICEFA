@@ -39,7 +39,7 @@
         isCreateModalOpen: false,
         isEditModalOpen: false,
         isLoanModalOpen: false,
-        currentSupply: { id: null, name: '', category_id: '', characteristics: '', initial_amount: '', unit_measure: '', unit_measure_other: '', observations: '', expiration_date: '' },
+        currentSupply: { id: null, name: '', category_id: '', characteristics: '', initial_amount: '', minimum_stock: '', unit_measure: '', unit_measure_other: '', observations: '', expiration_date: '' },
         currentLoan: { equipment_id: null, equipment_name: '', borrower_name: '', amount: '', loan_location: '', loan_date: '' },
         createUnitMeasure: '',
         createUnitMeasureOther: '',
@@ -57,8 +57,8 @@
             this.createUnitMeasureOther = '';
         },
         
-        openEditModal(id, name, category_id, characteristics, initial_amount, unit_measure, observations, expiration_date) {
-            console.log('Abriendo modal de edición:', { id, name, category_id, characteristics, initial_amount, unit_measure, observations, expiration_date });
+        openEditModal(id, name, category_id, characteristics, initial_amount, minimum_stock, unit_measure, observations, expiration_date) {
+            console.log('Abriendo modal de edición:', { id, name, category_id, characteristics, initial_amount, minimum_stock, unit_measure, observations, expiration_date });
             this.isEditModalOpen = true;
             
             // Determinar si la unidad de medida es una de las predefinidas o personalizada
@@ -71,6 +71,7 @@
                 category_id: category_id || '', 
                 characteristics: characteristics || '', 
                 initial_amount: initial_amount || '', 
+                minimum_stock: minimum_stock || '',
                 unit_measure: isPredefined ? (unit_measure || '') : 'otro',
                 unit_measure_other: isPredefined ? '' : (unit_measure || ''),
                 observations: observations || '',
@@ -150,6 +151,7 @@
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Inicial</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consumos</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Restante</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad Medida</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Vencimiento</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
@@ -199,6 +201,18 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $supply->status_color }}">
+                                            <i class="fas 
+                                                @if($supply->status == 'disponible') fa-check-circle 
+                                                @elseif($supply->status == 'agotado') fa-times-circle 
+                                                @elseif($supply->status == 'vencido') fa-exclamation-triangle 
+                                                @elseif($supply->status == 'bajo_stock') fa-exclamation-circle 
+                                                @elseif($supply->status == 'critico') fa-exclamation-triangle 
+                                                @endif mr-1"></i>
+                                            {{ $supply->status_text }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
                                             {{ $supply->unit_measure ?? 'N/A' }}
                                         </span>
@@ -236,7 +250,7 @@
                                                 <i class="fas fa-hand-holding"></i>
                                             </button>
                                             <!-- Botón para abrir el modal de edición, pasando los datos del insumo actual -->
-                                            <button @click="openEditModal({{ $supply->id }}, '{{ addslashes($supply->name) }}', {{ $supply->category_id ?? 'null' }}, '{{ addslashes($supply->characteristics ?? '') }}', {{ $supply->initial_amount }}, '{{ addslashes($supply->unit_measure ?? '') }}', '{{ addslashes($supply->observations ?? '') }}', '{{ $supply->expiration_date ? $supply->expiration_date->format('Y-m-d') : '' }}')" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
+                                            <button @click="openEditModal({{ $supply->id }}, '{{ addslashes($supply->name) }}', {{ $supply->category_id ?? 'null' }}, '{{ addslashes($supply->characteristics ?? '') }}', {{ $supply->initial_amount }}, {{ $supply->minimum_stock ?? 0 }}, '{{ addslashes($supply->unit_measure ?? '') }}', '{{ addslashes($supply->observations ?? '') }}', '{{ $supply->expiration_date ? $supply->expiration_date->format('Y-m-d') : '' }}')" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <!-- Botón para eliminar un insumo -->
@@ -296,6 +310,14 @@
                             <label for="initial_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Inicial: <span class="text-red-500">*</span></label>
                             <input type="number" name="initial_amount" id="initial_amount" value="{{ old('initial_amount') }}" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('initial_amount') border-red-500 @enderror" required>
                             @error('initial_amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="mb-4">
+                            <label for="minimum_stock" class="block text-gray-700 text-sm font-bold mb-2">Valor Mínimo Permitido:</label>
+                            <input type="number" name="minimum_stock" id="minimum_stock" value="{{ old('minimum_stock') }}" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('minimum_stock') border-red-500 @enderror" placeholder="Ej: 10">
+                            <p class="text-gray-500 text-xs mt-1">Cantidad mínima de stock permitida para este insumo</p>
+                            @error('minimum_stock')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -377,6 +399,11 @@
                         <div class="mb-4">
                             <label for="edit_initial_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Inicial: <span class="text-red-500">*</span></label>
                             <input type="number" name="initial_amount" id="edit_initial_amount" x-model="currentSupply.initial_amount" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit_minimum_stock" class="block text-gray-700 text-sm font-bold mb-2">Valor Mínimo Permitido:</label>
+                            <input type="number" name="minimum_stock" id="edit_minimum_stock" x-model="currentSupply.minimum_stock" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Ej: 10">
+                            <p class="text-gray-500 text-xs mt-1">Cantidad mínima de stock permitida para este insumo</p>
                         </div>
                         <div class="mb-4">
                             <label for="edit_unit_measure" class="block text-gray-700 text-sm font-bold mb-2">Unidad de Medida:</label>

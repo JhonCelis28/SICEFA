@@ -138,7 +138,7 @@ class INFRASTOCKController extends Controller
         // Cargar notificaciones para el usuario actual
         $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
             ->where('notifiable_id', auth()->id())
-            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'supply_expiring'])
+            ->whereIn('type', ['request_created', 'request_approved', 'request_rejected', 'supply_expiring', 'loan_created', 'loan_approved', 'loan_rejected'])
             ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->orderBy('created_at', 'desc')
             ->get();
@@ -245,6 +245,9 @@ class INFRASTOCKController extends Controller
         } elseif (in_array('Agroindustria', $userRoles)) {
             \Log::info('Redirigiendo a Agroindustria dashboard');
             return redirect()->route('infrastock.agroindustria.dashboard');
+        } elseif (in_array('Instructor', $userRoles)) {
+            \Log::info('Redirigiendo a Instructor dashboard');
+            return redirect()->route('infrastock.instructor.dashboard');
         } else {
             // Para administradores o usuarios sin rol específico
             \Log::info('Redirigiendo a dashboard de administrador (no se encontró rol específico)');
