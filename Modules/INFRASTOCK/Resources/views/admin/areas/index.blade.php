@@ -32,7 +32,6 @@
     }">
     <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Listado de Áreas Productivas</h2>
                 <div class="flex space-x-2">
                     <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
                         Crear Nueva Área
@@ -59,7 +58,6 @@
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-700">Detalles de las Áreas</h3>
                         <div class="text-sm text-gray-500">
                             Mostrando {{ $areas->firstItem() ?? 0 }} - {{ $areas->lastItem() ?? 0 }} de {{ $areas->total() }} registros
                         </div>
@@ -68,16 +66,14 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nombre</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Descripción</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($areas as $area)
                                 <tr class="hover:bg-gray-100 transition-colors duration-150">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $area->id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $area->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $area->description }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -272,8 +268,8 @@ function setupAutoFilter() {
         const searchTerm = this.value.toLowerCase();
         
         rows.forEach(row => {
-            const nameCell = row.cells[1]; // Columna de nombre
-            const descriptionCell = row.cells[2]; // Columna de descripción
+            const nameCell = row.cells[0]; // Columna de nombre
+            const descriptionCell = row.cells[1]; // Columna de descripción
             
             const nameText = nameCell.textContent.toLowerCase();
             const descriptionText = descriptionCell.textContent.toLowerCase();

@@ -117,7 +117,6 @@
     <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Listado de Insumos</h2>
                     @if($filterExpiring)
                         <div class="mt-2 flex items-center space-x-2">
                             <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
@@ -136,33 +135,51 @@
                 </div>
             </div>
 
+            <!-- Filtro de búsqueda automático -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center space-x-4">
+                    <div class="flex-1">
+                        <input type="text" 
+                               id="searchInput"
+                               placeholder="Buscar por nombre, categoría, características..." 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <button onclick="clearSearch()" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+
         <!-- Tabla de Insumos -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-sm text-gray-500">
+                            Mostrando {{ $supplies->firstItem() ?? 0 }} - {{ $supplies->lastItem() ?? 0 }} de {{ $supplies->total() }} registros
+                        </div>
+                    </div>
                 <div class="overflow-x-auto">
-                    <table id="suppliesTable" class="min-w-full divide-y divide-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
                                 <!-- Encabezados de la tabla -->
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Características</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Inicial</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consumos</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Restante</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad Medida</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Vencimiento</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nombre</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Categoría</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Características</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Cantidad Inicial</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Consumos</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Cantidad Restante</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Estado</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Unidad Medida</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Fecha de Vencimiento</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Observaciones</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <!-- Iteración sobre cada insumo para mostrar sus datos -->
                             @foreach($supplies as $supply)
                                 <tr class="hover:bg-gray-100 transition-colors duration-150" data-equipment-id="{{ $supply->id }}">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $supply->id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-semibold">{{ $supply->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @php
@@ -265,6 +282,19 @@
                         </table>
                     </div>
                     
+                    <!-- Mensaje cuando no hay resultados -->
+                    <div id="noResultsMessage" class="text-center py-8" style="display: none;">
+                        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
+                        <p class="text-gray-500">No hay insumos que coincidan con tu búsqueda</p>
+                    </div>
+                    
+                    <!-- Paginación -->
+                    @if($supplies->hasPages())
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        {{ $supplies->appends(request()->query())->links() }}
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -622,52 +652,92 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     @endif
     
-    // Inicializar DataTables
-    @php
-        $filteredEquipmentId = request('filter_equipment_id');
-    @endphp
+    // Configurar filtro automático
+    setupAutoFilter();
     
-    var table = $('#suppliesTable').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
-            search: "Buscar:",
-            lengthMenu: "Mostrar _MENU_ registros",
-            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
-            infoEmpty: "Mostrando 0 a 0 de 0 registros",
-            infoFiltered: "(filtrado de _MAX_ registros totales)",
-            paginate: {
-                first: "Primero",
-                last: "Último",
-                next: "Siguiente",
-                previous: "Anterior"
-            }
-        },
-        pageLength: 15,
-        order: [[0, 'desc']], // Ordenar por ID descendente
-        columnDefs: [
-            { orderable: false, targets: -1 } // Deshabilitar ordenamiento en columna de acciones
-        ],
-        @if($filteredEquipmentId)
-        // Si hay un filtro activo, buscar automáticamente el ID del insumo
-        initComplete: function() {
-            // Buscar el ID del insumo en la primera columna
-            this.api().column(0).search('^{!! $filteredEquipmentId !!}$', true, false).draw();
-            
-            // Hacer scroll a la fila después de que se dibuje la tabla
-            setTimeout(function() {
-                var row = $('tr[data-equipment-id="{{ $filteredEquipmentId }}"]');
-                if (row.length) {
-                    $('html, body').animate({
-                        scrollTop: row.offset().top - 200
-                    }, 500);
-                    row.addClass('bg-yellow-50');
-                }
-            }, 100);
-        },
-        @endif
-        responsive: true
-    });
+    @if($filteredEquipmentId)
+    // Si hay un filtro activo por equipment_id, hacer scroll a la fila
+    setTimeout(function() {
+        var row = document.querySelector('tr[data-equipment-id="{{ $filteredEquipmentId }}"]');
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('bg-yellow-50');
+        }
+    }, 100);
+    @endif
 });
+
+// Función para configurar el filtro automático
+function setupAutoFilter() {
+    const searchInput = document.getElementById('searchInput');
+    const table = document.querySelector('table tbody');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tr');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        rows.forEach(row => {
+            const nameCell = row.cells[0]; // Columna de nombre
+            const categoryCell = row.cells[1]; // Columna de categoría
+            const characteristicsCell = row.cells[2]; // Columna de características
+            
+            const nameText = nameCell ? nameCell.textContent.toLowerCase() : '';
+            const categoryText = categoryCell ? categoryCell.textContent.toLowerCase() : '';
+            const characteristicsText = characteristicsCell ? characteristicsCell.textContent.toLowerCase() : '';
+            
+            if (nameText.includes(searchTerm) || categoryText.includes(searchTerm) || characteristicsText.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Actualizar contador de resultados visibles
+        updateVisibleCount();
+    });
+}
+
+// Función para limpiar la búsqueda
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = '';
+    
+    const rows = document.querySelectorAll('table tbody tr');
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    updateVisibleCount();
+}
+
+// Función para actualizar el contador de resultados visibles
+function updateVisibleCount() {
+    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
+    const totalRows = document.querySelectorAll('table tbody tr').length;
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    
+    const counterElement = document.querySelector('.text-sm.text-gray-500');
+    if (counterElement) {
+        if (document.getElementById('searchInput').value) {
+            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
+        } else {
+            counterElement.textContent = `Mostrando {{ $supplies->firstItem() ?? 0 }} - {{ $supplies->lastItem() ?? 0 }} de {{ $supplies->total() }} registros`;
+        }
+    }
+    
+    // Mostrar/ocultar mensaje de "no hay resultados"
+    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
+        if (noResultsMessage) {
+            noResultsMessage.style.display = 'block';
+        }
+    } else {
+        if (noResultsMessage) {
+            noResultsMessage.style.display = 'none';
+        }
+    }
+}
 
 // Verificar si hay errores de validación y abrir modal automáticamente
 @if($errors->hasAny(['name', 'category_id', 'initial_amount', 'characteristics', 'unit_measure', 'observations']) || session('error'))

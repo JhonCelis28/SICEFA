@@ -16,6 +16,9 @@
 // Ruta principal del módulo INFRASTOCK, que redirige a la página de inicio del módulo.
 Route::get('/infrastock', 'INFRASTOCKController@index')->name('cefa.infrastock.index');
 
+// Ruta para la página de desarrolladores
+Route::get('/infrastock/developers', 'INFRASTOCKController@developers')->name('cefa.infrastock.developers');
+
 // Ruta para manejar la redirección después del login desde SICA
 // Solo redirige, no hace nada más (igual que el admin)
 Route::get('/infrastock/post-login', 'INFRASTOCKController@postlogin')->name('infrastock.post-login')->middleware('auth');

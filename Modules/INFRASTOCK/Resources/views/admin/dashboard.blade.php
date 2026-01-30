@@ -21,7 +21,7 @@
 -->
 @extends('infrastock::layouts.master')
 
-@section('title', 'Dashboard - INFRASTOCK')
+@section('title', 'Dashboard')
 
 @section('content')
 

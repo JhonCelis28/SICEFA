@@ -54,7 +54,6 @@
     }">
     <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Listado de Categorías</h2>
                 <div class="flex space-x-2">
                     <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
                         Crear Nueva Categoría
@@ -81,7 +80,6 @@
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-700">Detalles de las Categorías</h3>
                         <div class="text-sm text-gray-500">
                             Mostrando {{ $categories->firstItem() ?? 0 }} - {{ $categories->lastItem() ?? 0 }} de {{ $categories->total() }} registros
                         </div>
@@ -91,17 +89,15 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <!-- Encabezados de la tabla -->
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nombre</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipo</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <!-- Iteración sobre cada categoría para mostrar sus datos -->
                             @foreach($categories as $category)
                                 <tr class="hover:bg-gray-100 transition-colors duration-150">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $category->id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $category->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $category->type === 'supply' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
@@ -292,8 +288,8 @@ function setupAutoFilter() {
         const searchTerm = this.value.toLowerCase();
         
         rows.forEach(row => {
-            const nameCell = row.cells[1]; // Columna de nombre
-            const typeCell = row.cells[2]; // Columna de tipo
+            const nameCell = row.cells[0]; // Columna de nombre
+            const typeCell = row.cells[1]; // Columna de tipo
             
             const nameText = nameCell.textContent.toLowerCase();
             const typeText = typeCell.textContent.toLowerCase();

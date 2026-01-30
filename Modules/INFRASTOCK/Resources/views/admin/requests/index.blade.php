@@ -7,7 +7,6 @@
     <!-- Header de la página -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 text-gray-800">Gestión de Solicitudes de Insumos</h1>
             <p class="text-muted">Administra las solicitudes de todos los usuarios</p>
         </div>
         <div class="d-flex align-items-center">
@@ -35,21 +34,19 @@
                     <table class="table table-bordered table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th>ID</th>
-                                <th>Solicitante</th>
-                                <th>Insumos</th>
-                                <th>Cantidad Total</th>
-                                <th>Unidad Productiva</th>
-                                <th>Almacén</th>
-                                <th>Fecha Solicitud</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
+                                <th class="font-bold">Solicitante</th>
+                                <th class="font-bold">Insumos</th>
+                                <th class="font-bold">Cantidad Total</th>
+                                <th class="font-bold">Unidad Productiva</th>
+                                <th class="font-bold">Almacén</th>
+                                <th class="font-bold">Fecha Solicitud</th>
+                                <th class="font-bold">Estado</th>
+                                <th class="font-bold">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($requests as $request)
                                 <tr>
-                                    <td class="font-weight-bold">#{{ $request->id }}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <img src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" 

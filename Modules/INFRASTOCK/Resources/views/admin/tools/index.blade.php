@@ -142,7 +142,7 @@
     }">
         <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Listado de Herramientas</h2>
+                <div></div>
                 <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
                     Registrar Nueva Herramienta
                 </button>
@@ -167,7 +167,6 @@
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-700">Detalles de las Herramientas</h3>
                         <div class="text-sm text-gray-500">
                             Mostrando {{ $tools->firstItem() ?? 0 }} - {{ $tools->lastItem() ?? 0 }} de {{ $tools->total() }} registros
                         </div>
@@ -176,25 +175,23 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marca</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cant. Total</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cant. Disponible</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Adquisición</th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Imagen</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nombre</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Placa</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Descripción</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Marca</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Modelo</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Categoría</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Estado</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Cant. Total</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Cant. Disponible</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Fecha Adquisición</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($tools as $tool)
                                     <tr class="hover:bg-gray-100 transition-colors duration-150">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $tool->id }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             @if($tool->imagen)
                                                 <img src="{{ asset('storage/' . $tool->imagen) }}" alt="{{ $tool->nombre }}" class="h-10 w-10 object-cover rounded">
@@ -868,14 +865,13 @@ function setupAutoFilter() {
         
         rows.forEach(row => {
             // Columnas a buscar: ID (col 0), Nombre (col 2), Placa (col 3), Descripción (col 4), Marca (col 5), Modelo (col 6), Categoría (col 7), Estado (col 8)
-            const idCell = row.cells[0];
-            const nombreCell = row.cells[2];
-            const placaCell = row.cells[3];
-            const descripcionCell = row.cells[4];
-            const marcaCell = row.cells[5];
-            const modeloCell = row.cells[6];
-            const categoriaCell = row.cells[7];
-            const estadoCell = row.cells[8];
+            const nombreCell = row.cells[1];
+            const placaCell = row.cells[2];
+            const descripcionCell = row.cells[3];
+            const marcaCell = row.cells[4];
+            const modeloCell = row.cells[5];
+            const categoriaCell = row.cells[6];
+            const estadoCell = row.cells[7];
             
             const idText = idCell ? idCell.textContent.toLowerCase() : '';
             const nombreText = nombreCell ? nombreCell.textContent.toLowerCase() : '';

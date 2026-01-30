@@ -42,7 +42,7 @@ class SupplyController extends Controller
             }
         }
         
-        // Obtener todos los insumos (DataTables manejará la paginación)
+        // Obtener insumos con paginación
         $query = Equipment::with('category', 'labor', 'inventory');
         
         // Si hay un filtro por equipment_id (desde notificación), aplicar filtro
@@ -57,7 +57,7 @@ class SupplyController extends Controller
                   ->where('expiration_date', '<=', now()->addDays(30));
         }
         
-        $supplies = $query->get(); // Obtiene todos los insumos (sin paginación de Laravel, DataTables lo manejará).
+        $supplies = $query->orderBy('id', 'desc')->paginate(15); // Paginación de Laravel
         $categories = InfrastockCategory::where('type', 'supply')->get(); // Obtiene categorías específicas para insumos.
         $labors = Labor::all(); // Obtiene todas las labores.
         $inventories = Inventory::all(); // Obtiene todos los inventarios.

@@ -11,6 +11,7 @@ use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Entities\InfrastockCategory;
 use Modules\INFRASTOCK\Entities\ProductiveUnit;
 use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
+use Modules\SICA\Entities\App;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -32,7 +33,42 @@ class INFRASTOCKController extends Controller
      */
     public function index()
     {
-        return view('infrastock::index'); // Retorna la vista 'index.blade.php' del módulo INFRASTOCK.
+        // Estadísticas generales del sistema para mostrar en la página principal
+        $totalSupplies = Equipment::count();
+        $totalTools = Tool::count();
+        $totalCategories = InfrastockCategory::count();
+        $totalAreas = ProductiveUnit::count();
+        // Obtener usuarios con roles de INFRASTOCK
+        $infrastockApp = App::where('name', 'INFRASTOCK')->first();
+        $totalUsers = $infrastockApp ? User::whereHas('roles', function($query) use ($infrastockApp) {
+            $query->where('app_id', $infrastockApp->id);
+        })->count() : 0;
+        
+        // Insumos disponibles
+        $availableSupplies = Equipment::get()->sum('stock');
+        
+        // Herramientas disponibles
+        $availableTools = Tool::sum('amount') ?? 0;
+        
+        return view('infrastock::index', compact(
+            'totalSupplies',
+            'totalTools',
+            'totalCategories',
+            'totalAreas',
+            'totalUsers',
+            'availableSupplies',
+            'availableTools'
+        ));
+    }
+
+    /**
+     * Muestra la página de desarrolladores del módulo INFRASTOCK.
+     * Esta vista muestra información sobre el equipo de desarrollo y las herramientas utilizadas.
+     * @return Renderable
+     */
+    public function developers()
+    {
+        return view('infrastock::developers');
     }
 
 
