@@ -193,65 +193,47 @@
 
 </head>
 
-<body class="flex h-screen bg-gray-100 font-sans" style="font-family: 'Plus Jakarta Sans', sans-serif;">
+<body class="flex h-screen bg-gray-100 font-sans" x-data="{
+    sidebarOpen: false,
+    isDesktop: false,
+    init() {
+        // Verificar si estamos en desktop al inicializar
+        this.isDesktop = window.innerWidth >= 768;
+        // Por defecto cerrado (solo iconos)
+        this.sidebarOpen = false;
+        
+        // Escucha el evento de redimensionamiento de la ventana
+        window.addEventListener('resize', () => {
+            this.isDesktop = window.innerWidth >= 768;
+            if (!this.isDesktop) {
+                this.sidebarOpen = false; // Cierra el sidebar en móviles
+            }
+        });
+    },
+    // Función para alternar el estado de apertura/cierre del sidebar
+    toggleSidebar() {
+        this.sidebarOpen = !this.sidebarOpen;
+    }
+}" style="font-family: 'Plus Jakarta Sans', sans-serif;">
 
     <!-- Sidebar de navegación principal -->
-    <div x-data="{
-        sidebarOpen: false,
-        sidebarHover: false,
-        isDesktop: false,
-        init() {
-            // Verificar si estamos en desktop al inicializar
-            this.isDesktop = window.innerWidth >= 768;
-            this.sidebarOpen = this.isDesktop;
-            
-            // Escucha el evento de redimensionamiento de la ventana para ajustar el estado del sidebar.
-            window.addEventListener('resize', () => {
-                this.isDesktop = window.innerWidth >= 768;
-                if (!this.isDesktop) {
-                    this.sidebarOpen = false; // Cierra el sidebar automáticamente en dispositivos móviles.
-                    this.sidebarHover = false;
-                } else {
-                    this.sidebarOpen = true; // Abre el sidebar automáticamente en dispositivos de escritorio.
-                }
-            });
-        },
-        // Función para alternar el estado de apertura/cierre del sidebar.
-        toggleSidebar() {
-            this.sidebarOpen = !this.sidebarOpen;
-        },
-        // Función para manejar el hover en escritorio
-        handleMouseEnter() {
-            if (this.isDesktop) {
-                this.sidebarHover = true;
-            }
-        },
-        handleMouseLeave() {
-            if (this.isDesktop) {
-                this.sidebarHover = false;
-            }
-        }
-    }"
-        @mouseenter="handleMouseEnter()"
-        @mouseleave="handleMouseLeave()"
+    <div
         :class="{ 
             '-translate-x-full': !sidebarOpen && !isDesktop, 
-            'md:w-20': !sidebarHover && isDesktop, 
-            'md:w-64': (sidebarHover || sidebarOpen) && isDesktop
+            'md:w-20': !sidebarOpen && isDesktop, 
+            'md:w-64': sidebarOpen && isDesktop
         }"
         class="fixed md:relative inset-y-0 left-0 z-40 bg-gradient-to-b from-green-800 to-green-900 shadow-2xl transform transition-all duration-300 ease-in-out border-r border-green-700 h-screen md:h-full flex flex-col">
         
         <!-- Encabezado del Sidebar: Logo y Eslogan -->
-        <div class="flex flex-col items-center justify-center bg-gradient-to-br from-green-900 to-green-800 text-white px-2 py-6 border-b border-green-700" style="min-height: 160px;">
-            <div class="flex items-center justify-center w-full mb-3 transition-all duration-300" 
-                 :class="{'scale-90': !sidebarHover && isDesktop, 'scale-100': sidebarHover || !isDesktop}"
-                 style="height: 90px;">
+        <div class="flex flex-col items-center justify-center bg-gradient-to-br from-green-900 to-green-800 text-white px-2 py-4 border-b border-green-700" style="min-height: 120px; height: 120px;">
+            <div class="flex items-center justify-center w-full mb-3" style="height: 70px; min-height: 70px;">
                 <img src="{{ asset('assets/img/logo.png') }}" alt="Logo" 
                     class="object-contain drop-shadow-lg"
-                    style="width: 90px; height: 90px; max-width: 90px; max-height: 90px; filter: brightness(1.1);">
+                    style="width: 60px; height: 60px; max-width: 60px; max-height: 60px; filter: brightness(1.1);">
             </div>
-            <div class="h-10 flex items-center justify-center transition-all duration-300" style="min-height: 40px;">
-                <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+            <div class="h-10 flex items-center justify-center" style="min-height: 40px; height: 40px;">
+                <span x-show="sidebarOpen || !isDesktop" 
                       x-transition:enter="transition ease-out duration-300" 
                       x-transition:enter-start="opacity-0 transform scale-x-0" 
                       x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -281,8 +263,8 @@
             <ul class="space-y-1">
                 <li>
                     <a href="{{ route('cefa.infrastock.admin.dashboard') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('cefa.infrastock.admin.dashboard')) active @endif">
-                        <i class="fas fa-tachometer-alt w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-tachometer-alt w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -296,8 +278,8 @@
                 <!-- Áreas Productivas - Enlace directo -->
                 <li>
                     <a href="{{ route('infrastock.admin.areas.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.areas.*')) active @endif">
-                        <i class="fas fa-sitemap w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-sitemap w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -311,8 +293,8 @@
                 <!-- Categorías - Enlace directo -->
                 <li>
                     <a href="{{ route('infrastock.admin.categories.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.categories.*')) active @endif">
-                        <i class="fas fa-layer-group w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-layer-group w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -326,8 +308,8 @@
                 <!-- Grupo de navegación para Insumos -->
                 <li x-data="{ open: false }">
                     <a @click="open = !open" class="sidebar-menu-item font-bold cursor-pointer @if(Request::routeIs(['infrastock.admin.supplies.*', 'infrastock.admin.supply-requests.*', 'infrastock.admin.supply-returns.*'])) active @endif">
-                        <i class="fas fa-boxes w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-boxes w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -335,11 +317,11 @@
                               x-transition:leave-start="opacity-100 transform scale-x-100" 
                               x-transition:leave-end="opacity-0 transform scale-x-0" 
                               class="origin-left whitespace-nowrap flex-1">Insumos</span>
-                        <i x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i x-show="sidebarOpen || !isDesktop" 
                            :class="{ 'fa-angle-down': open, 'fa-angle-left': !open }" 
                            class="fas ml-auto transition-transform duration-200 text-green-300 flex-shrink-0"></i>
                     </a>
-                    <ul x-show="open && (sidebarHover || sidebarOpen || !isDesktop)" 
+                    <ul x-show="open && (sidebarOpen || !isDesktop)" 
                         x-cloak 
                         x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 transform -translate-y-2"
@@ -373,8 +355,8 @@
                 <!-- Herramientas - Enlace directo -->
                 <li>
                     <a href="{{ route('infrastock.admin.tools.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.tools.*')) active @endif">
-                        <i class="fas fa-tools w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-tools w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -388,8 +370,8 @@
                 <!-- Préstamos y Devoluciones - Enlace directo -->
                 <li>
                     <a href="{{ route('infrastock.admin.loans.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.loans.*')) active @endif">
-                        <i class="fas fa-clipboard-list w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-clipboard-list w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -403,8 +385,8 @@
                 <!-- Gestión de Usuarios - Enlace directo -->
                 <li>
                     <a href="{{ route('infrastock.admin.users.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.admin.users.*')) active @endif">
-                        <i class="fas fa-users w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarHover && !sidebarOpen && isDesktop, 'mr-3': sidebarHover || sidebarOpen || !isDesktop}"></i>
-                        <span x-show="sidebarHover || sidebarOpen || !isDesktop" 
+                        <i class="fas fa-users w-6 text-lg text-green-300 flex-shrink-0 transition-all duration-300" :class="{'mr-0': !sidebarOpen && isDesktop, 'mr-3': sidebarOpen || !isDesktop}"></i>
+                        <span x-show="sidebarOpen || !isDesktop" 
                               x-transition:enter="transition ease-out duration-300" 
                               x-transition:enter-start="opacity-0 transform scale-x-0" 
                               x-transition:enter-end="opacity-100 transform scale-x-100" 
@@ -424,9 +406,12 @@
         <!-- Barra de Navegación Superior (Top Navbar) -->
         <header class="flex items-center justify-between h-16 bg-gradient-to-r from-white to-gray-50 border-b border-gray-200 px-6 shadow-md z-30 backdrop-blur-sm">
             <div class="flex items-center">
-                <!-- Botón de hamburguesa para alternar la visibilidad del sidebar en dispositivos móviles -->
-                <button @click="if(!isDesktop) toggleSidebar()" class="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-lg p-2 transition-all duration-200 md:hidden">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                <!-- Botón de hamburguesa para alternar la visibilidad del sidebar (visible siempre) -->
+                <button @click="toggleSidebar()" class="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-lg p-2 transition-all duration-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path x-show="!sidebarOpen || !isDesktop" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        <path x-show="sidebarOpen && isDesktop" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </button>
             </div>
 
