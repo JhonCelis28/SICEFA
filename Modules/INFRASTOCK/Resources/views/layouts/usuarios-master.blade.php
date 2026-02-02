@@ -1,22 +1,61 @@
 <!--
-    * @file instructor-master.blade.php
-    * @brief Plantilla de diseño principal para Instructores en el módulo INFRASTOCK.
+    * @file usuarios-master.blade.php
+    * @brief Plantilla de diseño principal para usuarios que solicitan insumos en INFRASTOCK.
     *
-    * Extiende el layout base compartido y define el menú específico del Instructor.
-    * Los instructores solo solicitan herramientas (préstamo y devolución), no insumos.
+    * Extiende el layout base compartido y define el menú común para todos los roles
+    * que solicitan insumos (PSICOLA, Operario, Personal de Aseo, Vigilancia, Ganadería,
+    * Convivencia, Ciencias Básicas, Agroindustria).
 -->
 @extends('infrastock::layouts.base-master')
 
-@section('title', 'INFRASTOCK - Instructor')
+@php
+    // Obtener el rol del usuario actual
+    $userRoles = Auth::user()->roles->pluck('name')->toArray();
+    $roleName = '';
+    $routePrefix = '';
+    
+    // Mapear nombres de roles a prefijos de ruta
+    if (in_array('Psicola', $userRoles)) {
+        $roleName = 'PSICOLA';
+        $routePrefix = 'psicola';
+    } elseif (in_array('Operario', $userRoles)) {
+        $roleName = 'Operario';
+        $routePrefix = 'operator';
+    } elseif (in_array('Aseo', $userRoles)) {
+        $roleName = 'Personal de Aseo';
+        $routePrefix = 'cleaning-staff';
+    } elseif (in_array('Vigilancia', $userRoles)) {
+        $roleName = 'Vigilancia';
+        $routePrefix = 'vigilancia';
+    } elseif (in_array('Ganadería', $userRoles)) {
+        $roleName = 'Ganadería';
+        $routePrefix = 'ganaderia';
+    } elseif (in_array('Centro de Convivencia', $userRoles)) {
+        $roleName = 'Centro de Convivencia';
+        $routePrefix = 'convivencia';
+    } elseif (in_array('Ciencias Basicas', $userRoles)) {
+        $roleName = 'Ciencias Básicas';
+        $routePrefix = 'ciencias-basicas';
+    } elseif (in_array('Agroindustria', $userRoles)) {
+        $roleName = 'Agroindustria';
+        $routePrefix = 'agroindustria';
+    } else {
+        // Fallback al primer rol si no coincide
+        $roleName = $userRoles[0] ?? 'Usuario';
+        $routePrefix = strtolower(str_replace(' ', '-', $roleName));
+    }
+@endphp
 
-@section('user-role', 'Instructor')
+@section('title', 'INFRASTOCK - ' . $roleName)
 
-@section('footer-role', ' - Instructor')
+@section('user-role', $roleName)
+
+@section('footer-role', ' - ' . $roleName)
 
 @section('sidebar-menu')
     <!-- Dashboard Principal -->
     <li>
-        <a href="{{ route('infrastock.instructor.dashboard') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.instructor.dashboard')) active @endif">
+        <a href="{{ route('infrastock.' . $routePrefix . '.dashboard') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.dashboard')) active @endif">
             <i class="fas fa-tachometer-alt w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
             <span x-show="isSidebarExpanded || !isDesktop" 
                   x-cloak
@@ -30,10 +69,14 @@
         </a>
     </li>
 
-    <!-- Mis Préstamos -->
+    <!-- Stock Disponible (solo si el rol tiene esta ruta) -->
+    @php
+        $hasStockRoute = in_array($routePrefix, ['operator', 'psicola', 'vigilancia', 'ganaderia', 'convivencia', 'ciencias-basicas', 'agroindustria']);
+    @endphp
+    @if($hasStockRoute)
     <li>
-        <a href="{{ route('infrastock.instructor.my-loans') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.instructor.my-loans')) active @endif">
-            <i class="fas fa-tools w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
+        <a href="{{ route('infrastock.' . $routePrefix . '.stock') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.stock')) active @endif">
+            <i class="fas fa-boxes w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
             <span x-show="isSidebarExpanded || !isDesktop" 
                   x-cloak
                   x-transition:enter="transition ease-out duration-300" 
@@ -42,13 +85,30 @@
                   x-transition:leave="transition ease-in duration-200" 
                   x-transition:leave-start="opacity-100 transform scale-x-100" 
                   x-transition:leave-end="opacity-0 transform scale-x-0" 
-                  class="origin-left whitespace-nowrap">Mis Préstamos</span>
+                  class="origin-left whitespace-nowrap">Stock Disponible</span>
+        </a>
+    </li>
+    @endif
+
+    <!-- Mis Solicitudes -->
+    <li>
+        <a href="{{ route('infrastock.' . $routePrefix . '.requests.index') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.requests.*')) active @endif">
+            <i class="fas fa-clipboard-list w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
+            <span x-show="isSidebarExpanded || !isDesktop" 
+                  x-cloak
+                  x-transition:enter="transition ease-out duration-300" 
+                  x-transition:enter-start="opacity-0 transform scale-x-0" 
+                  x-transition:enter-end="opacity-100 transform scale-x-100" 
+                  x-transition:leave="transition ease-in duration-200" 
+                  x-transition:leave-start="opacity-100 transform scale-x-100" 
+                  x-transition:leave-end="opacity-0 transform scale-x-0" 
+                  class="origin-left whitespace-nowrap">Mis Solicitudes</span>
         </a>
     </li>
 
     <!-- Notificaciones -->
     <li>
-        <a href="{{ route('infrastock.instructor.notifications') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.instructor.notifications')) active @endif">
+        <a href="{{ route('infrastock.' . $routePrefix . '.notifications') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.notifications')) active @endif">
             <i class="fas fa-bell w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
             <span x-show="isSidebarExpanded || !isDesktop" 
                   x-cloak
@@ -59,6 +119,28 @@
                   x-transition:leave-start="opacity-100 transform scale-x-100" 
                   x-transition:leave-end="opacity-0 transform scale-x-0" 
                   class="origin-left whitespace-nowrap">Notificaciones</span>
+        </a>
+    </li>
+
+    <!-- Reporte de Sobrantes -->
+    @php
+        // cleaning-staff usa surplus.index, los demás usan surplus-report
+        $surplusRoute = ($routePrefix === 'cleaning-staff') 
+            ? 'infrastock.' . $routePrefix . '.surplus.index' 
+            : 'infrastock.' . $routePrefix . '.surplus-report';
+    @endphp
+    <li>
+        <a href="{{ route($surplusRoute) }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.surplus-report') || Request::routeIs('infrastock.' . $routePrefix . '.surplus.*')) active @endif">
+            <i class="fas fa-file-alt w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
+            <span x-show="isSidebarExpanded || !isDesktop" 
+                  x-cloak
+                  x-transition:enter="transition ease-out duration-300" 
+                  x-transition:enter-start="opacity-0 transform scale-x-0" 
+                  x-transition:enter-end="opacity-100 transform scale-x-100" 
+                  x-transition:leave="transition ease-in duration-200" 
+                  x-transition:leave-start="opacity-100 transform scale-x-100" 
+                  x-transition:leave-end="opacity-0 transform scale-x-0" 
+                  class="origin-left whitespace-nowrap">Reporte de Sobrantes</span>
         </a>
     </li>
 @endsection
@@ -84,20 +166,13 @@
                             <div class="flex-shrink-0">
                                 @switch($notification->type)
                                     @case('request_approved')
-                                    @case('loan_approved')
                                         <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                             <i class="fas fa-check text-green-600 text-sm"></i>
                                         </div>
                                         @break
                                     @case('request_rejected')
-                                    @case('loan_rejected')
                                         <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
                                             <i class="fas fa-times text-red-600 text-sm"></i>
-                                        </div>
-                                        @break
-                                    @case('loan_created')
-                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                            <i class="fas fa-tools text-blue-600 text-sm"></i>
                                         </div>
                                         @break
                                     @default
@@ -123,7 +198,7 @@
                 @endforeach
                 @if($notifications->count() > 5)
                     <div class="px-4 py-2 text-center">
-                        <a href="{{ route('infrastock.instructor.notifications') }}" class="text-sm text-green-600 hover:text-green-700 font-medium">
+                        <a href="{{ route('infrastock.' . $routePrefix . '.notifications') }}" class="text-sm text-green-600 hover:text-green-700 font-medium">
                             Ver todas las notificaciones ({{ $notifications->count() }})
                         </a>
                     </div>
@@ -140,17 +215,17 @@
 
 @section('navbar-user-menu')
     <button onclick="openProfileModal()" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</button>
-    <a href="{{ route('infrastock.instructor.logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
-    <form id="logout-form" action="{{ route('infrastock.instructor.logout') }}" method="POST" class="hidden">
+    <a href="{{ route('infrastock.' . $routePrefix . '.logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
+    <form id="logout-form" action="{{ route('infrastock.' . $routePrefix . '.logout') }}" method="POST" class="hidden">
         @csrf
     </form>
 @endsection
 
 @section('breadcrumbs')
     {{-- Muestra el enlace "Dashboard" en las migas de pan solo si no estamos ya en el dashboard --}}
-    @if (!Request::routeIs('infrastock.instructor.dashboard'))
+    @if (!Request::routeIs('infrastock.' . $routePrefix . '.dashboard'))
     <li class="flex items-center">
-        <a href="{{ route('infrastock.instructor.dashboard') }}" class="text-green-600 hover:text-green-800">Dashboard</a>
+        <a href="{{ route('infrastock.' . $routePrefix . '.dashboard') }}" class="text-green-600 hover:text-green-800">Dashboard</a>
         <svg class="h-4 w-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
     </li>
     @endif

@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.agroindustria-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Detalles de Solicitud - Agroindustria INFRASTOCK')
 

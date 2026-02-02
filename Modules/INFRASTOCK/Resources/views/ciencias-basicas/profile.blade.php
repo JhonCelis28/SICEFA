@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.ciencias-basicas-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Mi Perfil')
 

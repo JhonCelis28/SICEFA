@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.psicola-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Registro de Sobrantes')
 

@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.operator-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Detalles de Solicitud - Operario INFRASTOCK')
 

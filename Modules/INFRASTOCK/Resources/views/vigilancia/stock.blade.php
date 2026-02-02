@@ -15,7 +15,7 @@
     * @author [Tu Nombre/Equipo]
     * @date [Fecha de Creación/Última Modificación]
 -->
-@extends('infrastock::layouts.vigilancia-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Stock Disponible - Vigilancia INFRASTOCK')
 

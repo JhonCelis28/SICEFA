@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.ganaderia-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Mis Solicitudes - Ganadería INFRASTOCK')
 

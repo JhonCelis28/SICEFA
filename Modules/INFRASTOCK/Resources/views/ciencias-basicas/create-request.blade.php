@@ -13,7 +13,7 @@
     * @author [Tu Nombre/Equipo]
     * @date [Fecha de Creación/Última Modificación]
 -->
-@extends('infrastock::layouts.ciencias-basicas-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Nueva Solicitud - Ciencias Basicas INFRASTOCK')
 

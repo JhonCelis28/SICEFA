@@ -17,7 +17,7 @@
     * @author [Tu Nombre/Equipo]
     * @date [Fecha de Creación/Última Modificación]
 -->
-@extends('infrastock::layouts.ganaderia-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Dashboard - Ganadería INFRASTOCK')
 

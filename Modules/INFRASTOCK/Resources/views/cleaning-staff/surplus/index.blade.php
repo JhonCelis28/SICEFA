@@ -1,4 +1,4 @@
-@extends('infrastock::layouts.cleaning-staff-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Registro de Sobrantes')
 

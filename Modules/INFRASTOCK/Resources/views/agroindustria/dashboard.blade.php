@@ -17,7 +17,7 @@
     * @author [Tu Nombre/Equipo]
     * @date [Fecha de Creación/Última Modificación]
 -->
-@extends('infrastock::layouts.agroindustria-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Dashboard - Agroindustria INFRASTOCK')
 

@@ -13,7 +13,7 @@
     * @author [Tu Nombre/Equipo]
     * @date [Fecha de Creación/Última Modificación]
 -->
-@extends('infrastock::layouts.cleaning-staff-master')
+@extends('infrastock::layouts.usuarios-master')
 
 @section('title', 'Reporte de Sobrantes - Personal de Aseo INFRASTOCK')
 
