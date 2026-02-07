@@ -754,13 +754,15 @@
             statusFilter.addEventListener('change', filterRequests);
             dateFilter.addEventListener('change', filterRequests);
 
-            // Botón para limpiar búsqueda
-            const clearSearchBtn = document.getElementById('clear-search');
-            clearSearchBtn.addEventListener('click', function() {
-                searchInput.value = '';
-                filterRequests();
-                updateClearButton();
-            });
+            // Botón para limpiar búsqueda (reutiliza clearSearchBtn ya declarado)
+            // clearSearchBtn ya fue declarado arriba
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    filterRequests();
+                    updateClearButton();
+                });
+            }
 
             // Mostrar/ocultar botón de limpiar búsqueda
             searchInput.addEventListener('input', function() {
@@ -869,7 +871,7 @@
             const equipmentStockFilter = document.getElementById('equipment-stock-filter');
             const equipmentSearchResults = document.getElementById('equipment-search-results');
             const equipmentSearchCount = document.getElementById('equipment-search-count');
-            const noEquipmentResults = document.getElementById('no-equipment-results');
+            const noEquipmentResultsSearch = document.getElementById('no-equipment-results');
             const clearEquipmentSearchBtn = document.getElementById('clear-equipment-search');
 
             // Función para abrir el modal de búsqueda de insumos
@@ -986,11 +988,11 @@
                 equipmentSearchCount.textContent = equipments.length;
 
                 if (equipments.length === 0) {
-                    noEquipmentResults.classList.remove('hidden');
+                    noEquipmentResultsSearch.classList.remove('hidden');
                     return;
                 }
 
-                noEquipmentResults.classList.add('hidden');
+                noEquipmentResultsSearch.classList.add('hidden');
 
                 equipments.forEach(equipment => {
                     const equipmentCard = document.createElement('div');
@@ -1390,7 +1392,7 @@
 
         // Cargar detalles de la solicitud
         function loadRequestDetails(requestId) {
-            fetch(`/infrastock/cleaning-staff/requests/${requestId}`)
+            fetch(`/infrastock/psicola/requests/${requestId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -1558,7 +1560,7 @@
 
         // Cargar datos para edición
         function loadRequestForEdit(requestId) {
-            fetch(`/infrastock/cleaning-staff/requests/${requestId}/edit`)
+            fetch(`/infrastock/psicola/requests/${requestId}/edit`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -1617,7 +1619,7 @@
                     document.getElementById('edit-description').value = data.description || '';
                     
                     // Actualizar la acción del formulario
-                    editForm.action = `/infrastock/cleaning-staff/requests/${requestId}`;
+                    editForm.action = `/infrastock/psicola/requests/${requestId}`;
                 })
                 .catch(error => {
                     Swal.fire({
@@ -1647,7 +1649,7 @@
                     // Crear un formulario temporal para enviar la petición DELETE
                     const form = document.createElement('form');
                     form.method = 'POST';
-                    form.action = `/infrastock/cleaning-staff/requests/${requestId}`;
+                    form.action = `/infrastock/psicola/requests/${requestId}`;
                     
                     // Agregar token CSRF
                     const csrfToken = document.createElement('input');

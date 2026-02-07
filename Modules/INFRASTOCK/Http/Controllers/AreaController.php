@@ -21,10 +21,20 @@ class AreaController extends Controller
      * Muestra una lista de todas las áreas productivas.
      * @return Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
-        $areas = ProductiveUnit::paginate(15); // Obtiene las unidades productivas con paginación (15 por página).
-        return view('infrastock::admin.areas.index', compact('areas')); // Retorna la vista index con las áreas.
+        $query = ProductiveUnit::query();
+
+        // Búsqueda server-side
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $areas = $query->paginate(15)->appends($request->query());
+        return view('infrastock::admin.areas.index', compact('areas'));
     }
 
     /**

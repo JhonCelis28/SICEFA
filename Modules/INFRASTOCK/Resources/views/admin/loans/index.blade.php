@@ -10,9 +10,8 @@
     * Extiende la plantilla `master.blade.php` y define el título y los ítems de las migas de pan.
     *
     * @param Modules\INFRASTOCK\Entities\WarehouseMovement[] $loans Colección de movimientos de almacén (préstamos/devoluciones).
-    * @param Modules\INFRASTOCK\Entities\Tool[] $tools Colección de herramientas disponibles para el select en los modales.
-    * @param Modules\INFRASTOCK\Entities\Equipment[] $equipments Colección de insumos disponibles para el select en los modales.
-    * @param App\Models\User[] $users Colección de usuarios para el select en los modales (prestadores/receptores).
+ * @param Modules\INFRASTOCK\Entities\Tool[] $tools Colección de herramientas con info de disponibilidad para los modales.
+ * @param App\Models\User[] $instructors Colección de usuarios con rol Instructor para el select en los modales.
     * @param Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse[] $productiveUnitWarehouses Colección de áreas/bodegas.
     * @param Illuminate\Support\ViewErrorBag $errors Objeto que contiene los errores de validación de Laravel.
     * @author [Tu Nombre/Equipo]
@@ -31,13 +30,31 @@
 @endsection
 
 @section('content')
+    @php
+        $toolsJson = $tools->map(function($t) {
+            return [
+                'id' => $t->id,
+                'nombre' => $t->nombre,
+                'estado' => $t->estado,
+                'disponible' => $t->cantidad_disponible ?? 0,
+                'total' => $t->cantidad_total ?? 0,
+                'placa' => $t->placa,
+            ];
+        })->values();
+    @endphp
+
     <!-- Contenedor principal de la vista de gestión de préstamos y devoluciones -->
     <div x-data="{
         isCreateModalOpen: false,
         isEditModalOpen: false,
-        currentLoan: { id: null, item_type: '', movement_id: '', user_id: '', role: '', productive_unit_warehouse_id: '' },
+        currentLoan: { id: null, item_type: 'tool', movement_id: '', user_id: '', role: '', productive_unit_warehouse_id: '', amount: 1, description: '' },
         validationErrors: {},
-        createForm: { item_type: '', movement_id: '', user_id: '', role: '', productive_unit_warehouse_id: '' },
+        createForm: { movement_id: '', user_mode: 'select', user_id: '', borrower_name: '', amount: 1, description: '' },
+        selectedToolStock: 0,
+        selectedToolName: '',
+
+        // Datos de herramientas pasados desde el controller
+        toolsData: {{ $toolsJson->toJson() }},
 
         init() {
             @if($errors->any() || session('error'))
@@ -45,11 +62,13 @@
                     this.isCreateModalOpen = true;
                     this.validationErrors = @json($errors->messages());
                     const oldData = @json(old());
-                    this.createForm.item_type = oldData.item_type || '';
                     this.createForm.movement_id = oldData.movement_id || '';
                     this.createForm.user_id = oldData.user_id || '';
-                    this.createForm.role = oldData.role || '';
-                    this.createForm.productive_unit_warehouse_id = oldData.productive_unit_warehouse_id || '';
+                    this.createForm.borrower_name = oldData.borrower_name || '';
+                    this.createForm.user_mode = oldData.borrower_name ? 'manual' : 'select';
+                    this.createForm.amount = oldData.amount || 1;
+                    this.createForm.description = oldData.description || '';
+                    this.updateToolStock();
                     if ('{{ session('error') }}') {
                         Swal.fire({
                             icon: 'error',
@@ -67,9 +86,9 @@
             this.resetCreateForm();
         },
 
-        openEditModal(id, item_type, movement_id, user_id, role, productive_unit_warehouse_id) {
+        openEditModal(id, item_type, movement_id, user_id, role, productive_unit_warehouse_id, amount, description) {
             this.isEditModalOpen = true;
-            this.currentLoan = { id: id, item_type: item_type, movement_id: movement_id, user_id: user_id, role: role, productive_unit_warehouse_id: productive_unit_warehouse_id };
+            this.currentLoan = { id: id, item_type: item_type, movement_id: movement_id, user_id: user_id, role: role, productive_unit_warehouse_id: productive_unit_warehouse_id, amount: amount || 1, description: description || '' };
             this.validationErrors = {};
         },
 
@@ -80,17 +99,331 @@
         },
 
         resetCreateForm() {
-            this.createForm = { item_type: '', movement_id: '', user_id: '', role: '', productive_unit_warehouse_id: '' };
+            this.createForm = { movement_id: '', user_mode: 'select', user_id: '', borrower_name: '', amount: 1, description: '' };
+            this.selectedToolStock = 0;
+            this.selectedToolName = '';
             this.validationErrors = {};
+        },
+
+        updateToolStock() {
+            const toolId = parseInt(this.createForm.movement_id);
+            const tool = this.toolsData.find(t => t.id === toolId);
+            if (tool) {
+                this.selectedToolStock = tool.disponible;
+                this.selectedToolName = tool.nombre;
+                // Ajustar cantidad si excede disponible
+                if (this.createForm.amount > tool.disponible) {
+                    this.createForm.amount = tool.disponible;
+                }
+            } else {
+                this.selectedToolStock = 0;
+                this.selectedToolName = '';
+            }
         }
     }">
         <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center mb-6">
-                <div></div>
-                <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
-                    Registrar Movimiento
-                </button>
+            <!-- Encabezado con botones de registro, filtros y exportación -->
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
+                <div class="flex items-center space-x-2">
+                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center">
+                        <i class="fas fa-hand-holding mr-2"></i> Registrar Préstamo
+                    </button>
+                </div>
+
+                @if($availablePeriods['hasRecords'] ?? false)
+                <div class="flex items-center space-x-2">
+                    <!-- Script inline para definir el componente antes de Alpine -->
+                    <script>
+                        window.currentLoanExportParams = {};
+                        window.loanPeriodSelector = function() {
+                            return {
+                                open: false,
+                                selectedYear: null,
+                                selectedType: null,
+                                selectedLabel: 'Seleccionar período',
+                                exportParams: {},
+                                
+                                selectPeriod(label, params) {
+                                    this.selectedLabel = label;
+                                    this.exportParams = params;
+                                    window.currentLoanExportParams = params;
+                                    this.open = false;
+                                    this.selectedYear = null;
+                                    this.selectedType = null;
+                                },
+                                
+                                goBack(level) {
+                                    if (level === 'year') {
+                                        this.selectedYear = null;
+                                        this.selectedType = null;
+                                    } else if (level === 'type') {
+                                        this.selectedType = null;
+                                    }
+                                }
+                            }
+                        }
+                    </script>
+                    <!-- Menú desplegable de período -->
+                    <div class="relative" id="loanExportDropdown" x-data="loanPeriodSelector()" @click.away="open = false; selectedYear = null; selectedType = null">
+                        <button @click="open = !open" 
+                                class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center min-w-[200px] justify-between">
+                            <span class="flex items-center">
+                                <i class="fas fa-calendar-alt mr-2 text-blue-600"></i>
+                                <span x-text="selectedLabel"></span>
+                            </span>
+                            <i class="fas fa-chevron-down ml-2 text-gray-400 transition-transform" :class="{'rotate-180': open}"></i>
+                        </button>
+
+                        <!-- Menú desplegable -->
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100 transform scale-100"
+                             x-transition:leave-end="opacity-0 transform scale-95"
+                             class="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                             style="display: none;">
+                            
+                            <!-- Nivel 1: Años -->
+                            <div x-show="!selectedYear" class="max-h-80 overflow-y-auto">
+                                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200">
+                                    <span class="text-xs font-semibold text-gray-500 uppercase">Seleccionar Año</span>
+                                </div>
+                                @foreach($availablePeriods['years'] ?? [] as $yearData)
+                                <button @click="selectedYear = {{ $yearData['year'] }}" 
+                                        class="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-folder text-yellow-500 mr-3"></i>
+                                        <span class="font-medium text-gray-800">{{ $yearData['year'] }}</span>
+                                    </span>
+                                    <span class="flex items-center">
+                                        <span class="text-xs text-gray-500 mr-2">{{ $yearData['totalRecords'] }} registros</span>
+                                        <i class="fas fa-chevron-right text-gray-400"></i>
+                                    </span>
+                                </button>
+                                @endforeach
+                            </div>
+
+                            <!-- Nivel 2: Tipo de período -->
+                            <div x-show="selectedYear && !selectedType" class="max-h-80 overflow-y-auto">
+                                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                                    <button @click="goBack('year')" class="text-blue-600 hover:text-blue-800 flex items-center">
+                                        <i class="fas fa-arrow-left mr-2"></i>
+                                        <span class="text-xs font-semibold uppercase">Año</span>
+                                    </button>
+                                    <span class="text-sm font-bold text-gray-700" x-text="selectedYear"></span>
+                                </div>
+                                
+                                <!-- Opción Anual -->
+                                <button @click="selectPeriod('Año ' + selectedYear, { type: 'yearly', year: selectedYear })" 
+                                        class="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-calendar text-blue-500 mr-3"></i>
+                                        <span class="font-medium text-gray-800">Todo el año</span>
+                                    </span>
+                                </button>
+                                
+                                <!-- Opción Trimestral -->
+                                <button @click="selectedType = 'quarterly'" 
+                                        class="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-calendar-week text-purple-500 mr-3"></i>
+                                        <span class="font-medium text-gray-800">Trimestral</span>
+                                    </span>
+                                    <i class="fas fa-chevron-right text-gray-400"></i>
+                                </button>
+                                
+                                <!-- Opción Mensual -->
+                                <button @click="selectedType = 'monthly'" 
+                                        class="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-calendar-day text-orange-500 mr-3"></i>
+                                        <span class="font-medium text-gray-800">Mensual</span>
+                                    </span>
+                                    <i class="fas fa-chevron-right text-gray-400"></i>
+                                </button>
+                            </div>
+
+                            <!-- Nivel 3: Trimestres -->
+                            @foreach($availablePeriods['years'] ?? [] as $yearData)
+                            <div x-show="selectedYear == {{ $yearData['year'] }} && selectedType == 'quarterly'" class="max-h-80 overflow-y-auto">
+                                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                                    <button @click="goBack('type')" class="text-blue-600 hover:text-blue-800 flex items-center">
+                                        <i class="fas fa-arrow-left mr-2"></i>
+                                        <span class="text-xs font-semibold uppercase">Tipo</span>
+                                    </button>
+                                    <span class="text-sm font-bold text-gray-700">{{ $yearData['year'] }} - Trimestres</span>
+                                </div>
+                                @foreach($yearData['quarters'] as $q)
+                                <button @click="selectPeriod('{{ $q['name'] }} {{ $yearData['year'] }}', { type: 'quarterly', year: {{ $yearData['year'] }}, quarter: {{ $q['quarter'] }} })" 
+                                        class="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-calendar-week text-purple-500 mr-3"></i>
+                                        <span class="font-medium text-gray-800">Trimestre {{ $q['quarter'] }} ({{ $q['name'] }})</span>
+                                    </span>
+                                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">{{ $q['count'] }}</span>
+                                </button>
+                                @endforeach
+                            </div>
+                            @endforeach
+
+                            <!-- Nivel 3: Meses -->
+                            @foreach($availablePeriods['years'] ?? [] as $yearData)
+                            <div x-show="selectedYear == {{ $yearData['year'] }} && selectedType == 'monthly'" class="max-h-80 overflow-y-auto">
+                                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                                    <button @click="goBack('type')" class="text-blue-600 hover:text-blue-800 flex items-center">
+                                        <i class="fas fa-arrow-left mr-2"></i>
+                                        <span class="text-xs font-semibold uppercase">Tipo</span>
+                                    </button>
+                                    <span class="text-sm font-bold text-gray-700">{{ $yearData['year'] }} - Meses</span>
+                                </div>
+                                @foreach($yearData['months'] as $m)
+                                <button @click="selectPeriod('{{ $m['name'] }} {{ $yearData['year'] }}', { type: 'monthly', year: {{ $yearData['year'] }}, month: {{ $m['month'] }} })" 
+                                        class="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-calendar-day text-orange-500 mr-3"></i>
+                                        <span class="font-medium text-gray-800">{{ $m['name'] }}</span>
+                                    </span>
+                                    <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">{{ $m['count'] }}</span>
+                                </button>
+                                @endforeach
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Botón de exportación PDF -->
+                    <button onclick="exportLoans('pdf')" 
+                       class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 flex items-center"
+                       title="Exportar Préstamos a PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+                    <!-- Botón de exportación Excel -->
+                    <button onclick="exportLoans('excel')" 
+                       class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center"
+                       title="Exportar Préstamos a Excel">
+                        <i class="fas fa-file-excel"></i>
+                    </button>
+                </div>
+                @else
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500 italic flex items-center">
+                        <i class="fas fa-info-circle mr-2 text-gray-400"></i>
+                        No hay registros de préstamos para exportar
+                    </span>
+                </div>
+                @endif
             </div>
+
+            <!-- Tarjetas de estadísticas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Préstamos</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $stats['totalPrestamos'] ?? 0 }}</p>
+                        </div>
+                        <div class="bg-blue-100 rounded-full p-3">
+                            <i class="fas fa-hand-holding text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Devoluciones</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $stats['totalDevoluciones'] ?? 0 }}</p>
+                        </div>
+                        <div class="bg-green-100 rounded-full p-3">
+                            <i class="fas fa-undo-alt text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Pendientes de Devolución</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $pendingReturns ?? 0 }}</p>
+                        </div>
+                        <div class="bg-yellow-100 rounded-full p-3">
+                            <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Herramientas en Mantenimiento</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $stats['toolsEnMantenimiento'] ?? 0 }}</p>
+                        </div>
+                        <div class="bg-red-100 rounded-full p-3">
+                            <i class="fas fa-tools text-red-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top herramientas más prestadas y en mantenimiento -->
+            @if(($stats['topTools'] ?? collect())->count() > 0)
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- Top 5 Herramientas Más Prestadas -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-trophy text-yellow-500 mr-2"></i> Top Herramientas Más Prestadas
+                    </h4>
+                    <ul class="divide-y divide-gray-200">
+                        @foreach($stats['topTools'] as $top)
+                        <li class="py-3 flex justify-between items-center">
+                            <span class="text-gray-700 flex items-center">
+                                <i class="fas fa-wrench text-orange-400 mr-2"></i>
+                                {{ $top->tool->nombre ?? 'N/A' }}
+                                @if($top->tool->placa)
+                                    <span class="text-xs text-gray-400 ml-1">[{{ $top->tool->placa }}]</span>
+                                @endif
+                            </span>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {{ $top->total_loans }} préstamo(s)
+                            </span>
+                        </li>
+                        @endforeach
+                    </ul>
+                </div>
+
+                <!-- Herramientas en Mantenimiento -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i> Herramientas en Mantenimiento
+                    </h4>
+                    @php
+                        $toolsInMaintenance = $tools->where('estado', 'mantenimiento');
+                    @endphp
+                    @if($toolsInMaintenance->count() > 0)
+                    <ul class="divide-y divide-gray-200">
+                        @foreach($toolsInMaintenance as $mt)
+                        <li class="py-3 flex justify-between items-center">
+                            <span class="text-gray-700 flex items-center">
+                                <i class="fas fa-tools text-red-400 mr-2"></i>
+                                {{ $mt->nombre }}
+                                @if($mt->placa)
+                                    <span class="text-xs text-gray-400 ml-1">[{{ $mt->placa }}]</span>
+                                @endif
+                            </span>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                En mantenimiento
+                            </span>
+                        </li>
+                        @endforeach
+                    </ul>
+                    @else
+                    <p class="text-gray-500 italic py-3">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        No hay herramientas en mantenimiento actualmente.
+                    </p>
+                    @endif
+                </div>
+            </div>
+            @endif
 
             <!-- Filtro de búsqueda automático -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -98,7 +431,8 @@
                     <div class="flex-1">
                         <input type="text" 
                                id="searchInput"
-                               placeholder="Buscar por elemento, usuario, área o tipo de movimiento..." 
+                               value="{{ request('search') }}"
+                               placeholder="Buscar por herramienta, usuario, descripción, estado..." 
                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <button onclick="clearSearch()" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
@@ -217,15 +551,24 @@
                                                         <i class="fas fa-times-circle"></i> Rechazar
                                                     </button>
                                                 @endif
+                                            @elseif($loan->role == 'Devolución')
+                                                {{-- Registro de Devolución: BLOQUEADO --}}
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                                    <i class="fas fa-lock mr-1"></i> Bloqueado
+                                                </span>
                                             @else
-                                                <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                                    <i class="fas fa-edit"></i> Editar
+                                                {{-- Préstamo activo: Devolver + Editar + Eliminar --}}
+                                                <button onclick="confirmReturnLoan({{ $loan->id }}, '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}')" class="text-green-600 hover:text-green-900 mr-2" title="Registrar Devolución">
+                                                    <i class="fas fa-undo-alt"></i>
+                                                </button>
+                                                <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }}, {{ $loan->amount ?? 'null' }}, '{{ addslashes($loan->description ?? '') }}')" class="text-yellow-600 hover:text-yellow-900 mr-2" title="Editar">
+                                                    <i class="fas fa-edit"></i>
                                                 </button>
                                                 <form method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($loan->role) }}')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900">
-                                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                                    <button type="submit" class="text-red-600 hover:text-red-900" title="Eliminar">
+                                                        <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 </form>
                                             @endif
@@ -252,79 +595,130 @@
                 </div>
             </div>
 
-            <!-- Modal de Creación de Movimiento -->
+            <!-- Modal de Creación de Préstamo -->
             <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
-                <div @click.away="isCreateModalOpen = false; resetCreateForm();" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+                <div @click.away="isCreateModalOpen = false; resetCreateForm();" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-2xl font-bold text-gray-800">Registrar Nuevo Movimiento</h3>
+                        <h3 class="text-2xl font-bold text-gray-800">Registrar Préstamo de Herramienta</h3>
                         <button @click="isCreateModalOpen = false; resetCreateForm();" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
                     </div>
                     <form method="POST" action="{{ route('infrastock.admin.loans.store') }}">
                         @csrf
+                        {{-- Herramienta a prestar --}}
                         <div class="mb-4">
-                            <label for="create_item_type" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Elemento:</label>
-                            <select name="item_type" id="create_item_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('item_type') border-red-500 @enderror" required>
-                                <option value="">Selecciona tipo</option>
-                                <option value="equipment" {{ old('item_type') == 'equipment' ? 'selected' : '' }}>Insumo</option>
-                                <option value="tool" {{ old('item_type') == 'tool' ? 'selected' : '' }}>Herramienta</option>
-                            </select>
-                            @error('item_type')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="create_movement_id" class="block text-gray-700 text-sm font-bold mb-2">ID del Elemento:</label>
-                            <select name="movement_id" id="create_movement_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('movement_id') border-red-500 @enderror" required>
-                                <option value="">Selecciona un elemento</option>
-                                @foreach($equipments as $equipment)
-                                    <option value="{{ $equipment->id }}" {{ old('movement_id') == $equipment->id ? 'selected' : '' }}>{{ $equipment->name }} (ID: {{ $equipment->id }})</option>
-                                @endforeach
-                                @foreach($tools as $tool)
-                                    <option value="{{ $tool->id }}" {{ old('movement_id') == $tool->id ? 'selected' : '' }}>{{ $tool->name }} (ID: {{ $tool->id }})</option>
-                                @endforeach
+                            <label for="create_movement_id" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-wrench mr-1 text-orange-500"></i> Herramienta:
+                            </label>
+                            <select name="movement_id" id="create_movement_id"
+                                    x-model="createForm.movement_id"
+                                    @change="updateToolStock()"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('movement_id') border-red-500 @enderror" required>
+                                <option value="">Selecciona una herramienta</option>
+                                <template x-for="tool in toolsData" :key="tool.id">
+                                    <option
+                                        :value="tool.id"
+                                        :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
+                                        :class="(tool.estado === 'mantenimiento' || tool.disponible <= 0) ? 'text-gray-400' : ''"
+                                        x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (En mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
+                                    </option>
+                                </template>
                             </select>
                             @error('movement_id')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
+                            <p class="text-xs mt-1" :class="selectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="createForm.movement_id">
+                                <i class="fas fa-boxes mr-1"></i> Disponible: <span x-text="selectedToolStock"></span> unidad(es)
+                            </p>
                         </div>
+
+                        {{-- Quién recibe la herramienta --}}
                         <div class="mb-4">
-                            <label for="create_user_id" class="block text-gray-700 text-sm font-bold mb-2">Usuario (Prestador/Receptor):</label>
-                            <select name="user_id" id="create_user_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('user_id') border-red-500 @enderror" required>
-                                <option value="">Selecciona un usuario</option>
-                                @foreach($users as $user)
-                                    <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>{{ $user->person->first_name ?? 'N/A' }} {{ $user->person->first_last_name ?? '' }}</option>
-                                @endforeach
-                            </select>
-                            @error('user_id')
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-user mr-1 text-blue-500"></i> ¿Quién recibe la herramienta?
+                            </label>
+                            <div class="flex space-x-4 mb-3">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" value="select" x-model="createForm.user_mode" class="form-radio text-blue-600">
+                                    <span class="ml-2 text-sm text-gray-700">Instructor del sistema</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" value="manual" x-model="createForm.user_mode" class="form-radio text-blue-600">
+                                    <span class="ml-2 text-sm text-gray-700">Otra persona</span>
+                                </label>
+                            </div>
+
+                            {{-- Selector de instructor --}}
+                            <div x-show="createForm.user_mode === 'select'">
+                                <select name="user_id" id="create_user_id"
+                                        x-model="createForm.user_id"
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('user_id') border-red-500 @enderror"
+                                        :required="createForm.user_mode === 'select'">
+                                    <option value="">Selecciona un instructor</option>
+                                    @foreach($instructors as $instructor)
+                                        <option value="{{ $instructor->id }}" {{ old('user_id') == $instructor->id ? 'selected' : '' }}>
+                                            {{ $instructor->person->first_name ?? 'N/A' }} {{ $instructor->person->first_last_name ?? '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('user_id')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            {{-- Campo para nombre manual --}}
+                            <div x-show="createForm.user_mode === 'manual'">
+                                <input type="text" name="borrower_name" id="create_borrower_name"
+                                       x-model="createForm.borrower_name"
+                                       placeholder="Nombre completo de quien recibe"
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('borrower_name') border-red-500 @enderror"
+                                       :required="createForm.user_mode === 'manual'">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i class="fas fa-info-circle mr-1"></i> Para personas sin cuenta en el sistema (ej: personal de otra área)
+                                </p>
+                                @error('borrower_name')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Cantidad --}}
+                        <div class="mb-4">
+                            <label for="create_amount" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-sort-numeric-up mr-1 text-purple-500"></i> Cantidad:
+                            </label>
+                            <input type="number" name="amount" id="create_amount"
+                                   x-model="createForm.amount"
+                                   min="1"
+                                   :max="selectedToolStock > 0 ? selectedToolStock : 1"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror"
+                                   required>
+                            @error('amount')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        <div class="mb-4">
-                            <label for="create_productive_unit_warehouse_id" class="block text-gray-700 text-sm font-bold mb-2">Área Productiva / Bodega:</label>
-                            <select name="productive_unit_warehouse_id" id="create_productive_unit_warehouse_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('productive_unit_warehouse_id') border-red-500 @enderror" required>
-                                <option value="">Selecciona un área/bodega</option>
-                                @foreach($productiveUnitWarehouses as $puw)
-                                    <option value="{{ $puw->id }}" {{ old('productive_unit_warehouse_id') == $puw->id ? 'selected' : '' }}>{{ $puw->productiveUnit->name ?? 'N/A' }} ({{ $puw->warehouse->name ?? 'N/A' }})</option>
-                                @endforeach
-                            </select>
-                            @error('productive_unit_warehouse_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
+
+                        {{-- Descripción / Observaciones --}}
                         <div class="mb-6">
-                            <label for="create_role" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Movimiento:</label>
-                            <select name="role" id="create_role" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('role') border-red-500 @enderror" required>
-                                <option value="">Seleccione tipo</option>
-                                <option value="Préstamo" {{ old('role') == 'Préstamo' ? 'selected' : '' }}>Préstamo</option>
-                                <option value="Devolución" {{ old('role') == 'Devolución' ? 'selected' : '' }}>Devolución</option>
-                            </select>
-                            @error('role')
+                            <label for="create_description" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-comment-alt mr-1 text-gray-500"></i> Observaciones (opcional):
+                            </label>
+                            <textarea name="description" id="create_description" rows="2"
+                                      x-model="createForm.description"
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('description') border-red-500 @enderror"
+                                      placeholder="Ej: Motivo del préstamo, área de trabajo, etc."></textarea>
+                            @error('description')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
+
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Guardar Movimiento</button>
+                            <button type="submit"
+                                    :disabled="!createForm.movement_id || selectedToolStock <= 0"
+                                    :class="(!createForm.movement_id || selectedToolStock <= 0) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                                    class="text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                                <i class="fas fa-hand-holding mr-2"></i>Registrar Préstamo
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -332,74 +726,64 @@
 
             <!-- Modal de Edición de Movimiento -->
             <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
-                <div @click.away="isEditModalOpen = false" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6">
+                <div @click.away="isEditModalOpen = false" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-2xl font-bold text-gray-800">Editar Movimiento</h3>
+                        <h3 class="text-2xl font-bold text-gray-800">Editar Préstamo</h3>
                         <button @click="isEditModalOpen = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
                     </div>
                     <form method="POST" :action="`{{ route('infrastock.admin.loans.update', '') }}/${currentLoan.id}`">
                         @csrf
                         @method('PUT')
+                        {{-- item_type siempre tool --}}
+                        <input type="hidden" name="item_type" value="tool">
+
                         <div class="mb-4">
-                            <label for="edit_item_type" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Elemento:</label>
-                            <select name="item_type" id="edit_item_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('item_type') border-red-500 @enderror" x-model="currentLoan.item_type" required>
-                                <option value="">Selecciona tipo</option>
-                                <option value="equipment">Insumo</option>
-                                <option value="tool">Herramienta</option>
-                            </select>
-                            @error('item_type')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_movement_id" class="block text-gray-700 text-sm font-bold mb-2">ID del Elemento:</label>
-                            <select name="movement_id" id="edit_movement_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('movement_id') border-red-500 @enderror" x-model="currentLoan.movement_id" required>
-                                <option value="">Selecciona un elemento</option>
-                                @foreach($equipments as $equipment)
-                                    <option value="{{ $equipment->id }}">{{ $equipment->name }} (ID: {{ $equipment->id }})</option>
-                                @endforeach
+                            <label for="edit_movement_id" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-wrench mr-1 text-orange-500"></i> Herramienta:
+                            </label>
+                            <select name="movement_id" id="edit_movement_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" x-model="currentLoan.movement_id" required>
+                                <option value="">Selecciona una herramienta</option>
                                 @foreach($tools as $tool)
-                                    <option value="{{ $tool->id }}">{{ $tool->name }} (ID: {{ $tool->id }})</option>
+                                    <option value="{{ $tool->id }}">{{ $tool->nombre }} {{ $tool->placa ? '['.$tool->placa.']' : '' }} — Stock: {{ $tool->cantidad_disponible ?? 0 }}/{{ $tool->cantidad_total ?? 0 }}</option>
                                 @endforeach
                             </select>
-                            @error('movement_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="edit_user_id" class="block text-gray-700 text-sm font-bold mb-2">Usuario (Prestador/Receptor):</label>
-                            <select name="user_id" id="edit_user_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('user_id') border-red-500 @enderror" x-model="currentLoan.user_id" required>
+                            <label for="edit_user_id" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-user mr-1 text-blue-500"></i> Usuario:
+                            </label>
+                            <select name="user_id" id="edit_user_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" x-model="currentLoan.user_id" required>
                                 <option value="">Selecciona un usuario</option>
-                                @foreach($users as $user)
-                                    <option value="{{ $user->id }}">{{ $user->person->first_name ?? 'N/A' }} {{ $user->person->first_last_name ?? '' }}</option>
+                                @foreach($instructors as $instructor)
+                                    <option value="{{ $instructor->id }}">{{ $instructor->person->first_name ?? 'N/A' }} {{ $instructor->person->first_last_name ?? '' }}</option>
                                 @endforeach
+                                {{-- Incluir el admin logueado como opción (para préstamos de personas externas) --}}
+                                @if(!$instructors->contains('id', auth()->id()))
+                                    <option value="{{ auth()->id() }}">{{ auth()->user()->person->first_name ?? auth()->user()->nickname ?? 'Admin' }} {{ auth()->user()->person->first_last_name ?? '' }} (Admin)</option>
+                                @endif
                             </select>
-                            @error('user_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
                         </div>
-                        <div class="mb-4">
-                            <label for="edit_productive_unit_warehouse_id" class="block text-gray-700 text-sm font-bold mb-2">Área Productiva / Bodega:</label>
-                            <select name="productive_unit_warehouse_id" id="edit_productive_unit_warehouse_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('productive_unit_warehouse_id') border-red-500 @enderror" x-model="currentLoan.productive_unit_warehouse_id" required>
-                                <option value="">Selecciona un área/bodega</option>
-                                @foreach($productiveUnitWarehouses as $puw)
-                                    <option value="{{ $puw->id }}">{{ $puw->productiveUnit->name ?? 'N/A' }} ({{ $puw->warehouse->name ?? 'N/A' }})</option>
-                                @endforeach
-                            </select>
-                            @error('productive_unit_warehouse_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="mb-4">
+                                <label for="edit_role" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Movimiento:</label>
+                                <select name="role" id="edit_role" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" x-model="currentLoan.role" required>
+                                    <option value="Préstamo">Préstamo</option>
+                                    <option value="Devolución">Devolución</option>
+                                </select>
+                                <p class="text-xs text-orange-600 mt-1" x-show="currentLoan.role === 'Devolución'">
+                                    <i class="fas fa-exclamation-triangle"></i> Al cambiar a Devolución, se restaurará el stock y el registro quedará bloqueado.
+                                </p>
+                            </div>
+                            <div class="mb-4">
+                                <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
+                                <input type="number" name="amount" id="edit_amount" x-model="currentLoan.amount" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
                         </div>
                         <div class="mb-6">
-                            <label for="edit_role" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Movimiento:</label>
-                            <select name="role" id="edit_role" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('role') border-red-500 @enderror" x-model="currentLoan.role" required>
-                                <option value="">Seleccione tipo</option>
-                                <option value="Préstamo">Préstamo</option>
-                                <option value="Devolución">Devolución</option>
-                            </select>
-                            @error('role')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
+                            <label for="edit_description" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-comment-alt mr-1 text-gray-500"></i> Descripción / Observaciones:
+                            </label>
+                            <textarea name="description" id="edit_description" rows="2" x-model="currentLoan.description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
                         </div>
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isEditModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
@@ -547,6 +931,46 @@
 
 @section('script')
 <script>
+// Función para confirmar devolución de un préstamo
+function confirmReturnLoan(loanId, toolName) {
+    Swal.fire({
+        title: '¿Registrar Devolución?',
+        html: `<p>¿Confirmas la devolución de <strong>${toolName}</strong>?</p>
+               <p class="text-sm text-gray-500 mt-2">El stock de la herramienta será restaurado y el registro quedará <strong>bloqueado</strong>.</p>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: '<i class="fas fa-undo-alt mr-2"></i>Sí, registrar devolución',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Procesando devolución...',
+                text: 'Por favor espera',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => { Swal.showLoading(); }
+            });
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            const baseUrl = '{{ route("infrastock.admin.loans.return", 0) }}';
+            form.action = baseUrl.replace('/0', '/' + loanId);
+
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            form.appendChild(csrfToken);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
 // Función para confirmar eliminación con SweetAlert2 (versión síncrona)
 function confirmDeleteSync(movementType) {
     let confirmed = false;
@@ -800,81 +1224,68 @@ function closeDescriptionModal() {
     document.getElementById('descriptionModal').classList.remove('flex');
 }
 
-// Función para configurar el filtro automático
+// Búsqueda server-side con debounce
 function setupAutoFilter() {
     const searchInput = document.getElementById('searchInput');
-    const table = document.querySelector('table tbody');
-    const rows = table.querySelectorAll('tr');
+    if (!searchInput) return;
     
+    let debounceTimer;
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        rows.forEach(row => {
-            // Columnas a buscar: Elemento (col 1), Tipo (col 2), Usuario (col 3), Cantidad (col 4), Área/Bodega (col 5), Movimiento (col 6), Estado (col 7), Descripción (col 8)
-            const elementCell = row.cells[0];
-            const typeCell = row.cells[1];
-            const userCell = row.cells[2];
-            const amountCell = row.cells[3];
-            const areaCell = row.cells[4];
-            const movementCell = row.cells[5];
-            const statusCell = row.cells[6];
-            const descriptionCell = row.cells[7];
-            
-            const elementText = elementCell ? elementCell.textContent.toLowerCase() : '';
-            const typeText = typeCell ? typeCell.textContent.toLowerCase() : '';
-            const userText = userCell ? userCell.textContent.toLowerCase() : '';
-            const amountText = amountCell ? amountCell.textContent.toLowerCase() : '';
-            const areaText = areaCell ? areaCell.textContent.toLowerCase() : '';
-            const movementText = movementCell ? movementCell.textContent.toLowerCase() : '';
-            const statusText = statusCell ? statusCell.textContent.toLowerCase() : '';
-            const descriptionText = descriptionCell ? descriptionCell.textContent.toLowerCase() : '';
-            
-            if (elementText.includes(searchTerm) || typeText.includes(searchTerm) || userText.includes(searchTerm) || amountText.includes(searchTerm) || areaText.includes(searchTerm) || movementText.includes(searchTerm) || statusText.includes(searchTerm) || descriptionText.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        // Actualizar contador de resultados visibles
-        updateVisibleCount();
-    });
-}
-
-// Función para limpiar la búsqueda
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.value = '';
-    
-    const rows = document.querySelectorAll('table tbody tr');
-    rows.forEach(row => {
-        row.style.display = '';
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            serverSearch(this.value);
+        }, 500);
     });
     
-    updateVisibleCount();
-}
-
-// Función para actualizar el contador de resultados visibles
-function updateVisibleCount() {
-    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
-    const totalRows = document.querySelectorAll('table tbody tr').length;
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    
-    const counterElement = document.querySelector('.text-sm.text-gray-500');
-    if (counterElement) {
-        if (document.getElementById('searchInput').value) {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
-        } else {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros`;
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(debounceTimer);
+            serverSearch(this.value);
         }
-    }
-    
-    // Mostrar/ocultar mensaje de "no hay resultados"
-    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
-        noResultsMessage.style.display = 'block';
+    });
+}
+
+function serverSearch(term) {
+    const url = new URL(window.location.href);
+    if (term && term.trim() !== '') {
+        url.searchParams.set('search', term.trim());
     } else {
-        noResultsMessage.style.display = 'none';
+        url.searchParams.delete('search');
     }
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
+}
+
+function clearSearch() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('search');
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
+}
+
+// Función para exportar préstamos a PDF o Excel
+function exportLoans(format) {
+    const params = window.currentLoanExportParams || {};
+    let url;
+    if (format === 'pdf') {
+        url = '{{ route("infrastock.admin.loans.export.pdf") }}';
+    } else {
+        url = '{{ route("infrastock.admin.loans.export.excel") }}';
+    }
+
+    const queryParams = new URLSearchParams();
+    if (params.type) queryParams.set('type', params.type);
+    if (params.year) queryParams.set('year', params.year);
+    if (params.month) queryParams.set('month', params.month);
+    if (params.quarter) queryParams.set('quarter', params.quarter);
+
+    const queryString = queryParams.toString();
+    if (queryString) {
+        url += '?' + queryString;
+    }
+
+    window.open(url, '_blank');
 }
 </script>
 @endsection

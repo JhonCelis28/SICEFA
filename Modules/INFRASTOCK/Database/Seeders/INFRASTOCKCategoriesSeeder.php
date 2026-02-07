@@ -7,10 +7,10 @@ use Modules\INFRASTOCK\Entities\InfrastockCategory;
 
 /**
  * @class INFRASTOCKCategoriesSeeder
- * @brief Seeder para crear las categorías de insumos del módulo INFRASTOCK.
+ * @brief Seeder para crear las categorías de insumos y herramientas del módulo INFRASTOCK.
  *
  * Este seeder crea todas las categorías necesarias para clasificar los insumos
- * dentro del sistema INFRASTOCK.
+ * y herramientas dentro del sistema INFRASTOCK.
  */
 class INFRASTOCKCategoriesSeeder extends Seeder
 {
@@ -23,23 +23,22 @@ class INFRASTOCKCategoriesSeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            'Accesorio de plomería',
-            'Accesorio de fijación',
-            'Herramienta de corte',
             'Material eléctrico',
-            'Herramienta de pintura',
-            'Accesorio de seguridad',
-            'Material de construcción',
-            'Material de pintura',
-            'Herramienta abrasiva',
-            'Herramienta de medición',
-            'Herramienta de construcción',
-            'Material sanitario',
-            'Material de limpieza',
-            'Accesorio de jardinería',
-            'Material de jardinería',
-            'Accesorio de hogar',
-            'Herramienta de jardinería',
+            'Tubería PVC',
+            'Ferretería',
+            'Tubería sanitaria',
+            'Luces LED',
+            'Pinturas',
+            'Tubería',
+            'Tubería lavamano',
+            'Llave lavaplato',
+            'Tubería ducha',
+            'Grapas',
+            'PVC sanitaria',
+            'Sanitario',
+            'PVC',
+            'Inventario Ingeniería',
+            'Ferretería y pintura',
         ];
 
         foreach ($categories as $categoryName) {
@@ -53,5 +52,22 @@ class INFRASTOCKCategoriesSeeder extends Seeder
         }
 
         $this->command->info('Categorías de insumos registradas/actualizadas correctamente.');
+
+        // Categorías para herramientas (type = 'tool')
+        $toolCategories = [
+            'Herramienta',
+        ];
+
+        foreach ($toolCategories as $categoryName) {
+            InfrastockCategory::updateOrCreate(
+                ['name' => $categoryName, 'type' => 'tool'],
+                [
+                    'name' => $categoryName,
+                    'type' => 'tool'
+                ]
+            );
+        }
+
+        $this->command->info('Categorías de herramientas registradas/actualizadas correctamente.');
     }
 }

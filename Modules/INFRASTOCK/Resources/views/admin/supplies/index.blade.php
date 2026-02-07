@@ -119,7 +119,7 @@
                 <div class="flex space-x-2">
                     <!-- Botón de registrar nuevo insumo -->
                     <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 flex items-center">
-                        <i class="fas fa-plus mr-2"></i>Registrar Nuevo Insumo
+                        <i class="fas fa-plus mr-2"></i>Registrar Insumo
                     </button>
                     <!-- Botón de exportación PDF -->
                     <a href="{{ route('infrastock.admin.supplies.export.pdf') }}" 
@@ -146,12 +146,13 @@
                 @endif
             </div>
 
-            <!-- Filtro de búsqueda automático -->
+            <!-- Filtro de búsqueda server-side -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center space-x-4">
                     <div class="flex-1">
                         <input type="text" 
                                id="searchInput"
+                               value="{{ request('search') }}"
                                placeholder="Buscar por nombre, categoría, características..." 
                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
@@ -678,76 +679,44 @@ document.addEventListener('DOMContentLoaded', function() {
     @endif
 });
 
-// Función para configurar el filtro automático
+// Búsqueda server-side con debounce
 function setupAutoFilter() {
     const searchInput = document.getElementById('searchInput');
-    const table = document.querySelector('table tbody');
-    if (!table) return;
+    if (!searchInput) return;
     
-    const rows = table.querySelectorAll('tr');
-    
+    let debounceTimer;
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        rows.forEach(row => {
-            const nameCell = row.cells[0]; // Columna de nombre
-            const categoryCell = row.cells[1]; // Columna de categoría
-            const characteristicsCell = row.cells[2]; // Columna de características
-            
-            const nameText = nameCell ? nameCell.textContent.toLowerCase() : '';
-            const categoryText = categoryCell ? categoryCell.textContent.toLowerCase() : '';
-            const characteristicsText = characteristicsCell ? characteristicsCell.textContent.toLowerCase() : '';
-            
-            if (nameText.includes(searchTerm) || categoryText.includes(searchTerm) || characteristicsText.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        // Actualizar contador de resultados visibles
-        updateVisibleCount();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            serverSearch(this.value);
+        }, 500);
+    });
+    
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(debounceTimer);
+            serverSearch(this.value);
+        }
     });
 }
 
-// Función para limpiar la búsqueda
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.value = '';
-    
-    const rows = document.querySelectorAll('table tbody tr');
-    rows.forEach(row => {
-        row.style.display = '';
-    });
-    
-    updateVisibleCount();
-}
-
-// Función para actualizar el contador de resultados visibles
-function updateVisibleCount() {
-    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
-    const totalRows = document.querySelectorAll('table tbody tr').length;
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    
-    const counterElement = document.querySelector('.text-sm.text-gray-500');
-    if (counterElement) {
-        if (document.getElementById('searchInput').value) {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
-        } else {
-            counterElement.textContent = `Mostrando {{ $supplies->firstItem() ?? 0 }} - {{ $supplies->lastItem() ?? 0 }} de {{ $supplies->total() }} registros`;
-        }
-    }
-    
-    // Mostrar/ocultar mensaje de "no hay resultados"
-    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
-        if (noResultsMessage) {
-            noResultsMessage.style.display = 'block';
-        }
+function serverSearch(term) {
+    const url = new URL(window.location.href);
+    if (term && term.trim() !== '') {
+        url.searchParams.set('search', term.trim());
     } else {
-        if (noResultsMessage) {
-            noResultsMessage.style.display = 'none';
-        }
+        url.searchParams.delete('search');
     }
+    url.searchParams.delete('page'); // Volver a la página 1 al buscar
+    window.location.href = url.toString();
+}
+
+function clearSearch() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('search');
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
 }
 
 // Verificar si hay errores de validación y abrir modal automáticamente

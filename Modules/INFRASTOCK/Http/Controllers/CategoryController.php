@@ -21,10 +21,20 @@ class CategoryController extends Controller
      * Muestra una lista de todas las categorías de insumos y herramientas.
      * @return Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
-        $categories = InfrastockCategory::paginate(15); // Obtiene las categorías con paginación (15 por página).
-        return view('infrastock::admin.categories.index', compact('categories')); // Retorna la vista index con las categorías.
+        $query = InfrastockCategory::query();
+
+        // Búsqueda server-side
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%");
+            });
+        }
+
+        $categories = $query->paginate(15)->appends($request->query());
+        return view('infrastock::admin.categories.index', compact('categories'));
     }
 
     /**

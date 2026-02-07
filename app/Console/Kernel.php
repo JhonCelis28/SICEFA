@@ -17,7 +17,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('pqrs:update-state')->daily();
-        // $schedule->command('inspire')->hourly();
+        // Limpieza diaria de notificaciones expiradas de INFRASTOCK según prioridad
+        $schedule->command('infrastock:cleanup-notifications')->dailyAt('02:00');
     }
 
     /**

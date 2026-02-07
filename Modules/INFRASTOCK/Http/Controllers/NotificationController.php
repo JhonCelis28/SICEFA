@@ -43,41 +43,79 @@ class NotificationController extends Controller
                 'type' => $type,
             ];
             
+            // Determinar el rol del usuario para redirecciones correctas
+            $user = auth()->user();
+            $userRoles = $user->roles->pluck('name')->toArray();
+            $isAdmin = in_array('Administrador', $userRoles) || in_array('Super Administrador', $userRoles);
+            $isInstructor = in_array('Instructor', $userRoles);
+            
+            // Mapeo de roles no-admin a sus prefijos de ruta
+            $roleRoutePrefixes = [
+                'Psicola' => 'psicola',
+                'Aseo' => 'cleaning-staff',
+                'Personal de Aseo' => 'cleaning-staff',
+                'Operario' => 'operator',
+                'Centro de Convivencia' => 'convivencia',
+                'Ganadería' => 'ganaderia',
+                'Vigilancia' => 'vigilancia',
+                'Ciencias Basicas' => 'ciencias-basicas',
+                'Agroindustria' => 'agroindustria',
+            ];
+            
+            $userRoutePrefix = null;
+            foreach ($roleRoutePrefixes as $roleName => $prefix) {
+                if (in_array($roleName, $userRoles)) {
+                    $userRoutePrefix = $prefix;
+                    break;
+                }
+            }
+            
             // Si es una notificación de insumo próximo a vencer, redirigir a la página de insumos con filtro
             if ($type === 'supply_expiring' && $equipmentId) {
                 $response['equipment_id'] = $equipmentId;
-                $response['redirect_url'] = route('infrastock.admin.supplies.index', ['filter_equipment_id' => $equipmentId]);
+                if ($isAdmin) {
+                    $response['redirect_url'] = route('infrastock.admin.supplies.index', ['filter_equipment_id' => $equipmentId]);
+                }
             }
-            // Si es una notificación de solicitud creada, redirigir a la página de solicitudes de insumos
+            // Si es una notificación de solicitud creada, redirigir a la página de solicitudes
             elseif ($type === 'request_created') {
-                $response['redirect_url'] = route('infrastock.admin.supply-requests.index');
+                if ($isAdmin) {
+                    $response['redirect_url'] = route('infrastock.admin.supply-requests.index');
+                } elseif ($userRoutePrefix) {
+                    $response['redirect_url'] = route("infrastock.{$userRoutePrefix}.requests.index");
+                }
+            }
+            // Si es una notificación de solicitud aprobada/rechazada, redirigir al usuario a sus solicitudes
+            elseif (in_array($type, ['request_approved', 'request_rejected'])) {
+                if ($isAdmin) {
+                    $response['redirect_url'] = route('infrastock.admin.supply-requests.index');
+                } elseif ($userRoutePrefix) {
+                    $response['redirect_url'] = route("infrastock.{$userRoutePrefix}.requests.index");
+                }
             }
             // Si es una notificación de sobrante/devolución, redirigir a la página de devoluciones
             elseif ($type === 'surplus_reported') {
-                $response['redirect_url'] = route('infrastock.admin.supply-returns.index');
+                if ($isAdmin) {
+                    $response['redirect_url'] = route('infrastock.admin.supply-returns.index');
+                }
             }
             // Si es una notificación de préstamo de herramienta creado
             elseif ($type === 'loan_created') {
-                // Verificar el rol del usuario para determinar la redirección correcta
-                $user = auth()->user();
-                $userRoles = $user->roles->pluck('name')->toArray();
-                
-                // Si el usuario es administrador, siempre redirigir a la página de préstamos del admin
-                if (in_array('Administrador', $userRoles) || in_array('Super Administrador', $userRoles)) {
+                if ($isAdmin) {
                     $response['redirect_url'] = route('infrastock.admin.loans.index');
-                }
-                // Si el usuario es instructor, redirigir a sus préstamos
-                elseif (in_array('Instructor', $userRoles)) {
+                } elseif ($isInstructor) {
                     $response['redirect_url'] = route('infrastock.instructor.my-loans');
-                }
-                // Si tiene action_url, usarlo; si no, redirigir a la página de préstamos del admin por defecto
-                else {
-                    $response['redirect_url'] = $notification->data['action_url'] ?? route('infrastock.admin.loans.index');
+                } elseif (isset($notification->data['action_url'])) {
+                    $response['redirect_url'] = $notification->data['action_url'];
                 }
             }
-            // Si es una notificación de préstamo aprobado o rechazado, usar action_url si existe
+            // Si es una notificación de préstamo aprobado o rechazado
             elseif (in_array($type, ['loan_approved', 'loan_rejected'])) {
-                $response['redirect_url'] = $notification->data['action_url'] ?? route('infrastock.instructor.my-loans');
+                if ($isInstructor) {
+                    $response['redirect_url'] = route('infrastock.instructor.my-loans');
+                } elseif (isset($notification->data['action_url'])) {
+                    $response['redirect_url'] = $notification->data['action_url'];
+                }
             }
             // Si la notificación tiene action_url, usarlo para redirección (para otros tipos)
             elseif (isset($notification->data['action_url'])) {

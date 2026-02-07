@@ -293,13 +293,11 @@ class UserManagementController extends Controller
                 foreach ($user->roles as $role) {
                     // Verificar que el rol tiene app_id = 19
                     if ($role->app_id != 19) {
-                        \Log::info('Usuario excluido: ' . $user->id . ' tiene rol: ' . $role->name . ' con app_id: ' . ($role->app_id ?? 'null') . ' (debe ser 19)');
                         return false;
                     }
                     
                     // Verificar que el nombre del rol está en la lista
                     if (!in_array($role->name, $infrastockRoleNames)) {
-                        \Log::info('Usuario excluido: ' . $user->id . ' tiene rol: ' . $role->name . ' que NO está en la lista de INFRASTOCK');
                         return false;
                     }
                 }
@@ -307,6 +305,25 @@ class UserManagementController extends Controller
                 // Si llegamos aquí, todos los roles tienen app_id = 19 y están en la lista
                 return true;
             });
+
+            // Búsqueda server-side
+            $search = request()->input('search');
+            if ($search) {
+                $filteredUsers = $filteredUsers->filter(function ($user) use ($search) {
+                    $term = mb_strtolower($search);
+                    $personName = $user->person ? mb_strtolower(($user->person->first_name ?? '') . ' ' . ($user->person->first_last_name ?? '') . ' ' . ($user->person->second_last_name ?? '')) : '';
+                    $nickname = mb_strtolower($user->nickname ?? '');
+                    $email = mb_strtolower($user->email ?? '');
+                    $roleName = $user->roles->pluck('name')->map(fn($n) => mb_strtolower($n))->implode(' ');
+                    $document = $user->person ? mb_strtolower($user->person->document_number ?? '') : '';
+
+                    return str_contains($personName, $term)
+                        || str_contains($nickname, $term)
+                        || str_contains($email, $term)
+                        || str_contains($roleName, $term)
+                        || str_contains($document, $term);
+                });
+            }
             
             // Convertir a paginación manual
             $currentPage = request()->get('page', 1);

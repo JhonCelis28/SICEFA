@@ -150,6 +150,7 @@
                     <div class="flex-1">
                         <input type="text" 
                                id="searchInput"
+                               value="{{ request('search') }}"
                                placeholder="Buscar por herramienta, placa, finalidad..." 
                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
@@ -653,60 +654,44 @@ document.addEventListener('DOMContentLoaded', function() {
     @endif
 });
 
-// Función para configurar el filtro automático
+// Búsqueda server-side con debounce
 function setupAutoFilter() {
     const searchInput = document.getElementById('searchInput');
-    const table = document.querySelector('table tbody');
-    if (!table) return;
-    const rows = table.querySelectorAll('tr');
+    if (!searchInput) return;
     
+    let debounceTimer;
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        rows.forEach(row => {
-            const toolCell = row.cells[1];
-            const placaCell = row.cells[2];
-            const purposeCell = row.cells[4];
-            
-            const toolText = toolCell ? toolCell.textContent.toLowerCase() : '';
-            const placaText = placaCell ? placaCell.textContent.toLowerCase() : '';
-            const purposeText = purposeCell ? purposeCell.textContent.toLowerCase() : '';
-            
-            if (toolText.includes(searchTerm) || placaText.includes(searchTerm) || purposeText.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        updateVisibleCount();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            serverSearch(this.value);
+        }, 500);
+    });
+    
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(debounceTimer);
+            serverSearch(this.value);
+        }
     });
 }
 
-// Función para limpiar la búsqueda
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.value = '';
-    
-    const rows = document.querySelectorAll('table tbody tr');
-    rows.forEach(row => {
-        row.style.display = '';
-    });
-    
-    updateVisibleCount();
-}
-
-// Función para actualizar el contador de resultados visibles
-function updateVisibleCount() {
-    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
-    const totalRows = document.querySelectorAll('table tbody tr').length;
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    
-    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
-        noResultsMessage.style.display = 'block';
+function serverSearch(term) {
+    const url = new URL(window.location.href);
+    if (term && term.trim() !== '') {
+        url.searchParams.set('search', term.trim());
     } else {
-        noResultsMessage.style.display = 'none';
+        url.searchParams.delete('search');
     }
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
+}
+
+function clearSearch() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('search');
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
 }
 
 // Función para confirmar eliminación de préstamo

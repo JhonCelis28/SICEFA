@@ -9,7 +9,13 @@ use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Entities\Tool;
 use Modules\INFRASTOCK\Entities\Equipment;
 use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
+use Modules\INFRASTOCK\Entities\InfrastockCategory;
+use Modules\INFRASTOCK\Exports\LoansExport;
+use Modules\SICA\Entities\Role;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 /**
  * @class LoanController
@@ -25,14 +31,36 @@ class LoanController extends Controller
      * Muestra una lista de todos los préstamos y devoluciones registrados.
      * @return Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
         // Solo mostrar préstamos y devoluciones de HERRAMIENTAS (tools), no de insumos
-        $loans = WarehouseMovement::with(['user', 'productiveUnitWarehouse', 'tool', 'surplus'])
+        $query = WarehouseMovement::with(['user', 'user.person', 'productiveUnitWarehouse', 'tool', 'surplus'])
                                 ->whereIn('role', ['Préstamo', 'Devolución'])
-                                ->where('item_type', 'tool') // Solo herramientas
-                                ->orderBy('created_at', 'desc')
-                                ->paginate(15);
+                                ->where('item_type', 'tool'); // Solo herramientas
+
+        // Búsqueda server-side
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('role', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('tool', function ($tq) use ($search) {
+                      $tq->where('nombre', 'like', "%{$search}%")
+                         ->orWhere('placa', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('user', function ($uq) use ($search) {
+                      $uq->where('nickname', 'like', "%{$search}%")
+                         ->orWhereHas('person', function ($pq) use ($search) {
+                             $pq->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('first_last_name', 'like', "%{$search}%");
+                         });
+                  });
+            });
+        }
+
+        $loans = $query->orderBy('created_at', 'desc')
+                       ->paginate(15)
+                       ->appends($request->query());
         
         // Contar devoluciones pendientes solo de herramientas
         $pendingReturns = WarehouseMovement::where('role', 'Devolución')
@@ -40,11 +68,61 @@ class LoanController extends Controller
                                           ->where('status', 'pending')
                                           ->count();
         
-        $tools = Tool::all();
-        $equipments = Equipment::all();
-        $users = User::all();
+        // Todas las herramientas con info de disponibilidad para el modal
+        $tools = Tool::select('id', 'nombre', 'estado', 'cantidad_disponible', 'cantidad_total', 'placa')
+                     ->whereNotNull('nombre')
+                     ->orderBy('nombre')
+                     ->get();
+
+        // Solo usuarios con rol Instructor de INFRASTOCK (app_id = 19)
+        $instructorRole = Role::where('app_id', 19)->where('name', 'Instructor')->first();
+        $instructors = collect();
+        if ($instructorRole) {
+            $instructors = User::with('person')
+                ->whereHas('roles', function($q) use ($instructorRole) {
+                    $q->where('roles.id', $instructorRole->id);
+                })
+                ->get();
+        }
+
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
-        return view('infrastock::admin.loans.index', compact('loans', 'tools', 'equipments', 'users', 'productiveUnitWarehouses', 'pendingReturns'));
+
+        // Estadísticas para tarjetas de resumen
+        $allToolLoans = WarehouseMovement::where('item_type', 'tool')
+                                         ->whereIn('role', ['Préstamo', 'Devolución'])
+                                         ->get();
+        $totalPrestamos = $allToolLoans->where('role', 'Préstamo')->count();
+        $totalDevoluciones = $allToolLoans->where('role', 'Devolución')->count();
+        $prestamosActivos = $allToolLoans->where('role', 'Préstamo')->where('status', 'approved')->count() - $totalDevoluciones;
+        if ($prestamosActivos < 0) $prestamosActivos = 0;
+
+        // Top herramientas más prestadas
+        $topTools = WarehouseMovement::with('tool')
+            ->select('movement_id')
+            ->selectRaw('COUNT(*) as total_loans')
+            ->where('role', 'Préstamo')
+            ->where('item_type', 'tool')
+            ->groupBy('movement_id')
+            ->orderByDesc('total_loans')
+            ->limit(5)
+            ->get();
+
+        // Herramientas en mantenimiento
+        $toolsEnMantenimiento = Tool::where('estado', 'mantenimiento')->count();
+
+        $stats = [
+            'totalPrestamos' => $totalPrestamos,
+            'totalDevoluciones' => $totalDevoluciones,
+            'prestamosActivos' => $prestamosActivos,
+            'pendingReturns' => $pendingReturns,
+            'topTools' => $topTools,
+            'toolsEnMantenimiento' => $toolsEnMantenimiento,
+        ];
+
+        // Períodos disponibles para exportación
+        $availablePeriods = $this->getAvailablePeriods();
+
+        return view('infrastock::admin.loans.index', compact('loans', 'tools', 'instructors', 'productiveUnitWarehouses', 'pendingReturns', 'stats', 'availablePeriods'));
     }
 
     /**
@@ -60,30 +138,80 @@ class LoanController extends Controller
     /**
      * Almacena un nuevo movimiento de préstamo o devolución en la base de datos.
      * Realiza validación de los datos antes del almacenamiento.
+     * Si es un Préstamo de herramienta, descuenta automáticamente el stock disponible.
      * @param Request $request La solicitud HTTP que contiene los datos del movimiento.
      * @return Renderable
      */
     public function store(Request $request)
     {
         $request->validate([
-            'item_type' => 'required|in:equipment,tool',
-            'movement_id' => 'required|integer',
-            'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:Préstamo,Devolución',
+            'movement_id' => 'required|integer|exists:tools,id',
+            'user_id' => 'nullable|exists:users,id',
+            'borrower_name' => 'nullable|string|max:255',
+            'amount' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:1000',
         ]);
+
+        // Validar que se seleccionó un usuario del sistema O se ingresó un nombre manual
+        if (!$request->user_id && !$request->borrower_name) {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'Debe seleccionar un usuario del sistema o ingresar el nombre del prestatario.')
+                ->withInput();
+        }
 
         $productiveUnitWarehouse = ProductiveUnitWarehouse::first();
         if (!$productiveUnitWarehouse) {
             return back()->withErrors(['error' => 'No se encontró una unidad productiva/almacén.']);
         }
 
+        // Verificar que la herramienta existe y está disponible
+        $tool = Tool::find($request->movement_id);
+        if (!$tool) {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'Herramienta no encontrada.')
+                ->withInput();
+        }
+
+        if ($tool->estado === 'mantenimiento') {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', "La herramienta \"{$tool->nombre}\" se encuentra en mantenimiento y no puede ser prestada.")
+                ->withInput();
+        }
+
+        $amount = $request->amount;
+        $available = $tool->cantidad_disponible ?? 0;
+        if ($available < $amount) {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', "No hay stock suficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$amount}")
+                ->withInput();
+        }
+
+        // Determinar user_id y descripción
+        $userId = $request->user_id ?? auth()->id(); // Si no hay usuario del sistema, usar el admin logueado
+        $description = $request->description ?? '';
+
+        // Si es un prestatario externo (nombre manual), agregar al inicio de la descripción
+        if ($request->borrower_name && !$request->user_id) {
+            $description = 'Prestatario: ' . $request->borrower_name . ($description ? ' | ' . $description : '');
+        }
+
         try {
             WarehouseMovement::create([
                 'productive_unit_warehouse_id' => $productiveUnitWarehouse->id,
                 'movement_id' => $request->movement_id,
-                'item_type' => $request->item_type,
-                'user_id' => $request->user_id,
-                'role' => $request->role,
+                'item_type' => 'tool', // Siempre herramienta en este módulo
+                'user_id' => $userId,
+                'role' => 'Préstamo', // Siempre Préstamo al crear
+                'amount' => $amount,
+                'description' => $description,
+                'status' => 'approved', // Movimientos creados por admin se aprueban automáticamente
+            ]);
+
+            // Descontar stock de la herramienta
+            $newAvailable = max(0, $available - $amount);
+            $tool->update([
+                'cantidad_disponible' => $newAvailable,
+                'estado' => $newAvailable <= 0 ? 'en_prestamo' : 'disponible',
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
@@ -93,7 +221,7 @@ class LoanController extends Controller
             }
             throw $e;
         }
-        return redirect()->route('infrastock.admin.loans.index')->with('success', 'Movimiento registrado exitosamente.');
+        return redirect()->route('infrastock.admin.loans.index')->with('success', 'Préstamo registrado exitosamente. Stock actualizado.');
     }
 
     /**
@@ -120,24 +248,62 @@ class LoanController extends Controller
 
     /**
      * Actualiza un movimiento de préstamo o devolución existente en la base de datos.
-     * Realiza validación de los datos antes de la actualización.
+     * Si el movimiento ya es una Devolución, se bloquea la edición.
+     * Si se cambia de Préstamo a Devolución, se revierte el stock de la herramienta automáticamente.
      * @param Request $request La solicitud HTTP que contiene los datos actualizados del movimiento.
      * @param int $id El ID del movimiento de almacén a actualizar.
      * @return Renderable
      */
     public function update(Request $request, $id)
     {
+        $loan = WarehouseMovement::findOrFail($id);
+
+        // Bloquear edición de registros que ya son Devolución
+        if ($loan->role === 'Devolución') {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'Este registro de devolución está bloqueado y no puede ser editado.');
+        }
+
         $request->validate([
-            'item_type' => 'required|in:equipment,tool',
-            'movement_id' => 'required|integer',
+            'movement_id' => 'required|integer|exists:tools,id',
             'user_id' => 'required|exists:users,id',
             'role' => 'required|in:Préstamo,Devolución',
+            'amount' => 'nullable|integer|min:1',
+            'description' => 'nullable|string|max:1000',
         ]);
 
-        $loan = WarehouseMovement::findOrFail($id);
+        $oldRole = $loan->role;
+        $newRole = $request->role;
         
         try {
-            $loan->update($request->all());
+            $loan->update([
+                'item_type' => 'tool', // Siempre herramienta
+                'movement_id' => $request->movement_id,
+                'user_id' => $request->user_id,
+                'role' => $request->role,
+                'amount' => $request->amount ?? $loan->amount,
+                'description' => $request->description ?? $loan->description,
+            ]);
+
+            // Si se cambia de Préstamo a Devolución, revertir stock de la herramienta
+            if ($oldRole === 'Préstamo' && $newRole === 'Devolución' && $loan->item_type === 'tool') {
+                $tool = Tool::find($loan->movement_id);
+                if ($tool) {
+                    $qty = $loan->amount ?? 1;
+                    $newAvailable = ($tool->cantidad_disponible ?? 0) + $qty;
+                    $maxStock = $tool->cantidad_total ?? $newAvailable;
+                    $tool->update([
+                        'cantidad_disponible' => min($newAvailable, $maxStock),
+                        'estado' => 'disponible',
+                    ]);
+                }
+
+                // Agregar fecha de devolución en la descripción
+                $returnDateTime = now()->format('d/m/Y H:i:s');
+                $loan->update([
+                    'description' => ($loan->description ?? '') . ' | DEVUELTO: ' . $returnDateTime,
+                ]);
+            }
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
                 return redirect()->route('infrastock.admin.loans.index')
@@ -146,27 +312,100 @@ class LoanController extends Controller
             }
             throw $e;
         }
-        return redirect()->route('infrastock.admin.loans.index')->with('success', 'Movimiento actualizado exitosamente.');
+        
+        $successMsg = 'Movimiento actualizado exitosamente.';
+        if ($oldRole === 'Préstamo' && $newRole === 'Devolución') {
+            $successMsg = 'Devolución registrada exitosamente. El stock de la herramienta ha sido restaurado.';
+        }
+        return redirect()->route('infrastock.admin.loans.index')->with('success', $successMsg);
+    }
+
+    /**
+     * Registra la devolución de un préstamo de herramienta.
+     * Cambia el role a 'Devolución', restaura el stock de la herramienta y bloquea el registro.
+     * @param int $id El ID del movimiento de almacén (Préstamo).
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function returnLoan($id)
+    {
+        $loan = WarehouseMovement::findOrFail($id);
+
+        if ($loan->role !== 'Préstamo') {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'Solo se pueden devolver registros de tipo Préstamo.');
+        }
+
+        if ($loan->role === 'Devolución') {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'Este préstamo ya fue devuelto.');
+        }
+
+        try {
+            $returnDateTime = now()->format('d/m/Y H:i:s');
+
+            // Cambiar a Devolución y agregar fecha
+            $loan->update([
+                'role' => 'Devolución',
+                'description' => ($loan->description ?? '') . ' | DEVUELTO: ' . $returnDateTime,
+            ]);
+
+            // Restaurar stock de la herramienta
+            if ($loan->item_type === 'tool') {
+                $tool = Tool::find($loan->movement_id);
+                if ($tool) {
+                    $qty = $loan->amount ?? 1;
+                    $newAvailable = ($tool->cantidad_disponible ?? 0) + $qty;
+                    $maxStock = $tool->cantidad_total ?? $newAvailable;
+                    $tool->update([
+                        'cantidad_disponible' => min($newAvailable, $maxStock),
+                        'estado' => 'disponible',
+                    ]);
+                }
+            }
+
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('success', "Devolución registrada exitosamente ({$returnDateTime}). El stock ha sido restaurado.");
+        } catch (\Exception $e) {
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'Error al registrar la devolución: ' . $e->getMessage());
+        }
     }
 
     /**
      * Elimina un movimiento de préstamo o devolución de la base de datos.
+     * Si se elimina un Préstamo activo (no devuelto), restaura el stock de la herramienta.
+     * Los registros de Devolución están bloqueados y no se pueden eliminar.
      * @param int $id El ID del movimiento de almacén a eliminar.
      * @return Renderable
      */
     public function destroy($id)
     {
         $loan = WarehouseMovement::findOrFail($id);
-        $hasRelatedRecords = false; // TODO: Implement validation
-        
-        if ($hasRelatedRecords) {
+
+        // Bloquear eliminación de registros de Devolución
+        if ($loan->role === 'Devolución') {
             if (request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se puede eliminar el movimiento porque tiene registros relacionados.'
+                    'message' => 'No se puede eliminar un registro de devolución. El movimiento está bloqueado.'
                 ], 422);
             }
-            return redirect()->route('infrastock.admin.loans.index')->with('error', 'No se puede eliminar el movimiento porque tiene registros relacionados.');
+            return redirect()->route('infrastock.admin.loans.index')
+                ->with('error', 'No se puede eliminar un registro de devolución. El movimiento está bloqueado.');
+        }
+
+        // Si se elimina un Préstamo de herramienta, restaurar el stock
+        if ($loan->role === 'Préstamo' && $loan->item_type === 'tool') {
+            $tool = Tool::find($loan->movement_id);
+            if ($tool) {
+                $qty = $loan->amount ?? 1;
+                $newAvailable = ($tool->cantidad_disponible ?? 0) + $qty;
+                $maxStock = $tool->cantidad_total ?? $newAvailable;
+                $tool->update([
+                    'cantidad_disponible' => min($newAvailable, $maxStock),
+                    'estado' => 'disponible',
+                ]);
+            }
         }
         
         $loan->delete();
@@ -334,6 +573,176 @@ class LoanController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al rechazar el préstamo: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Obtiene los períodos disponibles que tienen registros de préstamos
+     */
+    private function getAvailablePeriods()
+    {
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+
+        $records = WarehouseMovement::where('item_type', 'tool')
+            ->whereIn('role', ['Préstamo', 'Devolución'])
+            ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as count')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        if ($records->isEmpty()) {
+            return ['hasRecords' => false, 'years' => []];
+        }
+
+        $years = [];
+        foreach ($records as $record) {
+            $year = $record->year;
+            $month = $record->month;
+
+            if (!isset($years[$year])) {
+                $years[$year] = ['year' => $year, 'months' => [], 'quarters' => [], 'totalRecords' => 0];
+            }
+
+            $years[$year]['months'][$month] = ['month' => $month, 'name' => $monthNames[$month], 'count' => $record->count];
+            $years[$year]['totalRecords'] += $record->count;
+
+            $quarter = ceil($month / 3);
+            if (!isset($years[$year]['quarters'][$quarter])) {
+                $years[$year]['quarters'][$quarter] = ['quarter' => $quarter, 'name' => 'Q' . $quarter, 'months' => [], 'count' => 0];
+            }
+            $years[$year]['quarters'][$quarter]['months'][] = $month;
+            $years[$year]['quarters'][$quarter]['count'] += $record->count;
+        }
+
+        foreach ($years as &$yearData) {
+            ksort($yearData['months']);
+            ksort($yearData['quarters']);
+        }
+
+        return ['hasRecords' => true, 'years' => $years];
+    }
+
+    /**
+     * Obtiene las fechas de inicio y fin según los parámetros
+     */
+    private function getPeriodDates($type, $year = null, $month = null, $quarter = null)
+    {
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+
+        $year = $year ?? Carbon::now()->year;
+
+        switch ($type) {
+            case 'monthly':
+                $month = $month ?? Carbon::now()->month;
+                $date = Carbon::create($year, $month, 1);
+                return ['start' => $date->copy()->startOfMonth(), 'end' => $date->copy()->endOfMonth(), 'label' => $monthNames[$month] . ' ' . $year];
+            case 'quarterly':
+                $quarter = $quarter ?? Carbon::now()->quarter;
+                $startMonth = (($quarter - 1) * 3) + 1;
+                $date = Carbon::create($year, $startMonth, 1);
+                return ['start' => $date->copy()->startOfQuarter(), 'end' => $date->copy()->endOfQuarter(), 'label' => 'Q' . $quarter . ' ' . $year . ' (Trimestre ' . $quarter . ')'];
+            case 'yearly':
+                $date = Carbon::create($year, 1, 1);
+                return ['start' => $date->copy()->startOfYear(), 'end' => $date->copy()->endOfYear(), 'label' => 'Año ' . $year];
+            default:
+                $month = $month ?? Carbon::now()->month;
+                $date = Carbon::create($year, $month, 1);
+                return ['start' => $date->copy()->startOfMonth(), 'end' => $date->copy()->endOfMonth(), 'label' => $monthNames[$month] . ' ' . $year];
+        }
+    }
+
+    /**
+     * Obtiene los datos de préstamos para exportación
+     */
+    private function getLoanData($type, $year = null, $month = null, $quarter = null)
+    {
+        $periodDates = $this->getPeriodDates($type, $year, $month, $quarter);
+
+        $loans = WarehouseMovement::with(['user.person', 'tool'])
+            ->where('item_type', 'tool')
+            ->whereIn('role', ['Préstamo', 'Devolución'])
+            ->whereBetween('created_at', [$periodDates['start'], $periodDates['end']])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $topTools = WarehouseMovement::with('tool')
+            ->select('movement_id')
+            ->selectRaw('COUNT(*) as total_loans')
+            ->where('role', 'Préstamo')
+            ->where('item_type', 'tool')
+            ->whereBetween('created_at', [$periodDates['start'], $periodDates['end']])
+            ->groupBy('movement_id')
+            ->orderByDesc('total_loans')
+            ->limit(5)
+            ->get();
+
+        $stats = [
+            'total' => $loans->count(),
+            'prestamos' => $loans->where('role', 'Préstamo')->count(),
+            'devoluciones' => $loans->where('role', 'Devolución')->count(),
+            'pendientes' => $loans->where('role', 'Préstamo')->where('status', 'pending')->count(),
+            'topTools' => $topTools,
+        ];
+
+        return ['loans' => $loans, 'stats' => $stats, 'periodLabel' => $periodDates['label']];
+    }
+
+    /**
+     * Exporta los préstamos de herramientas a PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        $type = $request->get('type', 'monthly');
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $quarter = $request->get('quarter');
+
+        $data = $this->getLoanData($type, $year, $month, $quarter);
+
+        $pdf = Pdf::loadView('infrastock::admin.loans.exports.pdf', [
+            'loans' => $data['loans'],
+            'stats' => $data['stats'],
+            'periodLabel' => $data['periodLabel'],
+        ]);
+
+        $pdf->setPaper('letter', 'landscape');
+
+        $filename = 'Prestamos_Herramientas_INFRASTOCK_' . now()->format('Y-m-d_His') . '.pdf';
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Exporta los préstamos de herramientas a Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        $type = $request->get('type', 'monthly');
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $quarter = $request->get('quarter');
+
+        $data = $this->getLoanData($type, $year, $month, $quarter);
+
+        $filename = 'Prestamos_Herramientas_INFRASTOCK_';
+        if ($type === 'monthly' && $month && $year) {
+            $filename .= $year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT);
+        } elseif ($type === 'quarterly' && $quarter && $year) {
+            $filename .= $year . '_Q' . $quarter;
+        } elseif ($type === 'yearly' && $year) {
+            $filename .= $year;
+        } else {
+            $filename .= now()->format('Y-m-d');
+        }
+
+        return Excel::download(new LoansExport($data['loans'], $data['stats'], $data['periodLabel']), $filename . '.xlsx');
     }
 
     /**

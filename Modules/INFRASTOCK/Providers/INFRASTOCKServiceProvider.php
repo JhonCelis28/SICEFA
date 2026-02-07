@@ -49,6 +49,7 @@ class INFRASTOCKServiceProvider extends ServiceProvider
                 \Modules\INFRASTOCK\Console\Commands\TestPhoneField::class,
                 \Modules\INFRASTOCK\Console\Commands\CheckTableStructure::class,
                 \Modules\INFRASTOCK\Console\Commands\CreateINFRASTOCKRoles::class,
+                \Modules\INFRASTOCK\Console\Commands\CleanupNotifications::class,
             ]);
         }
     }

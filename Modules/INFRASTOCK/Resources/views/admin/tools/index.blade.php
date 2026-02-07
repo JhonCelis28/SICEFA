@@ -137,10 +137,25 @@
     }">
         <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
-                <div></div>
-                <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
-                    Registrar Nueva Herramienta
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Registrar Nueva Herramienta
+                    </button>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <!-- Botón de exportación PDF -->
+                    <a href="{{ route('infrastock.admin.tools.export.pdf') }}" 
+                       class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 flex items-center"
+                       title="Exportar Herramientas a PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
+                    <!-- Botón de exportación Excel -->
+                    <a href="{{ route('infrastock.admin.tools.export.excel') }}" 
+                       class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center"
+                       title="Exportar Herramientas a Excel">
+                        <i class="fas fa-file-excel"></i>
+                    </a>
+                </div>
             </div>
 
             <!-- Filtro de búsqueda automático -->
@@ -149,7 +164,8 @@
                     <div class="flex-1">
                         <input type="text" 
                                id="searchInput"
-                               placeholder="Buscar por ID, nombre, placa, descripción, marca, modelo, categoría, estado..." 
+                               value="{{ request('search') }}"
+                               placeholder="Buscar por nombre, placa, descripción, marca, modelo, categoría, estado..." 
                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <button onclick="clearSearch()" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
@@ -228,16 +244,20 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->cantidad_disponible ?? 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->fecha_adquisicion ? \Carbon\Carbon::parse($tool->fecha_adquisicion)->format('d/m/Y') : 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}', {{ $tool->amount ?? 'null' }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </button>
-                                            <form method="POST" action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($tool->nombre ?? 'Herramienta') }}')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">
-                                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                            <div class="flex items-center justify-end space-x-2">
+                                                <!-- Botón para editar -->
+                                                <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}', {{ $tool->amount ?? 'null' }})" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
+                                                    <i class="fas fa-edit"></i>
                                                 </button>
-                                            </form>
+                                                <!-- Botón para eliminar -->
+                                                <form method="POST" action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($tool->nombre ?? 'Herramienta') }}')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50 transition-colors" title="Eliminar">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -565,6 +585,7 @@
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
 @endsection
@@ -805,80 +826,44 @@ document.addEventListener('DOMContentLoaded', function() {
     setupAutoFilter();
 });
 
-// Función para configurar el filtro automático
+// Búsqueda server-side con debounce
 function setupAutoFilter() {
     const searchInput = document.getElementById('searchInput');
-    const table = document.querySelector('table tbody');
-    const rows = table.querySelectorAll('tr');
+    if (!searchInput) return;
     
+    let debounceTimer;
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        rows.forEach(row => {
-            // Columnas a buscar: ID (col 0), Nombre (col 2), Placa (col 3), Descripción (col 4), Marca (col 5), Modelo (col 6), Categoría (col 7), Estado (col 8)
-            const nombreCell = row.cells[1];
-            const placaCell = row.cells[2];
-            const descripcionCell = row.cells[3];
-            const marcaCell = row.cells[4];
-            const modeloCell = row.cells[5];
-            const categoriaCell = row.cells[6];
-            const estadoCell = row.cells[7];
-            
-            const idText = idCell ? idCell.textContent.toLowerCase() : '';
-            const nombreText = nombreCell ? nombreCell.textContent.toLowerCase() : '';
-            const placaText = placaCell ? placaCell.textContent.toLowerCase() : '';
-            const descripcionText = descripcionCell ? descripcionCell.textContent.toLowerCase() : '';
-            const marcaText = marcaCell ? marcaCell.textContent.toLowerCase() : '';
-            const modeloText = modeloCell ? modeloCell.textContent.toLowerCase() : '';
-            const categoriaText = categoriaCell ? categoriaCell.textContent.toLowerCase() : '';
-            const estadoText = estadoCell ? estadoCell.textContent.toLowerCase() : '';
-            
-            if (idText.includes(searchTerm) || nombreText.includes(searchTerm) || placaText.includes(searchTerm) || descripcionText.includes(searchTerm) || marcaText.includes(searchTerm) || modeloText.includes(searchTerm) || categoriaText.includes(searchTerm) || estadoText.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        // Actualizar contador de resultados visibles
-        updateVisibleCount();
-    });
-}
-
-// Función para limpiar la búsqueda
-function clearSearch() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.value = '';
-    
-    const rows = document.querySelectorAll('table tbody tr');
-    rows.forEach(row => {
-        row.style.display = '';
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            serverSearch(this.value);
+        }, 500);
     });
     
-    updateVisibleCount();
-}
-
-// Función para actualizar el contador de resultados visibles
-function updateVisibleCount() {
-    const visibleRows = document.querySelectorAll('table tbody tr:not([style*="display: none"])');
-    const totalRows = document.querySelectorAll('table tbody tr').length;
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    
-    const counterElement = document.querySelector('.text-sm.text-gray-500');
-    if (counterElement) {
-        if (document.getElementById('searchInput').value) {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros (filtrados)`;
-        } else {
-            counterElement.textContent = `Mostrando ${visibleRows.length} de ${totalRows} registros`;
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(debounceTimer);
+            serverSearch(this.value);
         }
-    }
-    
-    // Mostrar/ocultar mensaje de "no hay resultados"
-    if (visibleRows.length === 0 && document.getElementById('searchInput').value) {
-        noResultsMessage.style.display = 'block';
+    });
+}
+
+function serverSearch(term) {
+    const url = new URL(window.location.href);
+    if (term && term.trim() !== '') {
+        url.searchParams.set('search', term.trim());
     } else {
-        noResultsMessage.style.display = 'none';
+        url.searchParams.delete('search');
     }
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
+}
+
+function clearSearch() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('search');
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
 }
 </script>
 @endsection

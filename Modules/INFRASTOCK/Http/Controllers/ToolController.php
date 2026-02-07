@@ -10,7 +10,9 @@ use Modules\INFRASTOCK\Entities\Tool;
 use Modules\INFRASTOCK\Entities\InfrastockCategory;
 use Modules\INFRASTOCK\Entities\Labor;
 use Modules\INFRASTOCK\Entities\Inventory;
-
+use Modules\INFRASTOCK\Exports\ToolsExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 /**
  * @class ToolController
  * @brief Controlador para la gestión de Herramientas en el módulo INFRASTOCK.
@@ -27,12 +29,29 @@ class ToolController extends Controller
      * También obtiene categorías de tipo 'tool', labores e inventarios para poblar los selectores en los modales.
      * @return Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
-        $tools = Tool::with('category', 'labor', 'inventory')->paginate(15); // Obtiene las herramientas con paginación (15 por página).
-        $categories = InfrastockCategory::where('type', 'tool')->get(); // Obtiene categorías específicas para herramientas.
-        $labors = Labor::all(); // Obtiene todas las labores.
-        $inventories = Inventory::all(); // Obtiene todos los inventarios.
+        $query = Tool::with('category', 'labor', 'inventory');
+
+        // Búsqueda server-side
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('placa', 'like', "%{$search}%")
+                  ->orWhere('marca', 'like', "%{$search}%")
+                  ->orWhere('modelo', 'like', "%{$search}%")
+                  ->orWhere('estado', 'like', "%{$search}%")
+                  ->orWhere('descripcion', 'like', "%{$search}%")
+                  ->orWhereHas('category', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $tools = $query->paginate(15)->appends($request->query());
+        $categories = InfrastockCategory::where('type', 'tool')->get();
+        $labors = Labor::all();
+        $inventories = Inventory::all();
         return view('infrastock::admin.tools.index', compact('tools', 'categories', 'labors', 'inventories'));
     }
 
@@ -282,6 +301,47 @@ class ToolController extends Controller
             ]);
         }
         return redirect()->route('infrastock.admin.tools.index')->with('success', 'deleted');
+    }
+
+    /**
+     * Exporta todas las herramientas a un archivo PDF.
+     * @return \Illuminate\Http\Response
+     */
+    public function exportPdf()
+    {
+        $tools = Tool::with('category', 'labor', 'inventory')
+                    ->orderBy('nombre', 'asc')
+                    ->get();
+
+        $pdf = Pdf::loadView('infrastock::admin.tools.exports.pdf', [
+            'tools' => $tools
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
+            'defaultFont' => 'DejaVu Sans',
+            'dpi' => 150,
+            'debugKeepTemp' => false,
+        ]);
+
+        $filename = 'Inventario_Herramientas_INFRASTOCK_' . now()->format('Y-m-d_His') . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Exporta todas las herramientas a un archivo Excel.
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function exportExcel()
+    {
+        $tools = Tool::with('category', 'labor', 'inventory')
+                    ->orderBy('nombre', 'asc')
+                    ->get();
+
+        $filename = 'Inventario_Herramientas_INFRASTOCK_' . now()->format('Y-m-d_His') . '.xlsx';
+        return Excel::download(new ToolsExport($tools), $filename);
     }
 
     /**
