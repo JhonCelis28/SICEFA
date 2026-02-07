@@ -87,9 +87,19 @@
                                     <i class="fas fa-times mr-1"></i> Rechazada
                                 </span>
                             @endif
-                            <a href="{{ route('infrastock.operator.requests.show', $request->id) }}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 p-2 rounded-full hover:bg-blue-50" title="Ver detalles">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                            <div class="flex items-center space-x-2">
+                                <a href="{{ route('infrastock.operator.requests.show', $request->id) }}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 p-2 rounded-full hover:bg-blue-50" title="Ver detalles">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                @if($request->status == 'pending')
+                                    <button onclick="editRequest({{ $request->id }})" class="text-yellow-600 hover:text-yellow-900 transition-colors duration-200 p-2 rounded-full hover:bg-yellow-50" title="Editar solicitud">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteRequest({{ $request->id }})" class="text-red-600 hover:text-red-900 transition-colors duration-200 p-2 rounded-full hover:bg-red-50" title="Eliminar solicitud">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     
@@ -224,17 +234,78 @@
         </div>
         
         <div class="p-6 overflow-y-auto flex-1">
-            <div class="mb-4">
-                <input type="text" id="equipmentSearch" 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" 
-                       placeholder="Buscar insumo por nombre o categoría...">
+            <!-- Buscador de insumos mejorado -->
+            <div class="mb-4 relative">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" 
+                           id="equipmentSearch" 
+                           class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                           placeholder="Buscar insumo por nombre o categoría...">
+                    <button type="button" 
+                            id="clear-equipment-search" 
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
-            <div id="equipment-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Los insumos se cargarán aquí dinámicamente -->
-            </div>
+            <!-- Mensaje cuando no hay resultados -->
             <div id="no-equipment-results" class="hidden text-center py-8">
                 <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
                 <p class="text-gray-500">No se encontraron insumos</p>
+            </div>
+            
+            <!-- Grid de insumos -->
+            <div id="equipment-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($equipments as $equipment)
+                    <div class="equipment-card border border-gray-200 rounded-lg p-4 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer" 
+                         data-equipment-id="{{ $equipment->id }}"
+                         data-equipment-name="{{ $equipment->name }}"
+                         data-equipment-stock="{{ $equipment->amount ?? $equipment->stock ?? 0 }}"
+                         data-equipment-category="{{ $equipment->category->name ?? 'Sin categoría' }}"
+                         data-equipment-description="{{ $equipment->description ?? $equipment->characteristics ?? '' }}"
+                         data-equipment-unit="{{ $equipment->unit_measure ?? 'unidades' }}"
+                         data-equipment-price="{{ $equipment->price ?? 0 }}">
+                        
+                        <div class="flex items-start justify-between mb-2">
+                            <h4 class="font-medium text-gray-900 text-sm">{{ $equipment->name }}</h4>
+                            <div class="flex items-center space-x-2">
+                                @php
+                                    $stock = $equipment->amount ?? $equipment->stock ?? 0;
+                                @endphp
+                                @if($stock <= 0)
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <i class="fas fa-times-circle mr-1"></i>
+                                        Agotado
+                                    </span>
+                                @elseif($stock <= 5)
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        Poco Stock
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Disponible
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-1 text-xs text-gray-600">
+                            <p><strong>Categoría:</strong> {{ $equipment->category->name ?? 'Sin categoría' }}</p>
+                            <p><strong>Stock:</strong> {{ $stock }} {{ $equipment->unit_measure ?? 'unidades' }}</p>
+                            @if($equipment->description || $equipment->characteristics)
+                                <p><strong>Descripción:</strong> {{ Str::limit($equipment->description ?? $equipment->characteristics ?? '', 50) }}</p>
+                            @endif
+                            @if($equipment->price && $equipment->price > 0)
+                                <p><strong>Precio:</strong> ${{ number_format($equipment->price, 0, ',', '.') }}</p>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
             </div>
         </div>
     </div>
@@ -368,8 +439,19 @@ async function loadRequestFormData() {
 // Abrir modal de selección de insumos
 function openEquipmentModal() {
     const modal = document.getElementById('equipmentModal');
-    modal.classList.remove('hidden');
-    renderEquipmentGrid();
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        // Limpiar búsqueda al abrir el modal
+        const searchInput = document.getElementById('equipmentSearch');
+        const clearBtn = document.getElementById('clear-equipment-search');
+        if (searchInput) {
+            searchInput.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            // Mostrar todos los insumos
+            filterEquipmentCards();
+        }
+    }
 }
 
 // Cerrar modal de insumos
@@ -378,95 +460,104 @@ function closeEquipmentModal() {
     modal.classList.add('hidden');
 }
 
-// Renderizar grid de insumos
-function renderEquipmentGrid(filtered = null) {
-    const grid = document.getElementById('equipment-grid');
-    const noResults = document.getElementById('no-equipment-results');
-    const equipments = filtered || equipmentsData;
+// Filtrar tarjetas de insumos en tiempo real
+function filterEquipmentCards() {
+    const searchInput = document.getElementById('equipmentSearch');
+    const clearBtn = document.getElementById('clear-equipment-search');
+    const equipmentGrid = document.getElementById('equipment-grid');
+    const noEquipmentResults = document.getElementById('no-equipment-results');
+    const allEquipmentCards = Array.from(document.querySelectorAll('.equipment-card'));
     
-    grid.innerHTML = '';
+    if (!searchInput || !equipmentGrid) return;
     
-    if (equipments.length === 0) {
-        grid.classList.add('hidden');
-        noResults.classList.remove('hidden');
-        return;
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    let visibleCardsCount = 0;
+    
+    allEquipmentCards.forEach(card => {
+        const equipmentName = card.dataset.equipmentName.toLowerCase();
+        const equipmentCategory = card.dataset.equipmentCategory.toLowerCase();
+        
+        if (equipmentName.includes(searchTerm) || equipmentCategory.includes(searchTerm)) {
+            card.style.display = '';
+            visibleCardsCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Mostrar/ocultar mensaje de no resultados
+    if (visibleCardsCount === 0 && searchTerm.length > 0) {
+        noEquipmentResults.classList.remove('hidden');
+        equipmentGrid.classList.add('hidden');
+    } else {
+        noEquipmentResults.classList.add('hidden');
+        equipmentGrid.classList.remove('hidden');
     }
     
-    grid.classList.remove('hidden');
-    noResults.classList.add('hidden');
-    
-    equipments.forEach(equipment => {
-        const isSelected = selectedEquipments.has(equipment.id);
-        const isOutOfStock = equipment.stock <= 0;
-        const stockClass = isOutOfStock ? 'bg-red-50 border-red-300' : 
-                          equipment.stock <= 5 ? 'bg-yellow-50 border-yellow-300' : 
-                          'bg-green-50 border-green-300';
-        const disabledClass = (isSelected || isOutOfStock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg';
-        
-        const card = document.createElement('div');
-        card.className = `equipment-card border-2 rounded-lg p-4 transition-all duration-200 ${stockClass} ${disabledClass}`;
-        card.dataset.equipmentId = equipment.id;
-        
-        if (!isSelected && !isOutOfStock) {
-            card.onclick = () => selectEquipment(equipment);
-        }
-        
-        card.innerHTML = `
-            <div class="flex items-start justify-between mb-2">
-                <h4 class="font-medium text-gray-900 text-sm">${equipment.name}</h4>
-                <div class="flex items-center space-x-2">
-                    ${isOutOfStock ? 
-                        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fas fa-times-circle mr-1"></i>Agotado</span>' :
-                      equipment.stock <= 5 ?
-                        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-exclamation-triangle mr-1"></i>Poco Stock</span>' :
-                        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i>Disponible</span>'
-                    }
-                </div>
-            </div>
-            <div class="space-y-1 text-xs text-gray-600">
-                <p><strong>Categoría:</strong> ${equipment.category}</p>
-                <p><strong>Stock:</strong> ${equipment.stock} ${equipment.unit}</p>
-                ${equipment.description ? `<p><strong>Descripción:</strong> ${equipment.description.substring(0, 50)}${equipment.description.length > 50 ? '...' : ''}</p>` : ''}
-            </div>
-            ${isSelected ? '<div class="mt-2 text-center text-xs font-medium text-green-700"><i class="fas fa-check-circle mr-1"></i>Ya seleccionado</div>' : ''}
-        `;
-        
-        grid.appendChild(card);
-    });
+    // Mostrar/ocultar botón de limpiar
+    if (searchTerm.length > 0 && clearBtn) {
+        clearBtn.classList.remove('hidden');
+    } else if (clearBtn) {
+        clearBtn.classList.add('hidden');
+    }
 }
 
-// Seleccionar insumo
-function selectEquipment(equipment) {
-    if (selectedEquipments.has(equipment.id)) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Ya seleccionado',
-            text: 'Este insumo ya ha sido agregado a tu solicitud.',
-            timer: 2000,
-            showConfirmButton: false
-        });
-        return;
-    }
+// Seleccionar insumo desde la tarjeta
+document.addEventListener('DOMContentLoaded', function() {
+    const equipmentCards = document.querySelectorAll('.equipment-card');
     
-    if (equipment.stock <= 0) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Stock agotado',
-            text: 'Este insumo no tiene stock disponible.',
-            timer: 2000,
-            showConfirmButton: false
+    equipmentCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const equipmentId = this.dataset.equipmentId;
+            const equipmentStock = parseInt(this.dataset.equipmentStock);
+            const equipmentName = this.dataset.equipmentName;
+            const equipmentCategory = this.dataset.equipmentCategory;
+            const equipmentDescription = this.dataset.equipmentDescription;
+            const equipmentUnit = this.dataset.equipmentUnit;
+            const equipmentPrice = parseFloat(this.dataset.equipmentPrice || 0);
+            
+            // Verificar si el insumo está agotado
+            if (equipmentStock <= 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Stock agotado',
+                    text: 'Este insumo no tiene stock disponible.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                return;
+            }
+            
+            // Verificar si ya está seleccionado
+            if (selectedEquipments.has(equipmentId)) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Ya seleccionado',
+                    text: 'Este insumo ya ha sido agregado a tu solicitud.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                return;
+            }
+            
+            // Agregar a la lista
+            selectedEquipments.add(equipmentId);
+            addEquipmentToList({
+                id: equipmentId,
+                name: equipmentName,
+                stock: equipmentStock,
+                category: equipmentCategory,
+                description: equipmentDescription,
+                unit: equipmentUnit,
+                price: equipmentPrice
+            });
+            closeEquipmentModal();
         });
-        return;
-    }
-    
-    selectedEquipments.add(equipment.id);
-    addEquipmentToList(equipment);
-    closeEquipmentModal();
-    renderEquipmentGrid();
-}
+    });
+});
 
 // Agregar insumo a la lista
-function addEquipmentToList(equipment) {
+function addEquipmentToList(equipment, amount = 1, itemId = null) {
     const list = document.getElementById('equipment-list');
     const noMessage = document.getElementById('no-equipment-message');
     
@@ -477,6 +568,8 @@ function addEquipmentToList(equipment) {
     const item = document.createElement('div');
     item.className = 'equipment-item bg-gray-50 border border-gray-200 rounded-lg p-4';
     item.id = `equipment-item-${equipment.id}`;
+    
+    const nameKey = itemId ? `items[${itemId}][requested_amount]` : `equipments[${equipment.id}][amount]`;
     
     item.innerHTML = `
         <div class="flex items-start justify-between mb-3">
@@ -492,10 +585,10 @@ function addEquipmentToList(equipment) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad *</label>
                 <input type="number" 
-                       name="equipments[${equipment.id}][amount]" 
+                       name="${nameKey}" 
                        min="1" 
                        max="${equipment.stock}"
-                       value="1"
+                       value="${amount}"
                        required
                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
                        onchange="validateAmount(this, ${equipment.stock})">
@@ -530,7 +623,7 @@ function removeEquipment(equipmentId) {
         }
     }
     
-    renderEquipmentGrid();
+    filterEquipmentCards();
 }
 
 // Validar cantidad
@@ -550,14 +643,24 @@ function validateAmount(input, maxStock) {
     }
 }
 
-// Filtrar insumos en el modal
-document.getElementById('equipmentSearch')?.addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase().trim();
-    const filtered = equipmentsData.filter(eq => 
-        eq.name.toLowerCase().includes(searchTerm) || 
-        eq.category.toLowerCase().includes(searchTerm)
-    );
-    renderEquipmentGrid(filtered);
+// Filtrar insumos en el modal - usar delegación de eventos
+document.addEventListener('DOMContentLoaded', function() {
+    const equipmentSearchInput = document.getElementById('equipmentSearch');
+    const clearEquipmentSearchBtn = document.getElementById('clear-equipment-search');
+    
+    if (equipmentSearchInput) {
+        equipmentSearchInput.addEventListener('input', filterEquipmentCards);
+    }
+    
+    if (clearEquipmentSearchBtn) {
+        clearEquipmentSearchBtn.addEventListener('click', function() {
+            if (equipmentSearchInput) {
+                equipmentSearchInput.value = '';
+                filterEquipmentCards();
+                equipmentSearchInput.focus();
+            }
+        });
+    }
 });
 
 // Contador de caracteres
@@ -692,6 +795,104 @@ document.getElementById('equipmentModal')?.addEventListener('click', function(e)
         closeEquipmentModal();
     }
 });
+
+// Función para editar una solicitud
+async function editRequest(requestId) {
+    try {
+        const response = await fetch(`{{ url('infrastock/operator/requests') }}/${requestId}/edit`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al cargar la solicitud');
+        }
+
+        const requestData = await response.json();
+        
+        document.getElementById('modal_productive_unit_warehouse_id').value = requestData.productive_unit_warehouse_id;
+        document.getElementById('modal_description').value = requestData.description || '';
+        document.getElementById('char-count').textContent = `${requestData.description?.length || 0}/500`;
+        
+        const equipmentList = document.getElementById('equipment-list');
+        equipmentList.innerHTML = '';
+        selectedEquipments.clear();
+        
+        requestData.items.forEach(item => {
+            selectedEquipments.add(item.equipment_id);
+            addEquipmentToList({
+                id: item.equipment_id,
+                name: item.equipment_name,
+                stock: item.stock,
+                category: item.equipment_category,
+                unit: item.unit,
+                price: 0
+            }, item.requested_amount, item.id);
+        });
+        
+        const form = document.getElementById('requestForm');
+        form.action = `{{ url('infrastock/operator/requests') }}/${requestId}`;
+        form.method = 'POST';
+        
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'PUT';
+        form.appendChild(methodInput);
+        
+        const submitBtn = form.querySelector('button[onclick="submitRequestForm()"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Actualizar Solicitud';
+        }
+        
+        openRequestModal();
+        
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo cargar la solicitud para editar: ' + error.message,
+        });
+    }
+}
+
+// Función para eliminar una solicitud
+function deleteRequest(requestId) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción no se puede deshacer. La solicitud será eliminada permanentemente.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ url('infrastock/operator/requests') }}/${requestId}`;
+            
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = '{{ csrf_token() }}';
+            form.appendChild(csrfInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
 </script>
 @endsection
 

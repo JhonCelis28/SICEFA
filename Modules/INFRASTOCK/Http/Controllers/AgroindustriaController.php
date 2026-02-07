@@ -510,6 +510,132 @@ class AgroindustriaController extends Controller
     }
 
     /**
+     * Muestra el formulario para editar una solicitud.
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function editRequest($id)
+    {
+        $this->verifyRole();
+        $request = InfrastockRequest::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse'
+        ])->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending') // Solo se puede editar si está pendiente
+            ->first();
+
+        if (!$request) {
+            return response()->json(['error' => 'Solicitud no encontrada o no se puede editar'], 404);
+        }
+
+        // Preparar los items de la solicitud para edición
+        $items = $request->items->map(function($item) {
+            return [
+                'id' => $item->id,
+                'equipment_id' => $item->equipment_id,
+                'equipment_name' => $item->equipment->name ?? 'N/A',
+                'equipment_category' => $item->equipment->category->name ?? 'Sin categoría',
+                'requested_amount' => $item->requested_amount,
+                'unit' => $item->equipment->unit_measure ?? $item->equipment->unit ?? 'unidades',
+                'stock' => $item->equipment->amount ?? $item->equipment->stock ?? 0,
+            ];
+        });
+
+        return response()->json([
+            'id' => $request->id,
+            'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+            'description' => $request->description,
+            'items' => $items,
+        ]);
+    }
+
+    /**
+     * Actualiza una solicitud existente.
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateRequest(Request $request, $id)
+    {
+        $this->verifyRole();
+        $requestData = InfrastockRequest::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$requestData) {
+            return redirect()->route('infrastock.agroindustria.requests.index')
+                ->with('error', 'Solicitud no encontrada o no se puede editar.');
+        }
+
+        $request->validate([
+            'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
+            'items' => 'required|array|min:1',
+            'items.*.requested_amount' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Actualizar la solicitud principal
+            $requestData->update([
+                'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+                'description' => $request->description,
+            ]);
+
+            // Actualizar los items de la solicitud
+            foreach ($request->items as $itemId => $itemData) {
+                $requestItem = \Modules\INFRASTOCK\Entities\RequestItem::where('id', $itemId)
+                    ->where('request_id', $requestData->id)
+                    ->first();
+
+                if ($requestItem) {
+                    $requestItem->update([
+                        'requested_amount' => $itemData['requested_amount'],
+                    ]);
+                }
+            }
+
+            return redirect()->route('infrastock.agroindustria.requests.index')
+                ->with('success', 'Solicitud actualizada exitosamente.');
+        } catch (\Exception $e) {
+            return redirect()->route('infrastock.agroindustria.requests.index')
+                ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Elimina una solicitud.
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroyRequest($id)
+    {
+        $this->verifyRole();
+        $request = InfrastockRequest::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$request) {
+            return redirect()->route('infrastock.agroindustria.requests.index')
+                ->with('error', 'Solicitud no encontrada.');
+        }
+
+        // Solo permitir eliminar solicitudes pendientes
+        if ($request->status !== 'pending') {
+            return redirect()->route('infrastock.agroindustria.requests.index')
+                ->with('error', 'Solo se pueden eliminar solicitudes pendientes.');
+        }
+
+        // Eliminar la solicitud (los items se eliminarán automáticamente por cascade)
+        $request->delete();
+
+        return redirect()->route('infrastock.agroindustria.requests.index')
+            ->with('success', 'Solicitud eliminada exitosamente.');
+    }
+
+    /**
      * Muestra las notificaciones del usuario.
      * @return Renderable
      */

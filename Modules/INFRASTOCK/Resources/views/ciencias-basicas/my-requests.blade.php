@@ -341,7 +341,32 @@
                 </div>
                 
                 <div class="p-6 overflow-y-auto max-h-[60vh]">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Buscador de insumos -->
+                    <div class="mb-6 relative">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </div>
+                            <input type="text" 
+                                   id="equipment-search" 
+                                   class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                                   placeholder="Buscar insumo por nombre o categoría...">
+                            <button type="button" 
+                                    id="clear-search" 
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay resultados -->
+                    <div id="no-equipment-results" class="hidden text-center py-8">
+                        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                        <p class="text-gray-500">No se encontraron insumos</p>
+                    </div>
+                    
+                    <!-- Grid de insumos -->
+                    <div id="equipment-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @foreach($equipments as $equipment)
                             <div class="equipment-card border border-gray-200 rounded-lg p-4 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer" 
                                  data-equipment-id="{{ $equipment->id }}"
@@ -564,6 +589,10 @@
             const equipmentModal = document.getElementById('equipment-modal');
             const closeEquipmentModalBtn = document.getElementById('close-equipment-modal');
             const equipmentCards = document.querySelectorAll('.equipment-card');
+            const equipmentSearch = document.getElementById('equipment-search');
+            const clearSearchBtn = document.getElementById('clear-search');
+            const equipmentGrid = document.getElementById('equipment-grid');
+            const noEquipmentResults = document.getElementById('no-equipment-results');
             
             const equipmentList = document.getElementById('equipment-list');
             const noEquipmentMessage = document.getElementById('no-equipment-message');
@@ -1071,7 +1100,72 @@
             addEquipmentBtn.addEventListener('click', function() {
                 equipmentModal.classList.remove('hidden');
                 updateEquipmentCards();
+                // Limpiar búsqueda al abrir el modal
+                if (equipmentSearch) {
+                    equipmentSearch.value = '';
+                    if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+                    filterEquipmentCards();
+                }
             });
+            
+            // Filtrar insumos en tiempo real
+            if (equipmentSearch) {
+                equipmentSearch.addEventListener('input', function() {
+                    filterEquipmentCards();
+                    // Mostrar/ocultar botón de limpiar
+                    if (this.value.length > 0 && clearSearchBtn) {
+                        clearSearchBtn.classList.remove('hidden');
+                    } else if (clearSearchBtn) {
+                        clearSearchBtn.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Limpiar búsqueda
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    if (equipmentSearch) {
+                        equipmentSearch.value = '';
+                        clearSearchBtn.classList.add('hidden');
+                        filterEquipmentCards();
+                        equipmentSearch.focus();
+                    }
+                });
+            }
+            
+            // Función para filtrar las tarjetas de insumos
+            function filterEquipmentCards() {
+                if (!equipmentSearch || !equipmentGrid) return;
+                
+                const searchTerm = equipmentSearch.value.toLowerCase().trim();
+                const allEquipmentCards = Array.from(document.querySelectorAll('.equipment-card'));
+                let visibleCount = 0;
+                
+                allEquipmentCards.forEach(card => {
+                    const equipmentName = card.dataset.equipmentName.toLowerCase();
+                    const equipmentCategory = card.dataset.equipmentCategory.toLowerCase();
+                    
+                    if (searchTerm === '' || 
+                        equipmentName.includes(searchTerm) || 
+                        equipmentCategory.includes(searchTerm)) {
+                        card.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Mostrar/ocultar mensaje de no resultados
+                if (noEquipmentResults && equipmentGrid) {
+                    if (visibleCount === 0 && searchTerm !== '') {
+                        noEquipmentResults.classList.remove('hidden');
+                        equipmentGrid.classList.add('hidden');
+                    } else {
+                        noEquipmentResults.classList.add('hidden');
+                        equipmentGrid.classList.remove('hidden');
+                    }
+                }
+            }
 
             // Cerrar modal de insumos
             closeEquipmentModalBtn.addEventListener('click', function() {

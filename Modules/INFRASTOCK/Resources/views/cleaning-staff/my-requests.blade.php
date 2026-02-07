@@ -16,6 +16,20 @@
 @section('title', 'Mis Solicitudes - Personal de Aseo INFRASTOCK')
 
 @section('content')
+<script>
+    // Función global para abrir el modal - debe estar disponible inmediatamente
+    window.openRequestModal = function openRequestModal() {
+        const requestModal = document.getElementById('request-modal');
+        if (requestModal) {
+            requestModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        } else {
+            console.error('No se encontró el modal request-modal');
+            // Fallback: redirigir a la página de creación
+            window.location.href = '{{ route("infrastock.cleaning-staff.requests.create") }}';
+        }
+    };
+</script>
 <!-- Breadcrumb -->
 @section('breadcrumb-items')
 <li class="flex items-center">
@@ -33,7 +47,7 @@
                     <p class="text-gray-600 mt-2">Aquí puedes ver el historial completo de todas tus solicitudes de insumos.</p>
                 </div>
                 <div>
-                    <button type="button" id="open-request-modal" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-md transition-colors duration-200 font-medium">
+                    <button type="button" id="open-request-modal" onclick="openRequestModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-md transition-colors duration-200 font-medium">
                         <i class="fas fa-plus mr-2"></i>
                         Solicitar Insumo
                     </button>
@@ -58,7 +72,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
-                        <button type="button" id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" style="display: none;">
+                        <button type="button" id="clear-request-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" style="display: none;">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -341,7 +355,32 @@
                 </div>
                 
                 <div class="p-6 overflow-y-auto max-h-[60vh]">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Buscador de insumos -->
+                    <div class="mb-6 relative">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </div>
+                            <input type="text" 
+                                   id="equipment-search" 
+                                   class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" 
+                                   placeholder="Buscar insumo por nombre o categoría...">
+                            <button type="button" 
+                                    id="clear-search" 
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay resultados -->
+                    <div id="no-equipment-results" class="hidden text-center py-8">
+                        <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                        <p class="text-gray-500">No se encontraron insumos</p>
+                    </div>
+                    
+                    <!-- Grid de insumos -->
+                    <div id="equipment-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @foreach($equipments as $equipment)
                             <div class="equipment-card border border-gray-200 rounded-lg p-4 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer" 
                                  data-equipment-id="{{ $equipment->id }}"
@@ -548,6 +587,7 @@
     </main>
 
     <script>
+
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('search');
             const statusFilter = document.getElementById('status-filter');
@@ -564,6 +604,10 @@
             const equipmentModal = document.getElementById('equipment-modal');
             const closeEquipmentModalBtn = document.getElementById('close-equipment-modal');
             const equipmentCards = document.querySelectorAll('.equipment-card');
+            const equipmentSearch = document.getElementById('equipment-search');
+            const clearEquipmentSearchBtn = document.getElementById('clear-search');
+            const equipmentGrid = document.getElementById('equipment-grid');
+            const noEquipmentResults = document.getElementById('no-equipment-results');
             
             const equipmentList = document.getElementById('equipment-list');
             const noEquipmentMessage = document.getElementById('no-equipment-message');
@@ -573,10 +617,20 @@
 
             // Función para filtrar las solicitudes
             function filterRequests() {
+                if (!searchInput || !statusFilter || !dateFilter) {
+                    console.error('Elementos de filtro no encontrados');
+                    return;
+                }
+                
                 const searchTerm = searchInput.value.toLowerCase().trim();
                 const statusValue = statusFilter.value;
                 const dateValue = dateFilter.value;
                 const today = new Date();
+                
+                if (!requestCards || requestCards.length === 0) {
+                    console.warn('No se encontraron tarjetas de solicitudes para filtrar');
+                    return;
+                }
                 
                 requestCards.forEach(card => {
                     // Obtener información de la solicitud
@@ -720,29 +774,38 @@
             }
 
             // Event listeners para los filtros
-            searchInput.addEventListener('focus', openEquipmentSearchModal);
-            searchInput.addEventListener('input', handleSearchInput);
-            statusFilter.addEventListener('change', filterRequests);
-            dateFilter.addEventListener('change', filterRequests);
+            if (searchInput) {
+                searchInput.addEventListener('input', filterRequests);
+            }
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterRequests);
+            }
+            if (dateFilter) {
+                dateFilter.addEventListener('change', filterRequests);
+            }
 
-            // Botón para limpiar búsqueda
-            const clearSearchBtn = document.getElementById('clear-search');
-            clearSearchBtn.addEventListener('click', function() {
-                searchInput.value = '';
-                filterRequests();
-                updateClearButton();
-            });
+            // Botón para limpiar búsqueda de solicitudes
+            const clearRequestSearchBtn = document.getElementById('clear-request-search');
+            if (clearRequestSearchBtn && searchInput) {
+                clearRequestSearchBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    filterRequests();
+                    updateClearRequestButton();
+                });
 
-            // Mostrar/ocultar botón de limpiar búsqueda
-            searchInput.addEventListener('input', function() {
-                updateClearButton();
-            });
+                // Mostrar/ocultar botón de limpiar búsqueda
+                searchInput.addEventListener('input', function() {
+                    updateClearRequestButton();
+                });
 
-            function updateClearButton() {
-                if (searchInput.value.length > 0) {
-                    clearSearchBtn.style.display = 'flex';
-                } else {
-                    clearSearchBtn.style.display = 'none';
+                function updateClearRequestButton() {
+                    if (searchInput && clearRequestSearchBtn) {
+                        if (searchInput.value.length > 0) {
+                            clearRequestSearchBtn.style.display = 'flex';
+                        } else {
+                            clearRequestSearchBtn.style.display = 'none';
+                        }
+                    }
                 }
             }
 
@@ -840,8 +903,8 @@
             const equipmentStockFilter = document.getElementById('equipment-stock-filter');
             const equipmentSearchResults = document.getElementById('equipment-search-results');
             const equipmentSearchCount = document.getElementById('equipment-search-count');
-            const noEquipmentResults = document.getElementById('no-equipment-results');
-            const clearEquipmentSearchBtn = document.getElementById('clear-equipment-search');
+            const noEquipmentSearchResults = document.getElementById('no-equipment-results');
+            const clearEquipmentSearchModalBtn = document.getElementById('clear-equipment-search');
 
             // Función para abrir el modal de búsqueda de insumos
             function openEquipmentSearchModal() {
@@ -882,12 +945,14 @@
             equipmentStockFilter.addEventListener('change', searchEquipment);
 
             // Botón para limpiar filtros de búsqueda de insumos
-            clearEquipmentSearchBtn.addEventListener('click', function() {
-                equipmentSearchInput.value = '';
-                equipmentCategoryFilter.value = '';
-                equipmentStockFilter.value = '';
-                searchEquipment();
-            });
+            if (clearEquipmentSearchModalBtn) {
+                clearEquipmentSearchModalBtn.addEventListener('click', function() {
+                    equipmentSearchInput.value = '';
+                    equipmentCategoryFilter.value = '';
+                    equipmentStockFilter.value = '';
+                    searchEquipment();
+                });
+            }
 
             // Función para cargar las categorías de insumos
             function loadEquipmentCategories() {
@@ -957,11 +1022,11 @@
                 equipmentSearchCount.textContent = equipments.length;
 
                 if (equipments.length === 0) {
-                    noEquipmentResults.classList.remove('hidden');
+                    noEquipmentSearchResults.classList.remove('hidden');
                     return;
                 }
 
-                noEquipmentResults.classList.add('hidden');
+                noEquipmentSearchResults.classList.add('hidden');
 
                 equipments.forEach(equipment => {
                     const equipmentCard = document.createElement('div');
@@ -1042,36 +1107,158 @@
             // === FUNCIONALIDAD DEL MODAL DE SOLICITUD ===
             
             // Abrir modal de solicitud
-            openRequestModalBtn.addEventListener('click', function() {
-                requestModal.classList.remove('hidden');
-            });
+            if (openRequestModalBtn && requestModal) {
+                openRequestModalBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    requestModal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                });
+            } else {
+                console.error('No se encontró el botón open-request-modal o el modal request-modal');
+                if (!openRequestModalBtn) {
+                    console.error('El botón open-request-modal no existe en el DOM');
+                }
+                if (!requestModal) {
+                    console.error('El modal request-modal no existe en el DOM');
+                }
+            }
 
             // Cerrar modal de solicitud
-            closeRequestModalBtn.addEventListener('click', function() {
-                requestModal.classList.add('hidden');
-                resetForm();
-            });
+            if (closeRequestModalBtn && requestModal) {
+                closeRequestModalBtn.addEventListener('click', function() {
+                    requestModal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    if (typeof resetForm === 'function') {
+                        resetForm();
+                    }
+                });
+            }
 
-            cancelRequestBtn.addEventListener('click', function() {
-                requestModal.classList.add('hidden');
-                resetForm();
-            });
+            if (cancelRequestBtn && requestModal) {
+                cancelRequestBtn.addEventListener('click', function() {
+                    requestModal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    if (typeof resetForm === 'function') {
+                        resetForm();
+                    }
+                });
+            }
 
             // Cerrar modal al hacer clic fuera
-            requestModal.addEventListener('click', function(e) {
-                if (e.target === requestModal) {
-                    requestModal.classList.add('hidden');
-                    resetForm();
-                }
-            });
+            if (requestModal) {
+                requestModal.addEventListener('click', function(e) {
+                    if (e.target === requestModal) {
+                        requestModal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        if (typeof resetForm === 'function') {
+                            resetForm();
+                        }
+                    }
+                });
+            }
 
             // === FUNCIONALIDAD DEL MODAL DE INSUMOS ===
             
-            // Abrir modal de insumos
-            addEquipmentBtn.addEventListener('click', function() {
-                equipmentModal.classList.remove('hidden');
-                updateEquipmentCards();
+            // Función para abrir el modal de insumos
+            function openEquipmentModal() {
+                const modal = document.getElementById('equipment-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                    if (typeof updateEquipmentCards === 'function') {
+                        updateEquipmentCards();
+                    }
+                    // Limpiar búsqueda al abrir el modal
+                    const searchInput = document.getElementById('equipment-search');
+                    const clearBtn = document.getElementById('clear-search');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        if (clearBtn) clearBtn.classList.add('hidden');
+                        if (typeof filterEquipmentCards === 'function') {
+                            filterEquipmentCards();
+                        }
+                    }
+                } else {
+                    console.error('No se encontró el modal equipment-modal');
+                }
+            }
+            
+            // Abrir modal de insumos - usar delegación de eventos para elementos dinámicos
+            document.addEventListener('click', function(e) {
+                if (e.target && (e.target.id === 'add-equipment-btn' || e.target.closest('#add-equipment-btn'))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openEquipmentModal();
+                }
             });
+            
+            // También agregar listener directo si el botón existe
+            if (addEquipmentBtn && equipmentModal) {
+                addEquipmentBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openEquipmentModal();
+                });
+            }
+            
+            // Filtrar insumos en tiempo real
+            if (equipmentSearch) {
+                equipmentSearch.addEventListener('input', function() {
+                    filterEquipmentCards();
+                    // Mostrar/ocultar botón de limpiar
+                    if (this.value.length > 0 && clearEquipmentSearchBtn) {
+                        clearEquipmentSearchBtn.classList.remove('hidden');
+                    } else if (clearEquipmentSearchBtn) {
+                        clearEquipmentSearchBtn.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Limpiar búsqueda
+            if (clearEquipmentSearchBtn) {
+                clearEquipmentSearchBtn.addEventListener('click', function() {
+                    if (equipmentSearch) {
+                        equipmentSearch.value = '';
+                        clearEquipmentSearchBtn.classList.add('hidden');
+                        filterEquipmentCards();
+                        equipmentSearch.focus();
+                    }
+                });
+            }
+            
+            // Función para filtrar las tarjetas de insumos
+            function filterEquipmentCards() {
+                if (!equipmentSearch || !equipmentCards) return;
+                
+                const searchTerm = equipmentSearch.value.toLowerCase().trim();
+                let visibleCount = 0;
+                
+                equipmentCards.forEach(card => {
+                    const equipmentName = card.dataset.equipmentName.toLowerCase();
+                    const equipmentCategory = card.dataset.equipmentCategory.toLowerCase();
+                    
+                    if (searchTerm === '' || 
+                        equipmentName.includes(searchTerm) || 
+                        equipmentCategory.includes(searchTerm)) {
+                        card.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Mostrar/ocultar mensaje de no resultados
+                if (noEquipmentResults && equipmentGrid) {
+                    if (visibleCount === 0 && searchTerm !== '') {
+                        noEquipmentResults.classList.remove('hidden');
+                        equipmentGrid.classList.add('hidden');
+                    } else {
+                        noEquipmentResults.classList.add('hidden');
+                        equipmentGrid.classList.remove('hidden');
+                    }
+                }
+            }
 
             // Cerrar modal de insumos
             closeEquipmentModalBtn.addEventListener('click', function() {

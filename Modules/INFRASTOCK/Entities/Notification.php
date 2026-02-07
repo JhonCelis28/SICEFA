@@ -7,13 +7,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Notification extends Model
 {
-    public $incrementing = false;
-    protected $keyType = 'string';
-    
     protected $table = 'notifications';
     
     protected $fillable = [
-        'id',
         'type',
         'notifiable_type',
         'notifiable_id',
@@ -25,17 +21,6 @@ class Notification extends Model
         'data' => 'array',
         'read_at' => 'datetime',
     ];
-    
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($notification) {
-            if (empty($notification->id)) {
-                $notification->id = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
 
     /**
      * Relación polimórfica con el modelo notificable (User)

@@ -272,8 +272,8 @@ class INFRASTOCKController extends Controller
         } elseif (in_array('Centro de Convivencia', $userRoles)) {
             \Log::info('Redirigiendo a Centro de Convivencia dashboard');
             return redirect()->route('infrastock.convivencia.dashboard');
-        } elseif (in_array('Ganaderia', $userRoles)) {
-            \Log::info('Redirigiendo a Ganaderia dashboard');
+        } elseif (in_array('Ganadería', $userRoles)) {
+            \Log::info('Redirigiendo a Ganadería dashboard');
             return redirect()->route('infrastock.ganaderia.dashboard');
         } elseif (in_array('Vigilancia', $userRoles)) {
             \Log::info('Redirigiendo a Vigilancia dashboard');

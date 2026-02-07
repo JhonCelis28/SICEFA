@@ -75,8 +75,8 @@
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.operator.dashboard') }}">Operario</a>
                         @elseif(in_array('Centro de Convivencia', $userRoles))
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.convivencia.dashboard') }}">Centro de Convivencia</a>
-                        @elseif(in_array('Ganaderia', $userRoles))
-                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.ganaderia.dashboard') }}">Ganaderia</a>
+                        @elseif(in_array('Ganadería', $userRoles))
+                            <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.ganaderia.dashboard') }}">Ganadería</a>
                         @elseif(in_array('Vigilancia', $userRoles))
                             <a class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition-colors duration-300" href="{{ route('infrastock.vigilancia.dashboard') }}">Vigilancia</a>
                         @elseif(in_array('Agroindustria', $userRoles))
@@ -116,8 +116,8 @@
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.operator.dashboard') }}">Operario</a>
                     @elseif(in_array('Centro de Convivencia', $userRoles))
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.convivencia.dashboard') }}">Centro de Convivencia</a>
-                    @elseif(in_array('Ganaderia', $userRoles))
-                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.ganaderia.dashboard') }}">Ganaderia</a>
+                    @elseif(in_array('Ganadería', $userRoles))
+                        <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.ganaderia.dashboard') }}">Ganadería</a>
                     @elseif(in_array('Vigilancia', $userRoles))
                         <a class="block bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-center transition-colors duration-300" href="{{ route('infrastock.vigilancia.dashboard') }}">Vigilancia</a>
                     @elseif(in_array('Agroindustria', $userRoles))
@@ -196,10 +196,10 @@
                         <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-green-500 bg-green-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador2.jpg') }}" 
                                  alt="Desarrollador 2" 
-                                 class="w-full h-full object-contain object-center"
-                                 style="object-fit: contain;"
+                                 class="w-full h-full"
+                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador2.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-blue-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>

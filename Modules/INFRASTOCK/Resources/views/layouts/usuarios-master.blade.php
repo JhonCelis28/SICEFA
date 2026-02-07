@@ -14,35 +14,42 @@
     $roleName = '';
     $routePrefix = '';
     
-    // Mapear nombres de roles a prefijos de ruta
-    if (in_array('Psicola', $userRoles)) {
-        $roleName = 'PSICOLA';
-        $routePrefix = 'psicola';
-    } elseif (in_array('Operario', $userRoles)) {
-        $roleName = 'Operario';
-        $routePrefix = 'operator';
-    } elseif (in_array('Aseo', $userRoles)) {
-        $roleName = 'Personal de Aseo';
-        $routePrefix = 'cleaning-staff';
-    } elseif (in_array('Vigilancia', $userRoles)) {
-        $roleName = 'Vigilancia';
-        $routePrefix = 'vigilancia';
-    } elseif (in_array('Ganadería', $userRoles)) {
-        $roleName = 'Ganadería';
-        $routePrefix = 'ganaderia';
-    } elseif (in_array('Centro de Convivencia', $userRoles)) {
-        $roleName = 'Centro de Convivencia';
-        $routePrefix = 'convivencia';
-    } elseif (in_array('Ciencias Basicas', $userRoles)) {
-        $roleName = 'Ciencias Básicas';
-        $routePrefix = 'ciencias-basicas';
-    } elseif (in_array('Agroindustria', $userRoles)) {
-        $roleName = 'Agroindustria';
-        $routePrefix = 'agroindustria';
-    } else {
-        // Fallback al primer rol si no coincide
-        $roleName = $userRoles[0] ?? 'Usuario';
-        $routePrefix = strtolower(str_replace(' ', '-', $roleName));
+    // Roles específicos de usuarios (no administradores) - orden de prioridad
+    $specificRoles = [
+        'Aseo' => ['roleName' => 'Personal de Aseo', 'routePrefix' => 'cleaning-staff'],
+        'Personal de Aseo' => ['roleName' => 'Personal de Aseo', 'routePrefix' => 'cleaning-staff'],
+        'Psicola' => ['roleName' => 'PSICOLA', 'routePrefix' => 'psicola'],
+        'Ciencias Basicas' => ['roleName' => 'Ciencias Básicas', 'routePrefix' => 'ciencias-basicas'],
+        'Operario' => ['roleName' => 'Operario', 'routePrefix' => 'operator'],
+        'Centro de Convivencia' => ['roleName' => 'Centro de Convivencia', 'routePrefix' => 'convivencia'],
+        'Ganadería' => ['roleName' => 'Ganadería', 'routePrefix' => 'ganaderia'],
+        'Vigilancia' => ['roleName' => 'Vigilancia', 'routePrefix' => 'vigilancia'],
+        'Agroindustria' => ['roleName' => 'Agroindustria', 'routePrefix' => 'agroindustria'],
+    ];
+    
+    // Buscar el primer rol específico que coincida (prioridad sobre Administrador)
+    foreach ($specificRoles as $roleKey => $roleData) {
+        if (in_array($roleKey, $userRoles)) {
+            $roleName = $roleData['roleName'];
+            $routePrefix = $roleData['routePrefix'];
+            break;
+        }
+    }
+    
+    // Si no se encontró un rol específico, usar fallback
+    if (empty($roleName)) {
+        // Excluir roles administrativos del fallback
+        $nonAdminRoles = array_filter($userRoles, function($role) {
+            return !in_array($role, ['Administrador', 'Admin']);
+        });
+        
+        if (!empty($nonAdminRoles)) {
+            $roleName = reset($nonAdminRoles);
+            $routePrefix = strtolower(str_replace(' ', '-', $roleName));
+        } else {
+            $roleName = 'Usuario';
+            $routePrefix = 'usuario';
+        }
     }
 @endphp
 

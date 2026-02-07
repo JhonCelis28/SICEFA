@@ -349,6 +349,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/operator/requests', 'OperatorController@storeRequest')->name('infrastock.operator.requests.store');
     Route::get('/infrastock/operator/requests', 'OperatorController@myRequests')->name('infrastock.operator.requests.index');
     Route::get('/infrastock/operator/requests/{id}', 'OperatorController@showRequest')->name('infrastock.operator.requests.show');
+    Route::get('/infrastock/operator/requests/{id}/edit', 'OperatorController@editRequest')->name('infrastock.operator.requests.edit');
+    Route::put('/infrastock/operator/requests/{id}', 'OperatorController@updateRequest')->name('infrastock.operator.requests.update');
+    Route::delete('/infrastock/operator/requests/{id}', 'OperatorController@destroyRequest')->name('infrastock.operator.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/operator/notifications', 'OperatorController@notifications')->name('infrastock.operator.notifications');
@@ -385,6 +388,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/convivencia/requests', 'ConvivenciaController@storeRequest')->name('infrastock.convivencia.requests.store');
     Route::get('/infrastock/convivencia/requests', 'ConvivenciaController@myRequests')->name('infrastock.convivencia.requests.index');
     Route::get('/infrastock/convivencia/requests/{id}', 'ConvivenciaController@showRequest')->name('infrastock.convivencia.requests.show');
+    Route::get('/infrastock/convivencia/requests/{id}/edit', 'ConvivenciaController@editRequest')->name('infrastock.convivencia.requests.edit');
+    Route::put('/infrastock/convivencia/requests/{id}', 'ConvivenciaController@updateRequest')->name('infrastock.convivencia.requests.update');
+    Route::delete('/infrastock/convivencia/requests/{id}', 'ConvivenciaController@destroyRequest')->name('infrastock.convivencia.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/convivencia/notifications', 'ConvivenciaController@notifications')->name('infrastock.convivencia.notifications');
@@ -421,6 +427,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/ganaderia/requests', 'GanaderiaController@storeRequest')->name('infrastock.ganaderia.requests.store');
     Route::get('/infrastock/ganaderia/requests', 'GanaderiaController@myRequests')->name('infrastock.ganaderia.requests.index');
     Route::get('/infrastock/ganaderia/requests/{id}', 'GanaderiaController@showRequest')->name('infrastock.ganaderia.requests.show');
+    Route::get('/infrastock/ganaderia/requests/{id}/edit', 'GanaderiaController@editRequest')->name('infrastock.ganaderia.requests.edit');
+    Route::put('/infrastock/ganaderia/requests/{id}', 'GanaderiaController@updateRequest')->name('infrastock.ganaderia.requests.update');
+    Route::delete('/infrastock/ganaderia/requests/{id}', 'GanaderiaController@destroyRequest')->name('infrastock.ganaderia.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/ganaderia/notifications', 'GanaderiaController@notifications')->name('infrastock.ganaderia.notifications');
@@ -529,6 +538,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/agroindustria/requests', 'AgroindustriaController@storeRequest')->name('infrastock.agroindustria.requests.store');
     Route::get('/infrastock/agroindustria/requests', 'AgroindustriaController@myRequests')->name('infrastock.agroindustria.requests.index');
     Route::get('/infrastock/agroindustria/requests/{id}', 'AgroindustriaController@showRequest')->name('infrastock.agroindustria.requests.show');
+    Route::get('/infrastock/agroindustria/requests/{id}/edit', 'AgroindustriaController@editRequest')->name('infrastock.agroindustria.requests.edit');
+    Route::put('/infrastock/agroindustria/requests/{id}', 'AgroindustriaController@updateRequest')->name('infrastock.agroindustria.requests.update');
+    Route::delete('/infrastock/agroindustria/requests/{id}', 'AgroindustriaController@destroyRequest')->name('infrastock.agroindustria.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/agroindustria/notifications', 'AgroindustriaController@notifications')->name('infrastock.agroindustria.notifications');
@@ -565,6 +577,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/vigilancia/requests', 'VigilanciaController@storeRequest')->name('infrastock.vigilancia.requests.store');
     Route::get('/infrastock/vigilancia/requests', 'VigilanciaController@myRequests')->name('infrastock.vigilancia.requests.index');
     Route::get('/infrastock/vigilancia/requests/{id}', 'VigilanciaController@showRequest')->name('infrastock.vigilancia.requests.show');
+    Route::get('/infrastock/vigilancia/requests/{id}/edit', 'VigilanciaController@editRequest')->name('infrastock.vigilancia.requests.edit');
+    Route::put('/infrastock/vigilancia/requests/{id}', 'VigilanciaController@updateRequest')->name('infrastock.vigilancia.requests.update');
+    Route::delete('/infrastock/vigilancia/requests/{id}', 'VigilanciaController@destroyRequest')->name('infrastock.vigilancia.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/vigilancia/notifications', 'VigilanciaController@notifications')->name('infrastock.vigilancia.notifications');
