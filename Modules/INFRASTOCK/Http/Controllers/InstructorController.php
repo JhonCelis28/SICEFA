@@ -149,8 +149,7 @@ class InstructorController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
                   ->orWhereHas('tool', function($toolQuery) use ($search) {
-                      $toolQuery->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('placa', 'like', "%{$search}%");
+                      $toolQuery->where('placa', 'like', "%{$search}%");
                   });
             });
         }
@@ -158,7 +157,7 @@ class InstructorController extends Controller
         $loans = $query->orderBy('created_at', 'desc')->paginate(10);
 
         // Obtener herramientas disponibles para préstamo
-        $tools = Tool::orderBy('nombre')->get();
+        $tools = Tool::orderBy('id')->get();
 
         // Obtener unidades productivas disponibles
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')
@@ -250,12 +249,14 @@ class InstructorController extends Controller
                 $notification->type = 'loan_created';
                 $notification->notifiable_type = 'App\Models\User';
                 $notification->notifiable_id = auth()->id();
+                $toolName = $tool->nombre ?? $tool->name ?? 'Herramienta';
                 $notification->data = [
                     'title' => 'Préstamo Registrado',
-                    'message' => "Has registrado el préstamo de la herramienta: {$tool->nombre}.",
+                    'message' => "Has registrado el préstamo de la herramienta: {$toolName}.",
                     'tool_id' => $tool->id,
                     'loan_id' => $warehouseMovement->id,
                     'created_at' => now()->format('d/m/Y H:i'),
+                    'action_url' => route('infrastock.instructor.my-loans'),
                 ];
                 $notification->save();
             } catch (\Exception $notificationError) {
@@ -441,15 +442,51 @@ class InstructorController extends Controller
             return redirect()->back()->with('error', 'Préstamo no encontrado o no está aprobado.');
         }
 
-        // Verificar si ya existe una devolución para este préstamo
+        // Verificar si ya existe una devolución para este préstamo específico
+        // Solo considerar devoluciones aprobadas o pendientes (no rechazadas)
+        // La lógica: buscar devoluciones creadas después de este préstamo
+        // Si hay un préstamo más reciente, verificar si la devolución es de ese préstamo o de este
         $existingReturn = WarehouseMovement::where('user_id', $loan->user_id)
             ->where('movement_id', $loan->movement_id)
             ->where('item_type', 'tool')
             ->where('role', 'Devolución')
+            ->whereIn('status', ['pending', 'approved']) // Solo considerar devoluciones pendientes o aprobadas
+            ->where('created_at', '>=', $loan->created_at)
+            ->orderBy('created_at', 'asc')
             ->first();
 
         if ($existingReturn) {
-            return redirect()->back()->with('error', 'Esta herramienta ya fue devuelta anteriormente.');
+            // Verificar si hay un préstamo más reciente aprobado de la misma herramienta
+            $moreRecentLoan = WarehouseMovement::where('user_id', $loan->user_id)
+                ->where('movement_id', $loan->movement_id)
+                ->where('item_type', 'tool')
+                ->where('role', 'Préstamo')
+                ->where('id', '!=', $loan->id)
+                ->where('created_at', '>', $loan->created_at)
+                ->where('status', 'approved')
+                ->orderBy('created_at', 'asc')
+                ->first();
+            
+            if ($moreRecentLoan) {
+                // Si hay un préstamo más reciente, verificar si la devolución está entre este préstamo y el siguiente
+                // Si la devolución fue creada DESPUÉS del préstamo más reciente, entonces es de ese préstamo
+                if ($existingReturn->created_at >= $moreRecentLoan->created_at) {
+                    // La devolución es posterior al préstamo más reciente, es de ese préstamo
+                    // Permitir crear una nueva devolución para este préstamo
+                } else {
+                    // La devolución está entre este préstamo y el siguiente, es de este préstamo
+                    $statusMessage = $existingReturn->status == 'pending' 
+                        ? 'Ya existe una devolución pendiente de aprobación para este préstamo. Por favor, espera a que sea procesada.'
+                        : 'Esta herramienta ya fue devuelta anteriormente.';
+                    return redirect()->back()->with('error', $statusMessage);
+                }
+            } else {
+                // No hay préstamos más recientes, la devolución existente es de este préstamo
+                $statusMessage = $existingReturn->status == 'pending' 
+                    ? 'Ya existe una devolución pendiente de aprobación para este préstamo. Por favor, espera a que sea procesada.'
+                    : 'Esta herramienta ya fue devuelta anteriormente.';
+                return redirect()->back()->with('error', $statusMessage);
+            }
         }
 
         try {

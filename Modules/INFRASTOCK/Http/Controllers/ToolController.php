@@ -5,6 +5,7 @@ namespace Modules\INFRASTOCK\Http\Controllers;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Schema;
 use Modules\INFRASTOCK\Entities\Tool;
 use Modules\INFRASTOCK\Entities\InfrastockCategory;
 use Modules\INFRASTOCK\Entities\Labor;
@@ -92,20 +93,24 @@ class ToolController extends Controller
         try {
             $data = $request->all();
             
+            // Filtrar solo los campos que existen en la base de datos
+            $filteredData = $this->filterExistingColumns($data);
+            
             // Manejar categoria_id si se envía
-            if (isset($data['categoria_id']) && !isset($data['category_id'])) {
-                $data['category_id'] = $data['categoria_id'];
+            if (isset($data['categoria_id']) && !isset($filteredData['category_id'])) {
+                $filteredData['category_id'] = $data['categoria_id'];
             }
             
-            // Manejar la carga de imagen
-            if ($request->hasFile('imagen')) {
+            // Manejar la carga de imagen solo si la columna existe
+            if ($request->hasFile('imagen') && Schema::hasColumn('tools', 'imagen')) {
                 $imagen = $request->file('imagen');
                 $imagenPath = $imagen->store('tools', 'public');
-                $data['imagen'] = $imagenPath;
+                $filteredData['imagen'] = $imagenPath;
             }
             
-            Tool::create($data);
+            Tool::create($filteredData);
         } catch (\Illuminate\Database\QueryException $e) {
+            // Manejar error de entrada duplicada
             if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
                 // Siempre devolver JSON si tiene el header X-Requested-With
                 if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
@@ -118,6 +123,31 @@ class ToolController extends Controller
                     ->with('error', 'Ya existe una herramienta con estos datos. Por favor, verifica la información.')
                     ->withInput();
             }
+            
+            // Manejar error de campo requerido sin valor por defecto
+            if (strpos($e->getMessage(), "doesn't have a default value") !== false) {
+                $fieldName = '';
+                if (strpos($e->getMessage(), 'labor_id') !== false) {
+                    $fieldName = 'Labor';
+                } elseif (strpos($e->getMessage(), 'inventory_id') !== false) {
+                    $fieldName = 'Inventario';
+                }
+                
+                $errorMessage = $fieldName 
+                    ? "El campo '{$fieldName}' es requerido. Por favor, selecciona un valor."
+                    : "Faltan campos requeridos. Por favor, completa todos los campos obligatorios.";
+                
+                if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage
+                    ], 422);
+                }
+                return redirect()->route('infrastock.admin.tools.index')
+                    ->with('error', $errorMessage)
+                    ->withInput();
+            }
+            
             throw $e;
         }
         
@@ -192,13 +222,16 @@ class ToolController extends Controller
         try {
             $data = $request->all();
             
+            // Filtrar solo los campos que existen en la base de datos
+            $filteredData = $this->filterExistingColumns($data);
+            
             // Manejar categoria_id si se envía
-            if (isset($data['categoria_id']) && !isset($data['category_id'])) {
-                $data['category_id'] = $data['categoria_id'];
+            if (isset($data['categoria_id']) && !isset($filteredData['category_id'])) {
+                $filteredData['category_id'] = $data['categoria_id'];
             }
             
-            // Manejar la carga de imagen
-            if ($request->hasFile('imagen')) {
+            // Manejar la carga de imagen solo si la columna existe
+            if ($request->hasFile('imagen') && Schema::hasColumn('tools', 'imagen')) {
                 // Eliminar imagen anterior si existe
                 if ($tool->imagen && \Storage::disk('public')->exists($tool->imagen)) {
                     \Storage::disk('public')->delete($tool->imagen);
@@ -206,10 +239,10 @@ class ToolController extends Controller
                 
                 $imagen = $request->file('imagen');
                 $imagenPath = $imagen->store('tools', 'public');
-                $data['imagen'] = $imagenPath;
+                $filteredData['imagen'] = $imagenPath;
             }
             
-            $tool->update($data);
+            $tool->update($filteredData);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() == 23000 && strpos($e->getMessage(), 'Duplicate entry') !== false) {
                 return redirect()->route('infrastock.admin.tools.index')
@@ -249,5 +282,71 @@ class ToolController extends Controller
             ]);
         }
         return redirect()->route('infrastock.admin.tools.index')->with('success', 'deleted');
+    }
+
+    /**
+     * Filtra los datos para incluir solo las columnas que existen en la tabla tools.
+     * Maneja campos requeridos que pueden no estar presentes.
+     * @param array $data Los datos a filtrar
+     * @return array Los datos filtrados
+     */
+    private function filterExistingColumns(array $data)
+    {
+        $filteredData = [];
+        $tableName = 'tools';
+        
+        // Obtener todas las columnas de la tabla
+        $columns = Schema::getColumnListing($tableName);
+        
+        // Verificar si las columnas labor_id e inventory_id son nullable usando SQL
+        $laborIdNullable = false;
+        $inventoryIdNullable = false;
+        
+        try {
+            $connection = Schema::getConnection();
+            // Verificar labor_id
+            $laborIdInfo = $connection->select("SHOW COLUMNS FROM `{$tableName}` WHERE Field = 'labor_id'");
+            if (!empty($laborIdInfo)) {
+                $laborIdNullable = strtoupper($laborIdInfo[0]->Null) === 'YES';
+            }
+            // Verificar inventory_id
+            $inventoryIdInfo = $connection->select("SHOW COLUMNS FROM `{$tableName}` WHERE Field = 'inventory_id'");
+            if (!empty($inventoryIdInfo)) {
+                $inventoryIdNullable = strtoupper($inventoryIdInfo[0]->Null) === 'YES';
+            }
+        } catch (\Exception $e) {
+            // Si no se puede obtener la información, asumir que no son nullable
+        }
+        
+        // Filtrar solo los campos que existen en la tabla
+        foreach ($data as $key => $value) {
+            if (in_array($key, $columns)) {
+                // Incluir el campo si tiene valor
+                if ($value !== '' && $value !== null) {
+                    $filteredData[$key] = $value;
+                } elseif ($value === null || $value === '') {
+                    // Solo incluir null/empty si la columna lo permite
+                    if ($key === 'labor_id' && $laborIdNullable) {
+                        $filteredData[$key] = null;
+                    } elseif ($key === 'inventory_id' && $inventoryIdNullable) {
+                        $filteredData[$key] = null;
+                    } elseif (!in_array($key, ['labor_id', 'inventory_id', 'id', 'created_at', 'updated_at', 'deleted_at'])) {
+                        // Para otros campos opcionales, permitir null
+                        $filteredData[$key] = null;
+                    }
+                }
+            }
+        }
+        
+        // Manejar campos requeridos que pueden no estar en los datos
+        // labor_id e inventory_id no se utilizan en el sistema de préstamos, siempre establecer como null si no están presentes
+        if (!isset($filteredData['labor_id']) && in_array('labor_id', $columns)) {
+            $filteredData['labor_id'] = null;
+        }
+        if (!isset($filteredData['inventory_id']) && in_array('inventory_id', $columns)) {
+            $filteredData['inventory_id'] = null;
+        }
+        
+        return $filteredData;
     }
 }

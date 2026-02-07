@@ -33,7 +33,7 @@
     <div x-data="{
         isCreateModalOpen: false,
         isEditModalOpen: false,
-        currentTool: { id: null, nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', amount: '', price: '' },
+        currentTool: { id: null, nombre: '', imagen: '', placa: '', descripcion: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', descripcion_mantenimiento: '', amount: '' },
         validationErrors: {},
         createForm: { nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', amount: '', price: '' },
 
@@ -99,7 +99,7 @@
             });
         },
 
-        openEditModal(id, nombre, imagen, placa, descripcion, descripcion_actual, marca, modelo, categoria_id, category_id, estado, cantidad_total, cantidad_disponible, fecha_mantenimiento, proximo_mantenimiento, fecha_adquisicion, atributos, descripcion_mantenimiento, inventory_id, labor_id, amount, price) {
+        openEditModal(id, nombre, imagen, placa, descripcion, marca, modelo, categoria_id, category_id, estado, cantidad_total, cantidad_disponible, fecha_mantenimiento, proximo_mantenimiento, fecha_adquisicion, descripcion_mantenimiento, amount) {
             this.isEditModalOpen = true;
             this.currentTool = { 
                 id: id, 
@@ -107,7 +107,6 @@
                 imagen: imagen || '', 
                 placa: placa || '', 
                 descripcion: descripcion || '', 
-                descripcion_actual: descripcion_actual || '', 
                 marca: marca || '', 
                 modelo: modelo || '', 
                 categoria_id: categoria_id || category_id || '', 
@@ -118,12 +117,8 @@
                 fecha_mantenimiento: fecha_mantenimiento || '', 
                 proximo_mantenimiento: proximo_mantenimiento || '', 
                 fecha_adquisicion: fecha_adquisicion || '', 
-                atributos: atributos || '', 
                 descripcion_mantenimiento: descripcion_mantenimiento || '', 
-                inventory_id: inventory_id || '', 
-                labor_id: labor_id || '', 
-                amount: amount || '', 
-                price: price || '' 
+                amount: amount || '' 
             };
             this.validationErrors = {};
         },
@@ -193,10 +188,15 @@
                                 @foreach($tools as $tool)
                                     <tr class="hover:bg-gray-100 transition-colors duration-150">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            @if($tool->imagen)
-                                                <img src="{{ asset('storage/' . $tool->imagen) }}" alt="{{ $tool->nombre }}" class="h-10 w-10 object-cover rounded">
+                                            @if($tool->imagen && \Storage::disk('public')->exists($tool->imagen))
+                                                <img src="{{ asset('storage/' . $tool->imagen) }}" 
+                                                     alt="{{ $tool->nombre ?? 'Herramienta' }}" 
+                                                     class="h-10 w-10 object-cover rounded"
+                                                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\'%3E%3Crect width=\'40\' height=\'40\' fill=\'%23e5e7eb\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%239ca3af\' font-size=\'12\'%3EN/A%3C/text%3E%3C/svg%3E';">
                                             @else
-                                                <span class="text-gray-400">N/A</span>
+                                                <div class="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
+                                                    <span class="text-gray-400 text-xs">N/A</span>
+                                                </div>
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $tool->nombre ?? 'N/A' }}</td>
@@ -228,7 +228,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->cantidad_disponible ?? 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $tool->fecha_adquisicion ? \Carbon\Carbon::parse($tool->fecha_adquisicion)->format('d/m/Y') : 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->descripcion_actual ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->atributos ?? '') }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}', {{ $tool->inventory_id ?? 'null' }}, {{ $tool->labor_id ?? 'null' }}, {{ $tool->amount ?? 'null' }}, {{ $tool->price ?? 'null' }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                                            <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}', {{ $tool->amount ?? 'null' }})" class="text-yellow-600 hover:text-yellow-900 mr-3">
                                                 <i class="fas fa-edit"></i> Editar
                                             </button>
                                             <form method="POST" action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($tool->nombre ?? 'Herramienta') }}')">
@@ -545,67 +545,18 @@
                             @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="edit_descripcion_actual" class="block text-gray-700 text-sm font-bold mb-2">Descripción Actual:</label>
-                            <textarea name="descripcion_actual" id="edit_descripcion_actual" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion_actual') border-red-500 @enderror" x-model="currentTool.descripcion_actual"></textarea>
-                            @error('descripcion_actual')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_atributos" class="block text-gray-700 text-sm font-bold mb-2">Atributos:</label>
-                            <textarea name="atributos" id="edit_atributos" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('atributos') border-red-500 @enderror" x-model="currentTool.atributos"></textarea>
-                            @error('atributos')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
                             <label for="edit_descripcion_mantenimiento" class="block text-gray-700 text-sm font-bold mb-2">Descripción de Mantenimiento:</label>
                             <textarea name="descripcion_mantenimiento" id="edit_descripcion_mantenimiento" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion_mantenimiento') border-red-500 @enderror" x-model="currentTool.descripcion_mantenimiento"></textarea>
                             @error('descripcion_mantenimiento')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="mb-4">
-                                <label for="edit_inventory_id" class="block text-gray-700 text-sm font-bold mb-2">Inventario:</label>
-                                <select name="inventory_id" id="edit_inventory_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('inventory_id') border-red-500 @enderror" x-model="currentTool.inventory_id">
-                                    <option value="">Seleccione un inventario</option>
-                                    @foreach($inventories as $inventory)
-                                        <option value="{{ $inventory->id }}">{{ $inventory->description ?? 'ID: ' . $inventory->id }}</option>
-                                    @endforeach
-                                </select>
-                                @error('inventory_id')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="edit_labor_id" class="block text-gray-700 text-sm font-bold mb-2">Labor:</label>
-                                <select name="labor_id" id="edit_labor_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('labor_id') border-red-500 @enderror" x-model="currentTool.labor_id">
-                                    <option value="">Seleccione una labor</option>
-                                    @foreach($labors as $labor)
-                                        <option value="{{ $labor->id }}">{{ $labor->description ?? 'ID: ' . $labor->id }}</option>
-                                    @endforeach
-                                </select>
-                                @error('labor_id')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="mb-4">
-                                <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad (Amount):</label>
-                                <input type="number" name="amount" id="edit_amount" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" x-model="currentTool.amount">
-                                @error('amount')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="edit_price" class="block text-gray-700 text-sm font-bold mb-2">Precio:</label>
-                                <input type="number" name="price" id="edit_price" min="0" step="0.01" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('price') border-red-500 @enderror" x-model="currentTool.price">
-                                @error('price')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
+                        <div class="mb-4">
+                            <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad (Amount):</label>
+                            <input type="number" name="amount" id="edit_amount" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" x-model="currentTool.amount">
+                            @error('amount')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div class="flex justify-end space-x-4 pt-4 border-t border-gray-200">
                             <button type="button" @click="isEditModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>

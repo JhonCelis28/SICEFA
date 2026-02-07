@@ -11,7 +11,10 @@ use Modules\INFRASTOCK\Entities\Labor;
 use Modules\INFRASTOCK\Entities\Inventory;
 use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
+use Modules\INFRASTOCK\Exports\SuppliesExport;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
  * @class SupplyController
@@ -603,5 +606,58 @@ class SupplyController extends Controller
             return redirect()->route('infrastock.admin.supplies.loans.index')
                 ->with('error', 'Error al registrar la devolución: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Exporta todos los insumos a un archivo PDF.
+     * Genera un documento PDF profesional con el inventario completo.
+     * @return \Illuminate\Http\Response
+     */
+    public function exportPdf()
+    {
+        // Obtener todos los insumos con sus relaciones
+        $supplies = Equipment::with('category', 'labor', 'inventory')
+                            ->orderBy('name', 'asc')
+                            ->get();
+
+        // Generar el PDF usando la vista
+        $pdf = Pdf::loadView('infrastock::admin.supplies.exports.pdf', [
+            'supplies' => $supplies
+        ]);
+
+        // Configurar opciones del PDF
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
+            'defaultFont' => 'DejaVu Sans',
+            'dpi' => 150,
+            'debugKeepTemp' => false,
+        ]);
+
+        // Nombre del archivo con fecha
+        $filename = 'Inventario_Insumos_INFRASTOCK_' . now()->format('Y-m-d_His') . '.pdf';
+
+        // Descargar el PDF
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Exporta todos los insumos a un archivo Excel.
+     * Genera un documento Excel profesional con el inventario completo.
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function exportExcel()
+    {
+        // Obtener todos los insumos con sus relaciones
+        $supplies = Equipment::with('category', 'labor', 'inventory')
+                            ->orderBy('name', 'asc')
+                            ->get();
+
+        // Nombre del archivo con fecha
+        $filename = 'Inventario_Insumos_INFRASTOCK_' . now()->format('Y-m-d_His') . '.xlsx';
+
+        // Descargar el Excel
+        return Excel::download(new SuppliesExport($supplies), $filename);
     }
 }

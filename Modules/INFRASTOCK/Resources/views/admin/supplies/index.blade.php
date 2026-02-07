@@ -115,24 +115,35 @@
         }
     }">
     <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    @if($filterExpiring)
-                        <div class="mt-2 flex items-center space-x-2">
-                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
-                                <i class="fas fa-calendar-times mr-1"></i>Mostrando solo insumos próximos a vencer (30 días)
-                            </span>
-                            <a href="{{ route('infrastock.admin.supplies.index') }}" class="text-sm text-blue-600 hover:text-blue-800 underline">
-                                <i class="fas fa-times mr-1"></i>Quitar filtro
-                            </a>
-                        </div>
-                    @endif
-                </div>
+            <div class="flex flex-col md:flex-row md:items-start mb-6 gap-4">
                 <div class="flex space-x-2">
-                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+                    <!-- Botón de registrar nuevo insumo -->
+                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 flex items-center">
                         <i class="fas fa-plus mr-2"></i>Registrar Nuevo Insumo
                     </button>
+                    <!-- Botón de exportación PDF -->
+                    <a href="{{ route('infrastock.admin.supplies.export.pdf') }}" 
+                       class="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 flex items-center justify-center"
+                       title="Exportar a PDF">
+                        <i class="fas fa-file-pdf text-lg"></i>
+                    </a>
+                    <!-- Botón de exportación Excel -->
+                    <a href="{{ route('infrastock.admin.supplies.export.excel') }}" 
+                       class="px-3 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center justify-center"
+                       title="Exportar a Excel">
+                        <i class="fas fa-file-excel text-lg"></i>
+                    </a>
                 </div>
+                @if($filterExpiring)
+                    <div class="flex items-center space-x-2">
+                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
+                            <i class="fas fa-calendar-times mr-1"></i>Mostrando solo insumos próximos a vencer (30 días)
+                        </span>
+                        <a href="{{ route('infrastock.admin.supplies.index') }}" class="text-sm text-blue-600 hover:text-blue-800 underline">
+                            <i class="fas fa-times mr-1"></i>Quitar filtro
+                        </a>
+                    </div>
+                @endif
             </div>
 
             <!-- Filtro de búsqueda automático -->

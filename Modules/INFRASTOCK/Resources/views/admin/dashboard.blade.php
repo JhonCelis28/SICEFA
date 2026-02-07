@@ -90,7 +90,7 @@
             <div class="bg-white rounded-xl shadow-md p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-gray-800">Consumo de Insumos por Área</h3>
-                    <a href="javascript:void(0);" class="px-4 py-2 bg-green-500 text-white rounded-md text-base font-medium hover:bg-green-600 transition-colors duration-200">Ver Reporte</a>
+                    <a href="{{ route('infrastock.admin.reports.consumption-by-area') }}" class="px-4 py-2 bg-green-500 text-white rounded-md text-base font-medium hover:bg-green-600 transition-colors duration-200">Ver Reporte</a>
                 </div>
                 <div class="relative h-64">
                     <canvas id="consumption-chart"></canvas>
@@ -104,8 +104,8 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-gray-800">Uso de Herramientas por Instructor</h3>
                     <div class="flex space-x-3">
-                        <a href="#" class="text-gray-500 hover:text-green-600 transition-colors duration-200 p-2 rounded-md hover:bg-gray-100"><i class="fas fa-download text-base"></i></a>
-                        <a href="#" class="text-gray-500 hover:text-green-600 transition-colors duration-200 p-2 rounded-md hover:bg-gray-100"><i class="fas fa-bars text-base"></i></a>
+                        <a href="{{ route('infrastock.admin.reports.tools-by-instructor.pdf') }}" class="text-gray-500 hover:text-green-600 transition-colors duration-200 p-2 rounded-md hover:bg-gray-100" title="Descargar PDF"><i class="fas fa-download text-base"></i></a>
+                        <a href="{{ route('infrastock.admin.reports.tools-by-instructor') }}" class="text-gray-500 hover:text-green-600 transition-colors duration-200 p-2 rounded-md hover:bg-gray-100" title="Ver Reporte Completo"><i class="fas fa-bars text-base"></i></a>
                     </div>
                 </div>
                 <ul class="divide-y divide-gray-200">

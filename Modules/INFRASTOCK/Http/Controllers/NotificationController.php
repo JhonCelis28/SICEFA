@@ -56,6 +56,29 @@ class NotificationController extends Controller
             elseif ($type === 'surplus_reported') {
                 $response['redirect_url'] = route('infrastock.admin.supply-returns.index');
             }
+            // Si es una notificación de préstamo de herramienta creado
+            elseif ($type === 'loan_created') {
+                // Verificar el rol del usuario para determinar la redirección correcta
+                $user = auth()->user();
+                $userRoles = $user->roles->pluck('name')->toArray();
+                
+                // Si el usuario es administrador, siempre redirigir a la página de préstamos del admin
+                if (in_array('Administrador', $userRoles) || in_array('Super Administrador', $userRoles)) {
+                    $response['redirect_url'] = route('infrastock.admin.loans.index');
+                }
+                // Si el usuario es instructor, redirigir a sus préstamos
+                elseif (in_array('Instructor', $userRoles)) {
+                    $response['redirect_url'] = route('infrastock.instructor.my-loans');
+                }
+                // Si tiene action_url, usarlo; si no, redirigir a la página de préstamos del admin por defecto
+                else {
+                    $response['redirect_url'] = $notification->data['action_url'] ?? route('infrastock.admin.loans.index');
+                }
+            }
+            // Si es una notificación de préstamo aprobado o rechazado, usar action_url si existe
+            elseif (in_array($type, ['loan_approved', 'loan_rejected'])) {
+                $response['redirect_url'] = $notification->data['action_url'] ?? route('infrastock.instructor.my-loans');
+            }
             // Si la notificación tiene action_url, usarlo para redirección (para otros tipos)
             elseif (isset($notification->data['action_url'])) {
                 $response['redirect_url'] = $notification->data['action_url'];

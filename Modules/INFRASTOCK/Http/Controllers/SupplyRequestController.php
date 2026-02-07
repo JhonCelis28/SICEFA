@@ -9,6 +9,10 @@ use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Entities\Equipment;
 use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Modules\INFRASTOCK\Exports\SupplyConsumptionExport;
+use Carbon\Carbon;
 
 /**
  * @class SupplyRequestController
@@ -59,8 +63,11 @@ class SupplyRequestController extends Controller
         $users = User::all();
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
 
+        // Obtener períodos disponibles para exportación
+        $availablePeriods = $this->getAvailablePeriods();
+
         // Retorna la vista index de solicitudes con todos los datos necesarios.
-        return view('infrastock::admin.supply-requests.index', compact('supplyRequests', 'equipments', 'users', 'productiveUnitWarehouses', 'notifications', 'notificationCount'));
+        return view('infrastock::admin.supply-requests.index', compact('supplyRequests', 'equipments', 'users', 'productiveUnitWarehouses', 'notifications', 'notificationCount', 'availablePeriods'));
     }
 
     /**
@@ -294,5 +301,258 @@ class SupplyRequestController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación al usuario: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Obtiene los períodos disponibles que tienen registros de consumo
+     */
+    private function getAvailablePeriods()
+    {
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+
+        // Obtener todos los consumos agrupados por año y mes
+        $consumptions = WarehouseMovement::where('role', 'Entrega')
+            ->where('item_type', 'equipment')
+            ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as count')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        if ($consumptions->isEmpty()) {
+            return [
+                'hasRecords' => false,
+                'years' => []
+            ];
+        }
+
+        // Organizar por años
+        $years = [];
+        foreach ($consumptions as $record) {
+            $year = $record->year;
+            $month = $record->month;
+            
+            if (!isset($years[$year])) {
+                $years[$year] = [
+                    'year' => $year,
+                    'months' => [],
+                    'quarters' => [],
+                    'totalRecords' => 0
+                ];
+            }
+            
+            $years[$year]['months'][$month] = [
+                'month' => $month,
+                'name' => $monthNames[$month],
+                'count' => $record->count
+            ];
+            $years[$year]['totalRecords'] += $record->count;
+            
+            // Calcular trimestre
+            $quarter = ceil($month / 3);
+            if (!isset($years[$year]['quarters'][$quarter])) {
+                $years[$year]['quarters'][$quarter] = [
+                    'quarter' => $quarter,
+                    'name' => 'Q' . $quarter,
+                    'months' => [],
+                    'count' => 0
+                ];
+            }
+            $years[$year]['quarters'][$quarter]['months'][] = $month;
+            $years[$year]['quarters'][$quarter]['count'] += $record->count;
+        }
+
+        // Ordenar meses y trimestres
+        foreach ($years as &$yearData) {
+            ksort($yearData['months']);
+            ksort($yearData['quarters']);
+        }
+
+        return [
+            'hasRecords' => true,
+            'years' => $years
+        ];
+    }
+
+    /**
+     * Obtiene las fechas de inicio y fin según los parámetros
+     */
+    private function getPeriodDates($type, $year = null, $month = null, $quarter = null)
+    {
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+
+        $year = $year ?? Carbon::now()->year;
+        
+        switch ($type) {
+            case 'monthly':
+                $month = $month ?? Carbon::now()->month;
+                $date = Carbon::create($year, $month, 1);
+                return [
+                    'start' => $date->copy()->startOfMonth(),
+                    'end' => $date->copy()->endOfMonth(),
+                    'label' => $monthNames[$month] . ' ' . $year
+                ];
+            case 'quarterly':
+                $quarter = $quarter ?? Carbon::now()->quarter;
+                $startMonth = (($quarter - 1) * 3) + 1;
+                $date = Carbon::create($year, $startMonth, 1);
+                return [
+                    'start' => $date->copy()->startOfQuarter(),
+                    'end' => $date->copy()->endOfQuarter(),
+                    'label' => 'Q' . $quarter . ' ' . $year . ' (Trimestre ' . $quarter . ')'
+                ];
+            case 'yearly':
+                $date = Carbon::create($year, 1, 1);
+                return [
+                    'start' => $date->copy()->startOfYear(),
+                    'end' => $date->copy()->endOfYear(),
+                    'label' => 'Año ' . $year
+                ];
+            default:
+                $month = $month ?? Carbon::now()->month;
+                $date = Carbon::create($year, $month, 1);
+                return [
+                    'start' => $date->copy()->startOfMonth(),
+                    'end' => $date->copy()->endOfMonth(),
+                    'label' => $monthNames[$month] . ' ' . $year
+                ];
+        }
+    }
+
+    /**
+     * Obtiene los datos de consumos para exportación
+     */
+    private function getConsumptionData($type, $year = null, $month = null, $quarter = null)
+    {
+        $periodDates = $this->getPeriodDates($type, $year, $month, $quarter);
+        
+        // Obtener consumos (entregas de insumos)
+        $consumptions = WarehouseMovement::with([
+                'equipment.category',
+                'user.roles',
+                'productiveUnitWarehouse.productiveUnit'
+            ])
+            ->where('role', 'Entrega')
+            ->where('item_type', 'equipment')
+            ->whereBetween('created_at', [$periodDates['start'], $periodDates['end']])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Top 5 insumos más consumidos
+        $topConsumed = WarehouseMovement::with('equipment.category')
+            ->select('equipment_id')
+            ->selectRaw('SUM(amount) as total_consumed')
+            ->where('role', 'Entrega')
+            ->where('item_type', 'equipment')
+            ->whereBetween('created_at', [$periodDates['start'], $periodDates['end']])
+            ->groupBy('equipment_id')
+            ->orderByDesc('total_consumed')
+            ->limit(5)
+            ->get();
+
+        // Estadísticas
+        $stats = [
+            'total_requests' => $consumptions->count(),
+            'total_units' => $consumptions->sum('amount'),
+            'unique_supplies' => $consumptions->pluck('equipment_id')->unique()->count(),
+        ];
+
+        return [
+            'consumptions' => $consumptions,
+            'topConsumed' => $topConsumed,
+            'periodLabel' => $periodDates['label'],
+            'stats' => $stats,
+        ];
+    }
+
+    /**
+     * Exporta los consumos de insumos a Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        $type = $request->get('type', 'monthly');
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $quarter = $request->get('quarter');
+        
+        $data = $this->getConsumptionData($type, $year, $month, $quarter);
+        
+        $filename = 'consumos_insumos_';
+        if ($type === 'monthly' && $month && $year) {
+            $filename .= $year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT);
+        } elseif ($type === 'quarterly' && $quarter && $year) {
+            $filename .= $year . '_Q' . $quarter;
+        } elseif ($type === 'yearly' && $year) {
+            $filename .= $year;
+        } else {
+            $filename .= now()->format('Y-m-d');
+        }
+        
+        return Excel::download(
+            new SupplyConsumptionExport(
+                $data['consumptions'],
+                $data['topConsumed'],
+                $type,
+                $data['periodLabel'],
+                $data['stats']
+            ),
+            $filename . '.xlsx'
+        );
+    }
+
+    /**
+     * Exporta los consumos de insumos a PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        $type = $request->get('type', 'monthly');
+        $year = $request->get('year');
+        $month = $request->get('month');
+        $quarter = $request->get('quarter');
+        
+        $data = $this->getConsumptionData($type, $year, $month, $quarter);
+        $adminName = auth()->user()->name ?? 'Administrador del Sistema';
+        
+        // Convertir logo a base64
+        $logoPath = public_path('assets/img/logo.png');
+        $base64Logo = '';
+        if (file_exists($logoPath)) {
+            $type_img = pathinfo($logoPath, PATHINFO_EXTENSION);
+            $logoData = file_get_contents($logoPath);
+            $base64Logo = 'data:image/' . $type_img . ';base64,' . base64_encode($logoData);
+        }
+
+        $pdf = PDF::loadView('infrastock::admin.supply-requests.exports.pdf', [
+            'consumptions' => $data['consumptions'],
+            'topConsumed' => $data['topConsumed'],
+            'period' => $type,
+            'periodLabel' => $data['periodLabel'],
+            'stats' => $data['stats'],
+            'adminName' => $adminName,
+            'base64Logo' => $base64Logo,
+        ]);
+
+        $pdf->setPaper('letter', 'landscape');
+        
+        $filename = 'consumos_insumos_';
+        if ($type === 'monthly' && $month && $year) {
+            $filename .= $year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT);
+        } elseif ($type === 'quarterly' && $quarter && $year) {
+            $filename .= $year . '_Q' . $quarter;
+        } elseif ($type === 'yearly' && $year) {
+            $filename .= $year;
+        } else {
+            $filename .= now()->format('Y-m-d');
+        }
+        
+        return $pdf->stream($filename . '.pdf');
     }
 }

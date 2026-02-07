@@ -400,6 +400,76 @@
     <!-- SweetAlert2 JS para mostrar mensajes de éxito/error/información -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- Función global para notificaciones - debe estar antes de Alpine.js -->
+    <script>
+        // Función global para marcar notificación como leída
+        window.markNotificationAsRead = function(notificationId) {
+            console.log('Marcando notificación como leída:', notificationId);
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token no encontrado');
+                return;
+            }
+            
+            fetch(`/infrastock/notifications/${notificationId}/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('Respuesta recibida:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos recibidos:', data);
+                if (data.success) {
+                    // Marcar como leída visualmente
+                    let notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                    if (!notificationElement) {
+                        notificationElement = document.querySelector(`[onclick*="${notificationId}"]`);
+                    }
+                    if (notificationElement) {
+                        notificationElement.classList.remove('bg-blue-50');
+                        notificationElement.classList.add('opacity-75');
+                        // Remover el indicador de no leída
+                        const unreadIndicator = notificationElement.querySelector('.w-2.h-2.bg-blue-500');
+                        if (unreadIndicator) {
+                            unreadIndicator.remove();
+                        }
+                    }
+                    // Actualizar contador
+                    if (typeof updateNotificationCount === 'function') {
+                        updateNotificationCount();
+                    }
+                    
+                    // Si hay una URL de redirección, redirigir
+                    if (data.redirect_url) {
+                        console.log('Redirigiendo a:', data.redirect_url);
+                        setTimeout(function() {
+                            window.location.href = data.redirect_url;
+                        }, 300);
+                    } else {
+                        console.log('No hay URL de redirección');
+                    }
+                } else {
+                    console.error('Error al marcar notificación:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error al marcar notificación como leída:', error);
+                alert('Error al marcar la notificación como leída. Por favor, intenta de nuevo.');
+            });
+        };
+    </script>
+
     <!-- Alpine.js CDN para añadir reactividad y funcionalidad al HTML -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 

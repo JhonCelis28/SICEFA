@@ -188,8 +188,10 @@
             @endphp
             @if($notificationsAvailable && $notificationsCount > 0)
                 @foreach($notifications->take(5) as $notification)
-                    <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer {{ $notification->read_at ? 'opacity-75' : 'bg-blue-50' }}" 
-                         onclick="markNotificationAsRead('{{ $notification->id }}')">
+                    <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer notification-item {{ $notification->read_at ? 'opacity-75' : 'bg-blue-50' }}" 
+                         data-notification-id="{{ $notification->id }}"
+                         onclick="event.stopPropagation(); markNotificationAsRead('{{ $notification->id }}');"
+                         style="transition: all 0.3s ease;">
                         <div class="flex items-start space-x-3">
                             <div class="flex-shrink-0">
                                 @if($notification->type === 'request_created')
@@ -264,50 +266,7 @@
 
 @section('script')
     <script>
-        // Función para marcar notificación como leída
-        function markNotificationAsRead(notificationId) {
-            fetch(`/infrastock/notifications/${notificationId}/mark-read`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Marcar como leída visualmente
-                    const notificationElement = document.querySelector(`[onclick*="${notificationId}"]`);
-                    if (notificationElement) {
-                        const notificationDiv = notificationElement.closest('.px-4.py-3');
-                        if (notificationDiv) {
-                            notificationDiv.classList.remove('bg-blue-50');
-                            notificationDiv.classList.add('opacity-75');
-                            // Remover el indicador de no leída
-                            const unreadIndicator = notificationDiv.querySelector('.w-2.h-2.bg-blue-500');
-                            if (unreadIndicator) {
-                                unreadIndicator.remove();
-                            }
-                        }
-                    }
-                    // Actualizar contador
-                    updateNotificationCount();
-                    
-                    // Si hay una URL de redirección (para cualquier tipo de notificación), redirigir
-                    if (data.redirect_url) {
-                        // Pequeño delay para que se vea el cambio visual antes de redirigir
-                        setTimeout(function() {
-                            window.location.href = data.redirect_url;
-                        }, 300);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-        
-        // Función para actualizar el contador de notificaciones
+        // Función para actualizar el contador de notificaciones (específica del admin)
         function updateNotificationCount() {
             const unreadNotifications = document.querySelectorAll('.px-4.py-3:not(.opacity-75)');
             const unreadCount = Array.from(unreadNotifications).filter(el => {
@@ -335,6 +294,9 @@
                 }
             }
         }
+        
+        // Asegurar que updateNotificationCount esté disponible globalmente
+        window.updateNotificationCount = updateNotificationCount;
     </script>
     @yield('additional-scripts')
 @endsection

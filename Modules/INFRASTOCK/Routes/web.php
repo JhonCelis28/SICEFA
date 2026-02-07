@@ -82,6 +82,10 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::get('/infrastock/admin/supplies/loans', 'SupplyController@indexLoans')->name('infrastock.admin.supplies.loans.index');
     // Procesa la devolución de un préstamo de insumo.
     Route::post('/infrastock/admin/supplies/loans/{id}/return', 'SupplyController@returnLoan')->name('infrastock.admin.supplies.loans.return');
+    // Exportar insumos a PDF.
+    Route::get('/infrastock/admin/supplies/export/pdf', 'SupplyController@exportPdf')->name('infrastock.admin.supplies.export.pdf');
+    // Exportar insumos a Excel.
+    Route::get('/infrastock/admin/supplies/export/excel', 'SupplyController@exportExcel')->name('infrastock.admin.supplies.export.excel');
     // Muestra los detalles de un insumo específico.
     Route::get('/infrastock/admin/supplies/{supply}', 'SupplyController@show')->name('infrastock.admin.supplies.show');
     // Muestra el formulario para editar un insumo específico (gestionado vía modal).
@@ -153,6 +157,10 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::get('/infrastock/admin/supply-requests/create', 'SupplyRequestController@create')->name('infrastock.admin.supply-requests.create');
     // Almacena una nueva solicitud de insumo.
     Route::post('/infrastock/admin/supply-requests', 'SupplyRequestController@store')->name('infrastock.admin.supply-requests.store');
+    // Exportar consumos a PDF.
+    Route::get('/infrastock/admin/supply-requests/export/pdf', 'SupplyRequestController@exportPdf')->name('infrastock.admin.supply-requests.export.pdf');
+    // Exportar consumos a Excel.
+    Route::get('/infrastock/admin/supply-requests/export/excel', 'SupplyRequestController@exportExcel')->name('infrastock.admin.supply-requests.export.excel');
     // Muestra los detalles de una solicitud específica (gestionado vía modal).
     Route::get('/infrastock/admin/supply-requests/{supply_request}', 'SupplyRequestController@show')->name('infrastock.admin.supply-requests.show');
     // Muestra el formulario para editar una solicitud específica (gestionado vía modal).
@@ -195,6 +203,13 @@ Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.post
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class])->prefix('infrastock/admin')->group(function () {
     // Dashboard del administrador
     Route::get('/dashboard','INFRASTOCKController@dashboard')->name('cefa.infrastock.admin.dashboard');
+    
+    // Reportes
+    Route::get('/reports/consumption-by-area', 'ReportController@consumptionByArea')->name('infrastock.admin.reports.consumption-by-area');
+    Route::get('/reports/consumption-by-area/pdf', 'ReportController@consumptionByAreaPdf')->name('infrastock.admin.reports.consumption-by-area.pdf');
+    Route::get('/reports/tools-by-instructor', 'ReportController@toolsByInstructor')->name('infrastock.admin.reports.tools-by-instructor');
+    Route::get('/reports/tools-by-instructor/pdf', 'ReportController@toolsByInstructorPdf')->name('infrastock.admin.reports.tools-by-instructor.pdf');
+    
     // Gestión de usuarios
     Route::resource('users', 'UserManagementController')->names([
         'index' => 'infrastock.admin.users.index',

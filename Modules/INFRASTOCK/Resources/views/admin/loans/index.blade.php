@@ -198,12 +198,9 @@
                                             @if($loan->status == 'pending')
                                                 <!-- Botones para aprobar/rechazar préstamo o devolución pendiente -->
                                                 @if($loan->role == 'Préstamo')
-                                                    <form method="POST" action="{{ route('infrastock.admin.loans.approve-loan', $loan->id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de aprobar este préstamo?')">
-                                                        @csrf
-                                                        <button type="submit" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar préstamo">
-                                                            <i class="fas fa-check-circle"></i> Aprobar
-                                                        </button>
-                                                    </form>
+                                                    <button onclick="confirmApproveLoan({{ $loan->id }})" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar préstamo">
+                                                        <i class="fas fa-check-circle"></i> Aprobar
+                                                    </button>
                                                     <button onclick="openRejectLoanModal({{ $loan->id }})" class="text-red-600 hover:text-red-900 mr-2" title="Rechazar préstamo">
                                                         <i class="fas fa-times-circle"></i> Rechazar
                                                     </button>
@@ -213,12 +210,9 @@
                                                             <i class="fas fa-eye"></i> Ver Descripción
                                                         </button>
                                                     @endif
-                                                    <form method="POST" action="{{ route('infrastock.admin.loans.approve-return', $loan->id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de aprobar esta devolución?')">
-                                                        @csrf
-                                                        <button type="submit" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar devolución">
-                                                            <i class="fas fa-check-circle"></i> Aprobar
-                                                        </button>
-                                                    </form>
+                                                    <button onclick="confirmApproveReturn({{ $loan->id }})" class="text-green-600 hover:text-green-900 mr-2" title="Aprobar devolución">
+                                                        <i class="fas fa-check-circle"></i> Aprobar
+                                                    </button>
                                                     <button onclick="openRejectModal({{ $loan->id }})" class="text-red-600 hover:text-red-900 mr-2" title="Rechazar devolución">
                                                         <i class="fas fa-times-circle"></i> Rechazar
                                                     </button>
@@ -513,7 +507,7 @@
                         <button onclick="closeReturnDescriptionModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">
                             Cerrar
                         </button>
-                        <form id="approveReturnFromModalForm" method="POST" style="display: inline;">
+                        <form id="approveReturnFromModalForm" method="POST" style="display: inline;" onsubmit="return confirmApproveReturnFromModal(event)">
                             @csrf
                             <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
                                 <i class="fas fa-check-circle mr-2"></i> Aprobar Devolución
@@ -627,6 +621,99 @@ function closeRejectModal() {
     document.getElementById('rejectReturnModal').classList.add('hidden');
     document.getElementById('rejectReturnModal').classList.remove('flex');
     document.getElementById('rejectReturnForm').reset();
+}
+
+// Función para confirmar aprobación de préstamo con SweetAlert2
+function confirmApproveLoan(loanId) {
+    Swal.fire({
+        title: '¿Aprobar préstamo?',
+        text: '¿Estás seguro de que deseas aprobar este préstamo?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Sí, aprobar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Crear formulario oculto para enviar la petición
+            const form = document.createElement('form');
+            form.method = 'POST';
+            const baseUrl = '{{ route("infrastock.admin.loans.approve-loan", 0) }}';
+            form.action = baseUrl.replace('/0', '/' + loanId);
+            
+            // Agregar token CSRF
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            form.appendChild(csrfToken);
+            
+            // Enviar formulario
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+// Función para confirmar aprobación de devolución con SweetAlert2
+function confirmApproveReturn(returnId) {
+    Swal.fire({
+        title: '¿Aprobar devolución?',
+        text: '¿Estás seguro de que deseas aprobar esta devolución?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Sí, aprobar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Crear formulario oculto para enviar la petición
+            const form = document.createElement('form');
+            form.method = 'POST';
+            const baseUrl = '{{ route("infrastock.admin.loans.approve-return", 0) }}';
+            form.action = baseUrl.replace('/0', '/' + returnId);
+            
+            // Agregar token CSRF
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            form.appendChild(csrfToken);
+            
+            // Enviar formulario
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+// Función para confirmar aprobación de devolución desde el modal
+function confirmApproveReturnFromModal(event) {
+    event.preventDefault();
+    const form = document.getElementById('approveReturnFromModalForm');
+    const actionUrl = form.action;
+    
+    Swal.fire({
+        title: '¿Aprobar devolución?',
+        text: '¿Estás seguro de que deseas aprobar esta devolución?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Sí, aprobar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    });
+    
+    return false;
 }
 
 // Función para abrir modal de rechazo de préstamo

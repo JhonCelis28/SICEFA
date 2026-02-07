@@ -79,7 +79,8 @@
             </div>
             @if(isset($notifications) && $notifications->count() > 0)
                 @foreach($notifications->take(5) as $notification)
-                    <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
+                    <div class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer {{ $notification->read_at ? 'opacity-75' : 'bg-blue-50' }}" 
+                         onclick="markNotificationAsRead('{{ $notification->id }}')">
                         <div class="flex items-start space-x-3">
                             <div class="flex-shrink-0">
                                 @switch($notification->type)
@@ -111,11 +112,9 @@
                                 <p class="text-xs text-gray-500 mt-1">{{ $notification->data['message'] ?? 'Sin mensaje' }}</p>
                                 <p class="text-xs text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
                             </div>
-                            @if(isset($notification->data['amount']))
+                            @if(!$notification->read_at)
                                 <div class="flex-shrink-0">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                        {{ $notification->data['amount'] }}
-                                    </span>
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
                                 </div>
                             @endif
                         </div>
@@ -161,6 +160,67 @@
 @endsection
 
 @section('script')
+    <script>
+        // Función para marcar notificación como leída
+        function markNotificationAsRead(notificationId) {
+            fetch(`/infrastock/notifications/${notificationId}/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Marcar como leída visualmente
+                    const notificationElement = document.querySelector(`[onclick*="${notificationId}"]`);
+                    if (notificationElement) {
+                        const notificationDiv = notificationElement.closest('.px-4.py-3');
+                        if (notificationDiv) {
+                            notificationDiv.classList.remove('bg-blue-50');
+                            notificationDiv.classList.add('opacity-75');
+                            // Remover el indicador de no leída
+                            const unreadIndicator = notificationDiv.querySelector('.w-2.h-2.bg-blue-500');
+                            if (unreadIndicator) {
+                                unreadIndicator.remove();
+                            }
+                        }
+                    }
+                    // Actualizar contador
+                    updateNotificationCount();
+                    
+                    // Si hay una URL de redirección, redirigir
+                    if (data.redirect_url) {
+                        setTimeout(function() {
+                            window.location.href = data.redirect_url;
+                        }, 300);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+        
+        // Función para actualizar el contador de notificaciones
+        function updateNotificationCount() {
+            const unreadNotifications = document.querySelectorAll('.px-4.py-3:not(.opacity-75)');
+            const unreadCount = Array.from(unreadNotifications).filter(el => {
+                return el.querySelector('.w-2.h-2.bg-blue-500') !== null;
+            }).length;
+            
+            const badge = document.querySelector('.bg-red-500');
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+    </script>
     @if(function_exists('openProfileModal'))
     <script>
         // Función para abrir el modal de perfil (si existe en las vistas)

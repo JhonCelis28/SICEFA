@@ -13,9 +13,204 @@
 @section('content')
     
     <div class="container mx-auto px-4 py-6">
-        <!-- Encabezado -->
-        <div class="mb-6">
-            <p class="text-gray-600">Administra las solicitudes de todos los usuarios</p>
+        <!-- Encabezado con botones de exportación -->
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
+            <div>
+                <p class="text-gray-600">Administra las solicitudes de todos los usuarios</p>
+            </div>
+            
+            @if($availablePeriods['hasRecords'])
+            <div class="flex items-center space-x-2">
+                <!-- Script inline para definir el componente antes de Alpine -->
+                <script>
+                    window.currentExportParams = {};
+                    window.exportPeriodSelector = function() {
+                        return {
+                            open: false,
+                            selectedYear: null,
+                            selectedType: null,
+                            selectedLabel: 'Seleccionar período',
+                            exportParams: {},
+                            
+                            selectPeriod(label, params) {
+                                this.selectedLabel = label;
+                                this.exportParams = params;
+                                window.currentExportParams = params;
+                                this.open = false;
+                                this.selectedYear = null;
+                                this.selectedType = null;
+                            },
+                            
+                            goBack(level) {
+                                if (level === 'year') {
+                                    this.selectedYear = null;
+                                    this.selectedType = null;
+                                } else if (level === 'type') {
+                                    this.selectedType = null;
+                                }
+                            }
+                        }
+                    }
+                </script>
+                <!-- Menú desplegable de exportación -->
+                <div class="relative" id="exportDropdown" x-data="exportPeriodSelector()" @click.away="open = false; selectedYear = null; selectedType = null">
+                    <!-- Botón principal -->
+                    <button @click="open = !open" 
+                            class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center min-w-[200px] justify-between">
+                        <span class="flex items-center">
+                            <i class="fas fa-calendar-alt mr-2 text-green-600"></i>
+                            <span x-text="selectedLabel"></span>
+                        </span>
+                        <i class="fas fa-chevron-down ml-2 text-gray-400 transition-transform" :class="{'rotate-180': open}"></i>
+                    </button>
+
+                    <!-- Menú desplegable -->
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                         style="display: none;">
+                        
+                        <!-- Nivel 1: Años -->
+                        <div x-show="!selectedYear" class="max-h-80 overflow-y-auto">
+                            <div class="px-3 py-2 bg-gray-100 border-b border-gray-200">
+                                <span class="text-xs font-semibold text-gray-500 uppercase">Seleccionar Año</span>
+                            </div>
+                            @foreach($availablePeriods['years'] as $yearData)
+                            <button @click="selectedYear = {{ $yearData['year'] }}" 
+                                    class="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                <span class="flex items-center">
+                                    <i class="fas fa-folder text-yellow-500 mr-3"></i>
+                                    <span class="font-medium text-gray-800">{{ $yearData['year'] }}</span>
+                                </span>
+                                <span class="flex items-center">
+                                    <span class="text-xs text-gray-500 mr-2">{{ $yearData['totalRecords'] }} registros</span>
+                                    <i class="fas fa-chevron-right text-gray-400"></i>
+                                </span>
+                            </button>
+                            @endforeach
+                        </div>
+
+                        <!-- Nivel 2: Tipo de período -->
+                        <div x-show="selectedYear && !selectedType" class="max-h-80 overflow-y-auto">
+                            <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                                <button @click="goBack('year')" class="text-green-600 hover:text-green-800 flex items-center">
+                                    <i class="fas fa-arrow-left mr-2"></i>
+                                    <span class="text-xs font-semibold uppercase">Año</span>
+                                </button>
+                                <span class="text-sm font-bold text-gray-700" x-text="selectedYear"></span>
+                            </div>
+                            
+                            <!-- Opción Anual -->
+                            <button @click="selectPeriod('Año ' + selectedYear, { type: 'yearly', year: selectedYear })" 
+                                    class="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                <span class="flex items-center">
+                                    <i class="fas fa-calendar text-blue-500 mr-3"></i>
+                                    <span class="font-medium text-gray-800">Todo el año</span>
+                                </span>
+                                <i class="fas fa-check text-green-500 opacity-0 group-hover:opacity-100"></i>
+                            </button>
+                            
+                            <!-- Opción Trimestral -->
+                            <button @click="selectedType = 'quarterly'" 
+                                    class="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                <span class="flex items-center">
+                                    <i class="fas fa-calendar-week text-purple-500 mr-3"></i>
+                                    <span class="font-medium text-gray-800">Por Trimestre</span>
+                                </span>
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                            </button>
+                            
+                            <!-- Opción Mensual -->
+                            <button @click="selectedType = 'monthly'" 
+                                    class="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                <span class="flex items-center">
+                                    <i class="fas fa-calendar-day text-orange-500 mr-3"></i>
+                                    <span class="font-medium text-gray-800">Por Mes</span>
+                                </span>
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                            </button>
+                        </div>
+
+                        <!-- Nivel 3: Trimestres -->
+                        @foreach($availablePeriods['years'] as $yearData)
+                        <div x-show="selectedYear == {{ $yearData['year'] }} && selectedType == 'quarterly'" class="max-h-80 overflow-y-auto">
+                            <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                                <button @click="goBack('type')" class="text-green-600 hover:text-green-800 flex items-center">
+                                    <i class="fas fa-arrow-left mr-2"></i>
+                                    <span class="text-xs font-semibold uppercase">Tipo</span>
+                                </button>
+                                <span class="text-sm font-bold text-gray-700">{{ $yearData['year'] }} - Trimestres</span>
+                            </div>
+                            @foreach($yearData['quarters'] as $q)
+                            <button @click="selectPeriod('Q{{ $q['quarter'] }} {{ $yearData['year'] }}', { type: 'quarterly', year: {{ $yearData['year'] }}, quarter: {{ $q['quarter'] }} })" 
+                                    class="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                <span class="flex items-center">
+                                    <i class="fas fa-layer-group text-purple-500 mr-3"></i>
+                                    <span class="font-medium text-gray-800">Trimestre {{ $q['quarter'] }}</span>
+                                    <span class="text-xs text-gray-400 ml-2">({{ implode(', ', array_map(function($m) { 
+                                        $names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+                                        return $names[$m-1];
+                                    }, $q['months'])) }})</span>
+                                </span>
+                                <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">{{ $q['count'] }}</span>
+                            </button>
+                            @endforeach
+                        </div>
+                        @endforeach
+
+                        <!-- Nivel 3: Meses -->
+                        @foreach($availablePeriods['years'] as $yearData)
+                        <div x-show="selectedYear == {{ $yearData['year'] }} && selectedType == 'monthly'" class="max-h-80 overflow-y-auto">
+                            <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                                <button @click="goBack('type')" class="text-green-600 hover:text-green-800 flex items-center">
+                                    <i class="fas fa-arrow-left mr-2"></i>
+                                    <span class="text-xs font-semibold uppercase">Tipo</span>
+                                </button>
+                                <span class="text-sm font-bold text-gray-700">{{ $yearData['year'] }} - Meses</span>
+                            </div>
+                            @foreach($yearData['months'] as $m)
+                            <button @click="selectPeriod('{{ $m['name'] }} {{ $yearData['year'] }}', { type: 'monthly', year: {{ $yearData['year'] }}, month: {{ $m['month'] }} })" 
+                                    class="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center justify-between border-b border-gray-100 transition-colors">
+                                <span class="flex items-center">
+                                    <i class="fas fa-calendar-day text-orange-500 mr-3"></i>
+                                    <span class="font-medium text-gray-800">{{ $m['name'] }}</span>
+                                </span>
+                                <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">{{ $m['count'] }}</span>
+                            </button>
+                            @endforeach
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Botón de exportación PDF -->
+                <button onclick="exportConsumption('pdf')" 
+                   class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                   title="Exportar Consumos a PDF"
+                   id="btnExportPdf">
+                    <i class="fas fa-file-pdf"></i>
+                </button>
+                <!-- Botón de exportación Excel -->
+                <button onclick="exportConsumption('excel')" 
+                   class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                   title="Exportar Consumos a Excel"
+                   id="btnExportExcel">
+                    <i class="fas fa-file-excel"></i>
+                </button>
+            </div>
+            @else
+            <div class="flex items-center">
+                <span class="text-sm text-gray-500 italic flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-gray-400"></i>
+                    No hay registros de consumo para exportar
+                </span>
+            </div>
+            @endif
         </div>
 
         <!-- Resumen de estados -->
@@ -234,6 +429,35 @@
 @section('script')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // Función para exportar consumos
+    function exportConsumption(format) {
+        const exportParams = window.currentExportParams || {};
+        
+        if (!exportParams || Object.keys(exportParams).length === 0) {
+            Swal.fire({
+                title: 'Selecciona un período',
+                text: 'Por favor, selecciona primero un período para exportar.',
+                icon: 'warning',
+                confirmButtonColor: '#10B981',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+
+        // Construir URL con parámetros
+        let baseUrl = format === 'pdf' 
+            ? "{{ route('infrastock.admin.supply-requests.export.pdf') }}"
+            : "{{ route('infrastock.admin.supply-requests.export.excel') }}";
+        
+        const params = new URLSearchParams();
+        if (exportParams.type) params.append('type', exportParams.type);
+        if (exportParams.year) params.append('year', exportParams.year);
+        if (exportParams.month) params.append('month', exportParams.month);
+        if (exportParams.quarter) params.append('quarter', exportParams.quarter);
+        
+        window.open(baseUrl + '?' + params.toString(), '_blank');
+    }
+
     // Función para aprobar solicitud
     function approveRequest(requestId) {
         Swal.fire({
