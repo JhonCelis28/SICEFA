@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Notification extends Model
 {
+    /**
+     * La tabla usa auto-increment (BIGINT) para el campo id,
+     * por lo que no se genera UUID.
+     */
     protected $table = 'notifications';
     
     protected $fillable = [
