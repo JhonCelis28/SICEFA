@@ -117,6 +117,16 @@ class NotificationController extends Controller
                     $response['redirect_url'] = $notification->data['action_url'];
                 }
             }
+            // Si es una notificación de devolución de herramienta (creada, aprobada o rechazada)
+            elseif (in_array($type, ['return_created', 'return_approved', 'return_rejected'])) {
+                if ($isAdmin) {
+                    $response['redirect_url'] = route('infrastock.admin.loans.index');
+                } elseif ($isInstructor) {
+                    $response['redirect_url'] = route('infrastock.instructor.my-loans');
+                } elseif (isset($notification->data['action_url'])) {
+                    $response['redirect_url'] = $notification->data['action_url'];
+                }
+            }
             // Si la notificación tiene action_url, usarlo para redirección (para otros tipos)
             elseif (isset($notification->data['action_url'])) {
                 $response['redirect_url'] = $notification->data['action_url'];

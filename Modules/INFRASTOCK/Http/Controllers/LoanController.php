@@ -272,6 +272,38 @@ class LoanController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
+        // Si se está editando un préstamo y cambiando la herramienta o cantidad, validar stock
+        $newAmount = $request->amount ?? $loan->amount ?? 1;
+        $tool = Tool::find($request->movement_id);
+        if ($tool && $request->role === 'Préstamo') {
+            $available = $tool->cantidad_disponible ?? 0;
+            // Si cambió de herramienta o incrementó cantidad en un préstamo aprobado, verificar stock
+            if ($loan->status === 'approved') {
+                // Restaurar stock de la herramienta original si cambió
+                $oldTool = Tool::find($loan->movement_id);
+                $oldAmount = $loan->amount ?? 1;
+                if ($oldTool && $oldTool->id !== $tool->id) {
+                    // Restaurar stock de la herramienta anterior
+                    $oldNewAvailable = min(($oldTool->cantidad_disponible ?? 0) + $oldAmount, $oldTool->cantidad_total ?? $oldAmount);
+                    $oldTool->update(['cantidad_disponible' => $oldNewAvailable, 'estado' => 'disponible']);
+                    // Verificar stock de la nueva herramienta
+                    if ($available < $newAmount) {
+                        return redirect()->route('infrastock.admin.loans.index')
+                            ->with('error', "Stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$newAmount}")
+                            ->withInput();
+                    }
+                } elseif ($newAmount > $oldAmount) {
+                    // Misma herramienta pero más cantidad: verificar que haya stock para la diferencia
+                    $diff = $newAmount - $oldAmount;
+                    if ($diff > $available) {
+                        return redirect()->route('infrastock.admin.loans.index')
+                            ->with('error', "Stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Se necesitan {$diff} adicional(es)")
+                            ->withInput();
+                    }
+                }
+            }
+        }
+
         $oldRole = $loan->role;
         $newRole = $request->role;
         
@@ -394,8 +426,9 @@ class LoanController extends Controller
                 ->with('error', 'No se puede eliminar un registro de devolución. El movimiento está bloqueado.');
         }
 
-        // Si se elimina un Préstamo de herramienta, restaurar el stock
-        if ($loan->role === 'Préstamo' && $loan->item_type === 'tool') {
+        // Si se elimina un Préstamo APROBADO de herramienta, restaurar el stock
+        // (Los préstamos pendientes o rechazados nunca descontaron stock)
+        if ($loan->role === 'Préstamo' && $loan->item_type === 'tool' && $loan->status === 'approved') {
             $tool = Tool::find($loan->movement_id);
             if ($tool) {
                 $qty = $loan->amount ?? 1;
@@ -425,7 +458,7 @@ class LoanController extends Controller
      */
     public function approveReturn($id)
     {
-        $returnMovement = WarehouseMovement::with('surplus', 'equipment')
+        $returnMovement = WarehouseMovement::with('surplus', 'equipment', 'tool')
             ->where('id', $id)
             ->where('role', 'Devolución')
             ->where('status', 'pending')
@@ -440,21 +473,32 @@ class LoanController extends Controller
                 'status' => 'approved',
             ]);
 
-            // Si hay un sobrante asociado, actualizar el stock del equipo
-            if ($returnMovement->equipment && $returnMovement->amount > 0) {
+            // Verificar si es devolución de herramienta o de insumo
+            if ($returnMovement->item_type === 'tool') {
+                // Devolución de herramienta: restaurar stock de la herramienta
+                $tool = $returnMovement->tool;
+                if ($tool) {
+                    $amountReturned = $returnMovement->amount ?? 1;
+                    $tool->cantidad_disponible = min(
+                        ($tool->cantidad_disponible ?? 0) + $amountReturned,
+                        $tool->cantidad_total ?? $amountReturned
+                    );
+                    // Si todas las unidades están disponibles, cambiar estado a disponible
+                    if ($tool->cantidad_disponible >= ($tool->cantidad_total ?? 1)) {
+                        $tool->estado = 'disponible';
+                    }
+                    $tool->save();
+                }
+            } elseif ($returnMovement->equipment && $returnMovement->amount > 0) {
+                // Devolución de insumo: crear movimiento de recepción
                 $equipment = $returnMovement->equipment;
-                
-                // Crear un movimiento de tipo 'Recibe' para registrar la devolución en el historial
-                // Esto permite rastrear que se recibió material de vuelta
-                // El cálculo de stock (initial_amount - used_amount) se ajustará automáticamente
-                // porque 'Recibe' resta del used_amount, aumentando así el stock disponible
                 WarehouseMovement::create([
                     'productive_unit_warehouse_id' => $returnMovement->productive_unit_warehouse_id,
                     'movement_id' => null,
                     'equipment_id' => $equipment->id,
                     'item_type' => 'equipment',
                     'user_id' => $returnMovement->user_id,
-                    'role' => 'Recibe', // Indica que se está recibiendo material de vuelta
+                    'role' => 'Recibe',
                     'amount' => $returnMovement->amount,
                 ]);
             }
@@ -462,7 +506,8 @@ class LoanController extends Controller
             // Enviar notificación al usuario
             $this->notifyUserReturnStatus($returnMovement, 'approved');
 
-            return redirect()->back()->with('success', 'Devolución aprobada exitosamente. El stock del insumo ha sido actualizado.');
+            $itemLabel = $returnMovement->item_type === 'tool' ? 'herramienta' : 'insumo';
+            return redirect()->back()->with('success', "Devolución aprobada exitosamente. El stock de la {$itemLabel} ha sido actualizado.");
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al aprobar la devolución: ' . $e->getMessage());
         }
@@ -480,7 +525,7 @@ class LoanController extends Controller
             'rejection_reason' => 'required|string|max:500',
         ]);
 
-        $returnMovement = WarehouseMovement::with('surplus', 'equipment')
+        $returnMovement = WarehouseMovement::with('surplus', 'equipment', 'tool')
             ->where('id', $id)
             ->where('role', 'Devolución')
             ->where('status', 'pending')
@@ -523,15 +568,36 @@ class LoanController extends Controller
             return redirect()->back()->with('error', 'Préstamo no encontrado o ya procesado.');
         }
 
+        // Verificar que la herramienta tiene stock suficiente antes de aprobar
+        $tool = $loanMovement->tool;
+        if ($tool) {
+            $amount = $loanMovement->amount ?? 1;
+            $available = $tool->cantidad_disponible ?? 0;
+
+            if ($available < $amount) {
+                return redirect()->back()->with('error', "No se puede aprobar: stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$amount}.");
+            }
+        }
+
         try {
             $loanMovement->update([
                 'status' => 'approved',
             ]);
 
+            // Descontar stock de la herramienta al aprobar
+            if ($tool) {
+                $amount = $loanMovement->amount ?? 1;
+                $newAvailable = max(0, ($tool->cantidad_disponible ?? 0) - $amount);
+                $tool->update([
+                    'cantidad_disponible' => $newAvailable,
+                    'estado' => $newAvailable <= 0 ? 'en_prestamo' : 'disponible',
+                ]);
+            }
+
             // Enviar notificación al instructor
             $this->notifyUserLoanStatus($loanMovement, 'approved');
 
-            return redirect()->back()->with('success', 'Préstamo aprobado exitosamente.');
+            return redirect()->back()->with('success', 'Préstamo aprobado exitosamente. Stock actualizado.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al aprobar el préstamo: ' . $e->getMessage());
         }
@@ -760,21 +826,30 @@ class LoanController extends Controller
                 return;
             }
 
-            $equipmentName = $returnMovement->equipment ? $returnMovement->equipment->name : 'Insumo';
-            $unit = $returnMovement->equipment ? ($returnMovement->equipment->unit ?? 'unidades') : 'unidades';
+            // Determinar nombre y URL según el tipo de ítem
+            $isTool = $returnMovement->item_type === 'tool';
+            if ($isTool) {
+                $itemName = $returnMovement->tool ? ($returnMovement->tool->nombre ?? 'Herramienta') : 'Herramienta';
+                $actionUrl = route('infrastock.instructor.my-loans');
+            } else {
+                $itemName = $returnMovement->equipment ? $returnMovement->equipment->name : 'Insumo';
+                $actionUrl = route('infrastock.admin.loans.index');
+            }
+            
+            $itemLabel = $isTool ? 'herramienta' : 'insumo';
             
             if ($status === 'approved') {
                 $title = 'Devolución Aprobada';
-                $message = "Tu devolución de {$returnMovement->amount} {$unit} de {$equipmentName} ha sido aprobada.";
+                $message = "Tu devolución de la {$itemLabel}: {$itemName} ha sido aprobada.";
             } else {
                 $title = 'Devolución Rechazada';
-                $message = "Tu devolución de {$returnMovement->amount} {$unit} de {$equipmentName} ha sido rechazada.";
+                $message = "Tu devolución de la {$itemLabel}: {$itemName} ha sido rechazada.";
                 if ($rejectionReason) {
                     $message .= " Motivo: {$rejectionReason}";
                 }
             }
 
-            $user->notify(new \Modules\INFRASTOCK\Notifications\ReturnStatusNotification($returnMovement, $status, $title, $message));
+            $user->notify(new \Modules\INFRASTOCK\Notifications\ReturnStatusNotification($returnMovement, $status, $title, $message, $actionUrl));
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de estado de devolución: ' . $e->getMessage());
         }

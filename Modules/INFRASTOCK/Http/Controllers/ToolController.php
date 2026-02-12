@@ -10,6 +10,7 @@ use Modules\INFRASTOCK\Entities\Tool;
 use Modules\INFRASTOCK\Entities\InfrastockCategory;
 use Modules\INFRASTOCK\Entities\Labor;
 use Modules\INFRASTOCK\Entities\Inventory;
+use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Exports\ToolsExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -76,7 +77,7 @@ class ToolController extends Controller
         try {
             $validated = $request->validate([
             'nombre' => 'required|string|max:255',
-            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'placa' => 'nullable|string|max:255',
             'descripcion' => 'nullable|string',
             'descripcion_actual' => 'nullable|string',
@@ -214,7 +215,7 @@ class ToolController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:255',
-            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'placa' => 'nullable|string|max:255',
             'descripcion' => 'nullable|string',
             'descripcion_actual' => 'nullable|string',
@@ -281,24 +282,62 @@ class ToolController extends Controller
     public function destroy($id)
     {
         $tool = Tool::findOrFail($id);
-        $hasRelatedRecords = false; // TODO: Implement validation
-        
-        if ($hasRelatedRecords) {
+
+        // Verificar si la herramienta tiene un estado que impide su eliminación
+        $estadosProtegidos = ['en_prestamo', 'mantenimiento'];
+        if (in_array($tool->estado, $estadosProtegidos)) {
+            $estadoLabels = [
+                'en_prestamo' => 'En Préstamo',
+                'mantenimiento' => 'Mantenimiento',
+            ];
+            $estadoLabel = $estadoLabels[$tool->estado] ?? $tool->estado;
+            $message = "No se puede eliminar la herramienta porque se encuentra en estado: {$estadoLabel}.";
+
             if (request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar la herramienta porque tiene registros relacionados.'
-                ], 422);
+                return response()->json(['success' => false, 'message' => $message], 422);
             }
-            return redirect()->route('infrastock.admin.tools.index')->with('error', 'No se puede eliminar la herramienta porque tiene registros relacionados.');
+            return redirect()->route('infrastock.admin.tools.index')->with('error', $message);
         }
-        
+
+        // Verificar si tiene préstamos activos (pendientes o aprobados) en warehouse_movements
+        $activeLoans = WarehouseMovement::where('movement_id', $tool->id)
+            ->where('role', 'Préstamo')
+            ->whereIn('status', ['pending', 'approved'])
+            ->whereNull('deleted_at')
+            ->count();
+
+        if ($activeLoans > 0) {
+            $message = "No se puede eliminar la herramienta porque tiene {$activeLoans} préstamo(s) activo(s).";
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+            return redirect()->route('infrastock.admin.tools.index')->with('error', $message);
+        }
+
+        // Verificar si tiene devoluciones pendientes de aprobación
+        $pendingReturns = WarehouseMovement::where('movement_id', $tool->id)
+            ->where('role', 'Devolución')
+            ->where('status', 'pending')
+            ->whereNull('deleted_at')
+            ->count();
+
+        if ($pendingReturns > 0) {
+            $message = "No se puede eliminar la herramienta porque tiene {$pendingReturns} devolución(es) pendiente(s) de aprobación.";
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+            return redirect()->route('infrastock.admin.tools.index')->with('error', $message);
+        }
+
+        // Eliminar imagen si existe
+        if ($tool->imagen && \Storage::disk('public')->exists($tool->imagen)) {
+            \Storage::disk('public')->delete($tool->imagen);
+        }
+
         $tool->delete();
+
         if (request()->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Herramienta eliminada exitosamente.'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Herramienta eliminada exitosamente.']);
         }
         return redirect()->route('infrastock.admin.tools.index')->with('success', 'deleted');
     }

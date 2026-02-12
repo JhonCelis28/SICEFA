@@ -107,15 +107,15 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <!-- Botón para abrir el modal de edición, pasando los datos de la categoría actual -->
-                                        <button @click="openEditModal({{ $category->id }}, '{{ addslashes($category->name) }}', '{{ $category->type }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                            <i class="fas fa-edit"></i> Editar
+                                        <button @click="openEditModal({{ $category->id }}, '{{ addslashes($category->name) }}', '{{ $category->type }}')" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Editar">
+                                            <i class="fas fa-edit"></i>
                                         </button>
                                         <!-- Formulario para eliminar una categoría -->
-                                        <form method="POST" action="{{ route('infrastock.admin.categories.destroy', $category->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($category->name) }}')">
+                                        <form id="delete-category-{{ $category->id }}" method="POST" action="{{ route('infrastock.admin.categories.destroy', $category->id) }}" style="display: inline;">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900">
-                                                <i class="fas fa-trash-alt"></i> Eliminar
+                                            <button type="button" onclick="confirmDelete({{ $category->id }}, '{{ addslashes($category->name) }}')" class="text-red-600 hover:text-red-900" title="Eliminar">
+                                                <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </form>
                                     </td>
@@ -217,10 +217,8 @@
 
 @section('script')
 <script>
-// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
-function confirmDeleteSync(categoryName) {
-    let confirmed = false;
-    
+// Función para confirmar eliminación con SweetAlert2
+function confirmDelete(categoryId, categoryName) {
     Swal.fire({
         title: '¿Estás seguro?',
         text: `¿Quieres eliminar la categoría "${categoryName}"?`,
@@ -232,7 +230,6 @@ function confirmDeleteSync(categoryName) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Mostrar loading
             Swal.fire({
                 title: 'Eliminando...',
                 text: 'Por favor espera',
@@ -242,16 +239,10 @@ function confirmDeleteSync(categoryName) {
                     Swal.showLoading();
                 }
             });
-            
-            // Permitir que el formulario se envíe
-            confirmed = true;
-            // Enviar el formulario manualmente
-            event.target.submit();
+
+            document.getElementById('delete-category-' + categoryId).submit();
         }
     });
-    
-    // Retornar false para prevenir el envío inmediato del formulario
-    return false;
 }
 
 // Verificar si hay mensajes de sesión
@@ -320,14 +311,13 @@ function clearSearch() {
 }
 
 // Verificar si hay errores de validación y abrir modal automáticamente
-@if($errors->hasAny(['name', 'type']) || session('error'))
+@if($errors->hasAny(['name', 'type']) && old('_token'))
     document.addEventListener('DOMContentLoaded', function() {
         // Buscar el componente Alpine.js y abrir el modal de creación
         const alpineComponent = document.querySelector('[x-data]');
         if (alpineComponent && alpineComponent._x_dataStack) {
             alpineComponent._x_dataStack[0].isCreateModalOpen = true;
         }
-        console.log('Errores encontrados:', @json($errors->messages()));
     });
 @endif
 </script>

@@ -28,6 +28,11 @@ Regional Huila
    - 8.2 [Usuarios de Sistemas Operativos](#82-usuarios-de-sistemas-operativos)
    - 8.3 [Usuarios de Aplicaciones](#83-usuarios-de-aplicaciones)
 9. [Contingencias y Soluciones](#9-contingencias-y-soluciones)
+10. [Diccionario de Datos](#10-diccionario-de-datos)
+    - 10.1 [Tablas Propias del Módulo INFRASTOCK](#101-tablas-propias-del-módulo-infrastock)
+    - 10.2 [Tablas Compartidas con el Sistema SICA](#102-tablas-compartidas-con-el-sistema-sica)
+    - 10.3 [Diagrama de Relaciones entre Tablas](#103-diagrama-de-relaciones-entre-tablas)
+    - 10.4 [Resumen de Claves Foráneas del Módulo INFRASTOCK](#104-resumen-de-claves-foráneas-del-módulo-infrastock)
 
 ---
 
@@ -934,9 +939,459 @@ El sistema INFRASTOCK utiliza un sistema de roles y permisos integrado con el m�
 
 ---
 
+## 10. Diccionario de Datos
+
+Para el almacenamiento de datos del software, se definen los campos necesarios para cada una de las entidades relacionadas con el módulo INFRASTOCK. A continuación se presenta el diccionario de datos completo, organizado en tablas propias del módulo y tablas compartidas con el sistema SICA.
+
+### 10.1 Tablas Propias del Módulo INFRASTOCK
+
+Tabla 1. Diccionario de datos modelo infrastock_categories
+
+| | **INFRASTOCK_CATEGORIES** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la categoría (PK, autoincremental). |
+| name | VARCHAR | 255 | Nombre de la categoría. Único. |
+| type | VARCHAR | 255 | Tipo de categoría: 'supply' (insumo) o 'tool' (herramienta). |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 2. Diccionario de datos modelo equipments (Insumos)
+
+| | **EQUIPMENTS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del insumo (PK, autoincremental). |
+| labor_id | BIGINT UNSIGNED | - | FK hacia labors(id). Referencia a la labor asociada. ON DELETE CASCADE. |
+| inventory_id | BIGINT UNSIGNED | - | FK hacia inventories(id). Referencia al inventario. ON DELETE CASCADE. |
+| name | VARCHAR | 255 | Nombre del insumo o material. |
+| characteristics | TEXT | - | Características técnicas del insumo. Nullable. |
+| amount | INTEGER | - | Cantidad actual en stock. |
+| initial_amount | INTEGER | - | Cantidad inicial registrada. Valor por defecto: 0. |
+| minimum_stock | INTEGER | - | Stock mínimo permitido antes de generar alerta. Valor por defecto: 0. |
+| unit_measure | VARCHAR | 50 | Unidad de medida (ej: und, kg, m, rollo). Nullable. |
+| price | INTEGER | - | Precio unitario del insumo. |
+| category_id | BIGINT UNSIGNED | - | FK hacia infrastock_categories(id). Categoría del insumo. ON DELETE SET NULL. Nullable. |
+| expiration_date | DATE | - | Fecha de vencimiento del insumo. Nullable. |
+| observations | TEXT | - | Observaciones adicionales sobre el insumo. Nullable. |
+| status | ENUM | - | Estado del insumo. Valores: 'disponible', 'agotado', 'vencido', 'bajo_stock', 'critico'. Por defecto: 'disponible'. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 3. Diccionario de datos modelo tools (Herramientas)
+
+| | **TOOLS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la herramienta (PK, autoincremental). |
+| nombre | VARCHAR | 255 | Nombre de la herramienta. |
+| imagen | VARCHAR | 255 | Ruta de la imagen de la herramienta. Nullable. |
+| placa | VARCHAR | 255 | Número de placa o código de inventario. Nullable. |
+| marca | VARCHAR | 255 | Marca del fabricante. Nullable. |
+| modelo | VARCHAR | 255 | Modelo de la herramienta. Nullable. |
+| descripcion | VARCHAR | 255 | Descripción general de la herramienta. Nullable. |
+| descripcion_actual | TEXT | - | Descripción del estado actual de la herramienta. Nullable. |
+| estado | ENUM | - | Estado de la herramienta. Valores: 'disponible', 'en_prestamo', 'mantenimiento', 'no_disponible'. Por defecto: 'disponible'. |
+| cantidad_total | INTEGER | - | Cantidad total de unidades registradas. Nullable. |
+| cantidad_disponible | INTEGER | - | Cantidad de unidades actualmente disponibles para préstamo. Nullable. |
+| fecha_mantenimiento | DATE | - | Fecha del último mantenimiento realizado. Nullable. |
+| proximo_mantenimiento | DATE | - | Fecha programada para el próximo mantenimiento. Nullable. |
+| fecha_adquisicion | DATE | - | Fecha de adquisición de la herramienta. Nullable. |
+| atributos | TEXT | - | Atributos adicionales en formato JSON. Nullable. |
+| descripcion_mantenimiento | TEXT | - | Descripción detallada del mantenimiento realizado. Nullable. |
+| category_id | BIGINT UNSIGNED | - | FK hacia infrastock_categories(id). Categoría de la herramienta. ON DELETE SET NULL. Nullable. |
+| labor_id | BIGINT UNSIGNED | - | FK hacia labors(id). Referencia a la labor asociada. Nullable. |
+| inventory_id | BIGINT UNSIGNED | - | FK hacia inventories(id). Referencia al inventario. Nullable. |
+| amount | INTEGER | - | Cantidad (campo heredado de SICA). Nullable. |
+| price | DECIMAL | 10,2 | Precio de la herramienta. Nullable. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 4. Diccionario de datos modelo warehouse_movements (Movimientos de Almacén)
+
+| | **WAREHOUSE_MOVEMENTS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del movimiento (PK, autoincremental). |
+| productive_unit_warehouse_id | BIGINT UNSIGNED | - | FK hacia productive_unit_warehouses(id). Almacén de unidad productiva origen/destino. ON DELETE CASCADE. |
+| movement_id | BIGINT UNSIGNED | - | FK hacia movements(id). Referencia al movimiento base. Nullable. |
+| equipment_id | BIGINT UNSIGNED | - | FK hacia equipments(id). Insumo asociado al movimiento. ON DELETE CASCADE. Nullable. |
+| user_id | BIGINT UNSIGNED | - | FK hacia users(id). Usuario que realiza o recibe el movimiento. ON DELETE SET NULL. Nullable. |
+| item_type | VARCHAR | 255 | Tipo de ítem del movimiento: 'equipment' (insumo) o 'tool' (herramienta). Nullable. |
+| role | ENUM | - | Tipo de movimiento. Valores: 'Entrega', 'Recibe', 'Préstamo', 'Devolución'. |
+| amount | INTEGER | - | Cantidad involucrada en el movimiento. Nullable. |
+| status | ENUM | - | Estado del movimiento. Valores: 'pending', 'approved', 'rejected'. Por defecto: 'pending'. Nullable. |
+| surplus_id | BIGINT UNSIGNED | - | FK hacia surpluses(id). Referencia al sobrante asociado. ON DELETE CASCADE. Nullable. |
+| description | TEXT | - | Descripción o notas del movimiento. Nullable. |
+| purpose | TEXT | - | Finalidad del préstamo (solo para préstamos de herramientas). Nullable. |
+| required_date | DATE | - | Fecha requerida de entrega o devolución. Nullable. |
+| imagen | VARCHAR | 255 | Ruta de la imagen asociada al movimiento. Nullable. |
+| delivery_image | VARCHAR | 255 | Ruta de la imagen de entrega. Nullable. |
+| return_image | VARCHAR | 255 | Ruta de la imagen de devolución. Nullable. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 5. Diccionario de datos modelo requests (Solicitudes)
+
+| | **REQUESTS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la solicitud (PK, autoincremental). |
+| user_id | BIGINT UNSIGNED | - | FK hacia users(id). Usuario solicitante. ON DELETE CASCADE. Nullable. |
+| productive_unit_warehouse_id | BIGINT UNSIGNED | - | Almacén de unidad productiva destino de la solicitud. Nullable. |
+| description | TEXT | - | Descripción o justificación de la solicitud. Nullable. |
+| status | ENUM | - | Estado de la solicitud. Valores: 'pending', 'approved', 'rejected'. Por defecto: 'pending'. |
+| approved_at | TIMESTAMP | - | Fecha y hora de aprobación. Nullable. |
+| rejected_at | TIMESTAMP | - | Fecha y hora de rechazo. Nullable. |
+| approved_by | BIGINT UNSIGNED | - | FK hacia users(id). Administrador que aprobó/rechazó. ON DELETE SET NULL. Nullable. |
+| rejection_reason | TEXT | - | Motivo del rechazo de la solicitud. Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 6. Diccionario de datos modelo request_items (Ítems de Solicitud)
+
+| | **REQUEST_ITEMS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del ítem (PK, autoincremental). |
+| request_id | BIGINT UNSIGNED | - | FK hacia requests(id). Solicitud a la que pertenece. ON DELETE CASCADE. |
+| equipment_id | BIGINT UNSIGNED | - | FK hacia equipments(id). Insumo solicitado. ON DELETE CASCADE. |
+| requested_amount | INTEGER | - | Cantidad solicitada por el usuario. |
+| approved_amount | INTEGER | - | Cantidad aprobada por el administrador. Nullable. |
+| delivered_amount | INTEGER | - | Cantidad efectivamente entregada. Nullable. |
+| status | ENUM | - | Estado del ítem. Valores: 'pending', 'approved', 'rejected', 'delivered'. Por defecto: 'pending'. |
+| notes | TEXT | - | Notas u observaciones del ítem. Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 7. Diccionario de datos modelo surpluses (Sobrantes)
+
+| | **SURPLUSES** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del sobrante (PK, autoincremental). |
+| equipment_id | BIGINT UNSIGNED | - | FK hacia equipments(id). Insumo del cual se reporta sobrante. ON DELETE CASCADE. |
+| user_id | BIGINT UNSIGNED | - | FK hacia users(id). Usuario que reporta el sobrante. ON DELETE CASCADE. |
+| request_id | BIGINT UNSIGNED | - | FK hacia requests(id). Solicitud de origen del sobrante. ON DELETE CASCADE. Nullable. |
+| request_item_id | BIGINT UNSIGNED | - | FK hacia request_items(id). Ítem de solicitud de origen. ON DELETE CASCADE. Nullable. |
+| surplus_amount | INTEGER | - | Cantidad sobrante reportada. |
+| reason | TEXT | - | Motivo o justificación del sobrante. |
+| description | TEXT | - | Descripción adicional del sobrante. Nullable. |
+| surplus_date | DATE | - | Fecha en la que se reporta el sobrante. |
+| status | ENUM | - | Estado del sobrante. Valores: 'pending', 'approved', 'rejected'. Por defecto: 'pending'. |
+| processed_at | TIMESTAMP | - | Fecha y hora en la que fue procesado. Nullable. |
+| processed_by | VARCHAR | 255 | Nombre o identificador de quien procesó el sobrante. Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+**Índices compuestos:** (equipment_id, surplus_date), (user_id, surplus_date).
+
+---
+
+Tabla 8. Diccionario de datos modelo notifications (Notificaciones)
+
+| | **NOTIFICATIONS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | CHAR (UUID) | 36 | Identificador único de la notificación (PK). Generado como UUID. |
+| type | VARCHAR | 255 | Tipo de notificación (ej: 'expiring_supply', 'new_request', 'low_stock', 'request_approved'). |
+| notifiable_type | VARCHAR | 255 | Tipo del modelo notificable (polimórfico). Ej: 'App\Models\User'. |
+| notifiable_id | BIGINT UNSIGNED | - | ID del modelo notificable (polimórfico). |
+| data | TEXT | - | Datos de la notificación en formato JSON. Contiene título, mensaje, URL de redirección, etc. |
+| read_at | TIMESTAMP | - | Fecha y hora en la que la notificación fue leída. Nullable (NULL = no leída). |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+**Índice compuesto:** (notifiable_type, notifiable_id).
+
+**Sistema de prioridades:** Las notificaciones se clasifican en cuatro niveles de prioridad (critical, high, medium, low) con diferentes políticas de retención para notificaciones leídas y no leídas.
+
+---
+
+### 10.2 Tablas Compartidas con el Sistema SICA
+
+Las siguientes tablas son creadas y gestionadas por el módulo SICA (Sistema de Información y Control de Aprendices) y son consumidas por INFRASTOCK mediante relaciones de clave foránea.
+
+Tabla 9. Diccionario de datos modelo users (Usuarios)
+
+| | **USERS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del usuario (PK, autoincremental). |
+| nickname | VARCHAR | 255 | Nombre de usuario para inicio de sesión. Único. |
+| person_id | BIGINT UNSIGNED | - | FK hacia people(id). Persona asociada al usuario. ON DELETE CASCADE. Único. |
+| email | VARCHAR | 255 | Correo electrónico del usuario. Único. |
+| email_verified_at | TIMESTAMP | - | Fecha de verificación del correo electrónico. Nullable. |
+| password | VARCHAR | 255 | Contraseña encriptada del usuario. |
+| remember_token | VARCHAR | 100 | Token para la funcionalidad "recordarme". Nullable. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 10. Diccionario de datos modelo people (Personas)
+
+| | **PEOPLE** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la persona (PK, autoincremental). |
+| document_type | VARCHAR | 50 | Tipo de documento de identidad (ej: CC, TI, CE, PAS). |
+| document_number | BIGINT UNSIGNED | - | Número de documento de identidad. Único. |
+| date_of_issue | DATE | - | Fecha de expedición del documento. Nullable. |
+| first_name | VARCHAR | 255 | Nombres de la persona. |
+| first_last_name | VARCHAR | 255 | Primer apellido de la persona. |
+| second_last_name | VARCHAR | 255 | Segundo apellido de la persona. Nullable. |
+| date_of_birth | DATE | - | Fecha de nacimiento. Nullable. |
+| blood_type | ENUM | - | Tipo de sangre. Valores: 'No registra','O+','O-','A+','A-','B+','B-','AB+','AB-'. Nullable. |
+| gender | ENUM | - | Género. Valores: 'No registra','Masculino','Femenino'. Nullable. |
+| eps_id | BIGINT UNSIGNED | - | FK hacia e_p_s(id). Entidad promotora de salud. ON DELETE CASCADE. |
+| marital_status | ENUM | - | Estado civil. Valores: 'No registra','Soltero(a)','Casado(a)','Separado(a)','Unión libre'. Nullable. |
+| military_card | INT UNSIGNED | - | Número de libreta militar. Nullable. |
+| socioeconomical_status | ENUM | - | Estrato socioeconómico. Valores: 'No registra','1','2','3','4','5','6'. Nullable. |
+| sisben_level | ENUM | - | Nivel de SISBÉN. Valores: 'A','B','C','D'. Nullable. |
+| address | VARCHAR | 255 | Dirección de residencia. Nullable. |
+| telephone1 | BIGINT UNSIGNED | - | Teléfono principal. Nullable. |
+| telephone2 | BIGINT UNSIGNED | - | Teléfono secundario. Nullable. |
+| telephone3 | BIGINT UNSIGNED | - | Teléfono adicional. Nullable. |
+| personal_email | VARCHAR | 255 | Correo electrónico personal. Nullable. |
+| misena_email | VARCHAR | 255 | Correo electrónico de Mi SENA. Nullable. |
+| sena_email | VARCHAR | 255 | Correo electrónico institucional SENA. Nullable. |
+| avatar | VARCHAR | 255 | Ruta de la imagen de perfil. Nullable. |
+| biometric_code | TEXT | - | Código biométrico del usuario. Nullable. |
+| population_group_id | BIGINT UNSIGNED | - | FK hacia population_groups(id). Grupo poblacional. ON DELETE CASCADE. |
+| pension_entity_id | BIGINT UNSIGNED | - | FK hacia pension_entities(id). Entidad de pensión. ON DELETE CASCADE. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 11. Diccionario de datos modelo roles (Roles)
+
+| | **ROLES** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del rol (PK, autoincremental). |
+| name | VARCHAR | 255 | Nombre del rol (ej: Administrador, Operario, Instructor, Psicola). |
+| slug | VARCHAR | 255 | Identificador URL del rol (ej: infrastock.admin). Único. |
+| description | TEXT | - | Descripción del rol en español. Nullable. |
+| description_english | TEXT | - | Descripción del rol en inglés. Nullable. |
+| full_access | ENUM | - | Indica si el rol tiene acceso total. Valores: 'Si', 'No'. Por defecto: 'No'. |
+| app_id | BIGINT UNSIGNED | - | FK hacia apps(id). Aplicación a la que pertenece el rol. ON DELETE CASCADE. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 12. Diccionario de datos modelo apps (Aplicaciones)
+
+| | **APPS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la aplicación (PK, autoincremental). |
+| name | VARCHAR | 255 | Nombre de la aplicación (ej: INFRASTOCK, SICA). |
+| url | VARCHAR | 255 | URL de acceso a la aplicación. |
+| color | VARCHAR | 255 | Color representativo de la aplicación en la interfaz. |
+| icon | VARCHAR | 255 | Ícono representativo de la aplicación (clase CSS de Font Awesome). |
+| description | TEXT | - | Descripción de la aplicación en español. |
+| description_english | TEXT | - | Descripción de la aplicación en inglés. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 13. Diccionario de datos modelo productive_units (Unidades Productivas)
+
+| | **PRODUCTIVE_UNITS** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la unidad productiva (PK, autoincremental). |
+| name | VARCHAR | 255 | Nombre de la unidad productiva. Único. |
+| description | TEXT | - | Descripción de la unidad productiva. |
+| icon | VARCHAR | 255 | Ícono representativo. Nullable. |
+| person_id | BIGINT UNSIGNED | - | FK hacia people(id). Persona responsable de la unidad. ON DELETE CASCADE. |
+| sector_id | BIGINT UNSIGNED | - | FK hacia sectors(id). Sector al que pertenece. ON DELETE CASCADE. |
+| farm_id | BIGINT UNSIGNED | - | FK hacia farms(id). Finca o sede a la que pertenece. ON DELETE CASCADE. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+Tabla 14. Diccionario de datos modelo productive_unit_warehouses (Almacenes de Unidades Productivas)
+
+| | **PRODUCTIVE_UNIT_WAREHOUSES** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único de la relación (PK, autoincremental). |
+| productive_unit_id | BIGINT UNSIGNED | - | FK hacia productive_units(id). Unidad productiva. ON DELETE CASCADE. |
+| warehouse_id | BIGINT UNSIGNED | - | FK hacia warehouses(id). Almacén asignado. ON DELETE CASCADE. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+**Restricción única:** Combinación (productive_unit_id, warehouse_id) es única.
+
+---
+
+Tabla 15. Diccionario de datos modelo warehouses (Almacenes)
+
+| | **WAREHOUSES** | | |
+|---|---|---|---|
+| **NOMBRE CAMPO** | **TIPO DATO** | **TAMAÑO** | **DESCRIPCIÓN** |
+| id | BIGINT UNSIGNED | - | Identificador único del almacén (PK, autoincremental). |
+| name | VARCHAR | 255 | Nombre del almacén. Único. |
+| description | TEXT | - | Descripción del almacén. |
+| app_id | BIGINT UNSIGNED | - | FK hacia apps(id). Aplicación a la que pertenece el almacén. ON DELETE CASCADE. |
+| deleted_at | TIMESTAMP | - | Fecha de eliminación lógica (Soft Delete). Nullable. |
+| created_at | TIMESTAMP | - | Fecha de creación del registro. |
+| updated_at | TIMESTAMP | - | Fecha de última actualización del registro. |
+
+Fuente: Por los autores.
+
+---
+
+### 10.3 Diagrama de Relaciones entre Tablas
+
+```
+┌──────────────────────┐        ┌──────────────────────┐
+│        apps          │        │       people          │
+│ (id, name, url, ...) │        │ (id, first_name, ...) │
+└──────────┬───────────┘        └──────────┬───────────┘
+           │ 1:N                           │ 1:1
+           │                               │
+┌──────────▼───────────┐        ┌──────────▼───────────┐
+│        roles         │        │        users          │
+│ (id, name, slug, ...)│        │ (id, nickname, ...)   │
+│ app_id → apps(id)    │        │ person_id → people(id)│
+└──────────────────────┘        └──────────┬───────────┘
+                                           │
+                    ┌──────────────────────┼──────────────────────┐
+                    │ 1:N                  │ 1:N                  │ 1:N
+                    │                      │                      │
+         ┌──────────▼──────────┐ ┌────────▼────────┐  ┌─────────▼─────────┐
+         │     requests        │ │   surpluses     │  │  notifications    │
+         │ user_id → users(id) │ │ user_id → ...   │  │ notifiable_id → ..│
+         │ approved_by → ...   │ │ equipment_id →..│  └───────────────────┘
+         └──────────┬──────────┘ │ request_id → .. │
+                    │ 1:N        └─────────────────┘
+                    │
+         ┌──────────▼──────────┐
+         │    request_items    │
+         │ request_id → ...   │
+         │ equipment_id → ... │
+         └─────────────────────┘
+
+┌─────────────────────────┐      ┌─────────────────────────┐
+│  infrastock_categories  │      │       warehouses         │
+│ (id, name, type)        │      │ (id, name, app_id → ..) │
+└──────────┬──────────────┘      └──────────┬──────────────┘
+           │ 1:N                            │ 1:N
+     ┌─────┴─────┐               ┌──────────▼──────────────┐
+     │           │               │ productive_unit_warehouses│
+┌────▼────┐ ┌───▼────┐          │ warehouse_id → ...       │
+│equipment│ │ tools  │          │ productive_unit_id → ... │
+│ s       │ │        │          └──────────┬───────────────┘
+│ cat_id  │ │ cat_id │                     │
+│ → ...   │ │ → ...  │          ┌──────────▼───────────────┐
+└────┬────┘ └────────┘          │    productive_units      │
+     │                          │ person_id → people(id)   │
+     │ 1:N                      └──────────────────────────┘
+     │
+┌────▼─────────────────────┐
+│   warehouse_movements    │
+│ equipment_id → ...       │
+│ user_id → users(id)      │
+│ surplus_id → surpluses   │
+│ prod_unit_wh_id → ...    │
+└──────────────────────────┘
+```
+
+### 10.4 Resumen de Claves Foráneas del Módulo INFRASTOCK
+
+| **Tabla Origen** | **Campo** | **Tabla Destino** | **Campo Destino** | **Acción al Eliminar** |
+|---|---|---|---|---|
+| equipments | category_id | infrastock_categories | id | SET NULL |
+| equipments | labor_id | labors | id | CASCADE |
+| equipments | inventory_id | inventories | id | CASCADE |
+| tools | category_id | infrastock_categories | id | SET NULL |
+| tools | labor_id | labors | id | CASCADE |
+| tools | inventory_id | inventories | id | CASCADE |
+| warehouse_movements | productive_unit_warehouse_id | productive_unit_warehouses | id | CASCADE |
+| warehouse_movements | equipment_id | equipments | id | CASCADE |
+| warehouse_movements | user_id | users | id | SET NULL |
+| warehouse_movements | surplus_id | surpluses | id | CASCADE |
+| requests | user_id | users | id | CASCADE |
+| requests | approved_by | users | id | SET NULL |
+| request_items | request_id | requests | id | CASCADE |
+| request_items | equipment_id | equipments | id | CASCADE |
+| surpluses | equipment_id | equipments | id | CASCADE |
+| surpluses | user_id | users | id | CASCADE |
+| surpluses | request_id | requests | id | CASCADE |
+| surpluses | request_item_id | request_items | id | CASCADE |
+| productive_unit_warehouses | productive_unit_id | productive_units | id | CASCADE |
+| productive_unit_warehouses | warehouse_id | warehouses | id | CASCADE |
+| productive_units | person_id | people | id | CASCADE |
+| productive_units | sector_id | sectors | id | CASCADE |
+| productive_units | farm_id | farms | id | CASCADE |
+| warehouses | app_id | apps | id | CASCADE |
+| roles | app_id | apps | id | CASCADE |
+| users | person_id | people | id | CASCADE |
+
+Fuente: Por los autores.
+
+---
+
 **Fin del Manual Técnico**
 
 ---
 
 *Documento generado para el proyecto INFRASTOCK - Versión 1.0*  
-*Última actualización: Abril 2025*
+*Última actualización: Febrero 2026*

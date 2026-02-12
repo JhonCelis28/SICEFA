@@ -14,16 +14,18 @@ class ReturnStatusNotification extends Notification
     protected $status;
     protected $title;
     protected $message;
+    protected $actionUrl;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(WarehouseMovement $returnMovement, $status, $title, $message)
+    public function __construct(WarehouseMovement $returnMovement, $status, $title, $message, $actionUrl = null)
     {
         $this->returnMovement = $returnMovement;
         $this->status = $status;
         $this->title = $title;
         $this->message = $message;
+        $this->actionUrl = $actionUrl;
     }
 
     /**
@@ -45,7 +47,7 @@ class ReturnStatusNotification extends Notification
             'message' => $this->message,
             'return_id' => $this->returnMovement->id,
             'status' => $this->status,
+            'action_url' => $this->actionUrl,
         ];
     }
 }
-

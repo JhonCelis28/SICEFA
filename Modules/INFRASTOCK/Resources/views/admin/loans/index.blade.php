@@ -113,11 +113,22 @@
                 this.selectedToolName = tool.nombre;
                 // Ajustar cantidad si excede disponible
                 if (this.createForm.amount > tool.disponible) {
-                    this.createForm.amount = tool.disponible;
+                    this.createForm.amount = tool.disponible > 0 ? tool.disponible : 1;
                 }
             } else {
                 this.selectedToolStock = 0;
                 this.selectedToolName = '';
+            }
+        },
+
+        clampAmount() {
+            let val = parseInt(this.createForm.amount);
+            if (isNaN(val) || val < 1) {
+                this.createForm.amount = 1;
+                return;
+            }
+            if (this.selectedToolStock > 0 && val > this.selectedToolStock) {
+                this.createForm.amount = this.selectedToolStock;
             }
         }
     }">
@@ -539,8 +550,8 @@
                                                         <i class="fas fa-times-circle"></i> Rechazar
                                                     </button>
                                                 @elseif($loan->role == 'Devolución')
-                                                    @if($loan->description || $loan->imagen)
-                                                        <button onclick="showReturnDescriptionModal({{ $loan->id }}, '{{ addslashes($loan->description ?? '') }}', '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}', '{{ $loan->imagen ? asset('storage/' . $loan->imagen) : '' }}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Ver descripción de devolución">
+                                                    @if($loan->description || $loan->imagen || $loan->return_image)
+                                                        <button onclick="showReturnDescriptionModal({{ $loan->id }}, '{{ addslashes($loan->description ?? '') }}', '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}', '{{ $loan->return_image ? asset('storage/' . $loan->return_image) : ($loan->imagen ? asset('storage/' . $loan->imagen) : '') }}')" class="text-blue-600 hover:text-blue-900 mr-2" title="Ver descripción de devolución">
                                                             <i class="fas fa-eye"></i> Ver Descripción
                                                         </button>
                                                     @endif
@@ -688,6 +699,7 @@
                             </label>
                             <input type="number" name="amount" id="create_amount"
                                    x-model="createForm.amount"
+                                   @input="clampAmount()"
                                    min="1"
                                    :max="selectedToolStock > 0 ? selectedToolStock : 1"
                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror"
@@ -1035,7 +1047,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Función para abrir modal de rechazo de devolución
 function openRejectModal(returnId) {
-    document.getElementById('rejectReturnForm').action = `{{ route('infrastock.admin.loans.reject-return', '') }}/${returnId}`;
+    const baseUrl = '{{ route("infrastock.admin.loans.reject-return", 0) }}';
+    document.getElementById('rejectReturnForm').action = baseUrl.replace('/0/', '/' + returnId + '/').replace(/\/0$/, '/' + returnId);
     document.getElementById('rejectReturnModal').classList.remove('hidden');
     document.getElementById('rejectReturnModal').classList.add('flex');
 }
@@ -1189,9 +1202,11 @@ function closeReturnDescriptionModal() {
 
 // Función para abrir modal de rechazo desde el modal de descripción
 function openRejectModalFromDescription() {
+    // Guardar el ID antes de cerrar el modal (closeReturnDescriptionModal lo resetea a null)
+    const loanId = currentReturnLoanId;
     closeReturnDescriptionModal();
-    if (currentReturnLoanId) {
-        openRejectModal(currentReturnLoanId);
+    if (loanId) {
+        openRejectModal(loanId);
     }
 }
 

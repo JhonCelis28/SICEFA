@@ -6,6 +6,8 @@ use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Modules\INFRASTOCK\Entities\ProductiveUnit;
+use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
+use Modules\INFRASTOCK\Entities\WarehouseMovement;
 
 /**
  * @class AreaController
@@ -180,37 +182,34 @@ class AreaController extends Controller
      */
     public function destroy($id)
     {
-        $area = ProductiveUnit::findOrFail($id); // Encuentra el área por su ID o lanza una excepción.
-        
-        // Por ahora, permitir eliminar todas las áreas sin validación
-        // TODO: Implementar validación cuando se definan las relaciones correctas
-        $hasRelatedRecords = false;
-        
-        if ($hasRelatedRecords) {
-            // Si es una petición AJAX, devolver error JSON
-            if (request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar esta área porque tiene historial activo de insumos, herramientas o préstamos.'
-                ], 422);
+        $area = ProductiveUnit::findOrFail($id);
+
+        // Obtener los IDs de los almacenes asociados a esta área
+        $warehouseIds = ProductiveUnitWarehouse::where('productive_unit_id', $area->id)
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        // Verificar si tiene movimientos (préstamos, solicitudes, devoluciones) activos
+        if ($warehouseIds->isNotEmpty()) {
+            $activeMovements = WarehouseMovement::whereIn('productive_unit_warehouse_id', $warehouseIds)
+                ->whereIn('status', ['pending', 'approved'])
+                ->whereNull('deleted_at')
+                ->count();
+
+            if ($activeMovements > 0) {
+                $message = "No se puede eliminar esta área porque tiene {$activeMovements} movimiento(s) activo(s) (préstamos, solicitudes o devoluciones).";
+                if (request()->ajax()) {
+                    return response()->json(['success' => false, 'message' => $message], 422);
+                }
+                return redirect()->route('infrastock.admin.areas.index')->with('error', $message);
             }
-            
-            // Redirige con mensaje de error
-            return redirect()->route('infrastock.admin.areas.index')
-                ->with('error', 'No se puede eliminar esta área porque tiene historial activo de insumos, herramientas o préstamos.');
         }
-        
-        $area->delete(); // Elimina el área de la base de datos (soft delete si está configurado).
 
-        // Si es una petición AJAX, devolver respuesta JSON
+        $area->delete();
+
         if (request()->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Área eliminada exitosamente.'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Área eliminada exitosamente.']);
         }
-
-        // Redirige a la vista index con un parámetro de éxito para SweetAlert2
         return redirect()->route('infrastock.admin.areas.index')->with('success', 'deleted');
     }
 }

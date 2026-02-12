@@ -23,6 +23,19 @@
 @endsection
 
 @section('content')
+    @php
+        $toolsJson = $tools->map(function($t) {
+            return [
+                'id' => $t->id,
+                'nombre' => $t->nombre,
+                'estado' => $t->estado ?? 'disponible',
+                'disponible' => $t->cantidad_disponible ?? 0,
+                'total' => $t->cantidad_total ?? 0,
+                'placa' => $t->placa,
+            ];
+        })->values();
+    @endphp
+
     <script>
         window.formErrors = @json($errors->messages() ?? []);
         window.oldFormData = @json(old() ?? []);
@@ -36,11 +49,13 @@
         isReturnModalOpen: false,
         currentReturnLoan: null,
         currentEditLoan: null,
-        createForm: { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '', delivery_image: null },
+        createForm: { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '' },
         editForm: { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '', delivery_image: null, existing_delivery_image: null },
         returnForm: { description: '' },
         validationErrors: {},
         selectedToolState: null,
+        selectedToolStock: 0,
+        toolsData: {{ $toolsJson->toJson() }},
 
         init() {
             // Asegurarse de que todos los modales estén cerrados al inicio
@@ -50,23 +65,41 @@
             
             // Solo manejar errores de validación aquí (NO mensajes de sesión)
             this.$nextTick(() => {
-                // Manejar errores de validación y abrir modal SOLO si hay errores de formulario
                 const hasFormErrors = window.formErrors && 
                                      typeof window.formErrors === 'object' && 
                                      Object.keys(window.formErrors).length > 0;
                 
                 if (hasFormErrors) {
-                    this.isCreateModalOpen = true;
-                    this.validationErrors = window.formErrors;
                     const oldData = window.oldFormData || {};
-                    this.createForm.tool_id = oldData.tool_id || '';
-                    this.createForm.productive_unit_warehouse_id = oldData.productive_unit_warehouse_id || '';
-                    if (this.createForm.tool_id) {
-                        this.updateToolState();
+                    const formType = oldData._form_type || 'create';
+                    this.validationErrors = window.formErrors;
+                    
+                    if (formType === 'return') {
+                        // Si los errores son del formulario de devolución, abrir modal de devolución
+                        this.isReturnModalOpen = true;
+                        this.currentReturnLoan = oldData._return_loan_id || null;
+                        this.returnForm.description = oldData.description || '';
+                    } else if (formType === 'edit') {
+                        // Si los errores son del formulario de edición, abrir modal de edición
+                        this.isEditModalOpen = true;
+                        this.currentEditLoan = oldData._edit_loan_id || null;
+                        this.editForm.tool_id = oldData.tool_id || '';
+                        this.editForm.productive_unit_warehouse_id = oldData.productive_unit_warehouse_id || '';
+                        this.editForm.purpose = oldData.purpose || '';
+                        this.editForm.required_date = oldData.required_date || '';
+                        this.editForm.amount = oldData.amount || '';
+                    } else {
+                        // Por defecto, abrir modal de creación
+                        this.isCreateModalOpen = true;
+                        this.createForm.tool_id = oldData.tool_id || '';
+                        this.createForm.productive_unit_warehouse_id = oldData.productive_unit_warehouse_id || '';
+                        this.createForm.purpose = oldData.purpose || '';
+                        this.createForm.required_date = oldData.required_date || '';
+                        this.createForm.amount = oldData.amount || '';
+                        if (this.createForm.tool_id) {
+                            this.updateToolState();
+                        }
                     }
-                } else {
-                    // Si no hay errores de formulario, asegurarse de que el modal esté cerrado
-                    this.isCreateModalOpen = false;
                 }
             });
         },
@@ -111,18 +144,38 @@
         },
 
         resetCreateForm() {
-            this.createForm = { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '', delivery_image: null };
+            this.createForm = { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '' };
             this.validationErrors = {};
             this.selectedToolState = null;
+            this.selectedToolStock = 0;
         },
 
         updateToolState() {
-            const select = document.getElementById('tool_id');
-            if (select && select.value) {
-                const selectedOption = select.options[select.selectedIndex];
-                this.selectedToolState = selectedOption.getAttribute('data-estado') || null;
+            const toolId = parseInt(this.createForm.tool_id || this.editForm.tool_id);
+            const tool = this.toolsData.find(t => t.id === toolId);
+            if (tool) {
+                this.selectedToolState = tool.estado;
+                this.selectedToolStock = tool.disponible;
+                // Ajustar cantidad si excede disponible
+                const currentAmount = parseInt(this.createForm.amount) || 0;
+                if (currentAmount > tool.disponible) {
+                    this.createForm.amount = tool.disponible > 0 ? tool.disponible : '';
+                }
             } else {
                 this.selectedToolState = null;
+                this.selectedToolStock = 0;
+            }
+        },
+
+        clampAmount(formName) {
+            const form = formName === 'edit' ? this.editForm : this.createForm;
+            let val = parseInt(form.amount);
+            if (isNaN(val) || val < 1) {
+                form.amount = '';
+                return;
+            }
+            if (this.selectedToolStock > 0 && val > this.selectedToolStock) {
+                form.amount = this.selectedToolStock;
             }
         },
 
@@ -265,24 +318,22 @@
                                             <div class="flex items-center justify-end space-x-2">
                                                 @if($loan->role == 'Préstamo')
                                                     @php
-                                                        // Verificar si ya existe una devolución aprobada para este préstamo específico
-                                                        // La devolución debe ser del mismo usuario, misma herramienta, y creada DESPUÉS del préstamo
+                                                        // Verificar si ya existe una devolución (pendiente o aprobada) para este préstamo
                                                         $hasReturn = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('user_id', $loan->user_id)
                                                             ->where('movement_id', $loan->movement_id)
                                                             ->where('item_type', 'tool')
                                                             ->where('role', 'Devolución')
-                                                            ->where('status', 'approved')
-                                                            ->where('created_at', '>=', $loan->created_at) // Devolución creada después o al mismo tiempo que el préstamo
+                                                            ->whereIn('status', ['approved', 'pending'])
+                                                            ->where('created_at', '>=', $loan->created_at)
                                                             ->exists();
                                                         
-                                                        // Debug: verificar el estado exacto
                                                         $loanStatus = trim(strtolower($loan->status ?? ''));
                                                         $isApproved = ($loanStatus === 'approved');
                                                     @endphp
                                                     
                                                     @if($loanStatus === 'pending')
                                                         <!-- Solo permitir editar y eliminar si está pendiente -->
-                                                        <button @click="openEditModal({
+                                                        <button type="button" @click="openEditModal({
                                                             id: {{ $loan->id }},
                                                             tool_id: {{ $loan->movement_id ?? 'null' }},
                                                             productive_unit_warehouse_id: {{ $loan->productive_unit_warehouse_id ?? 'null' }},
@@ -293,14 +344,16 @@
                                                         })" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar Préstamo">
                                                             <i class="fas fa-edit"></i>
                                                         </button>
-                                                        <button onclick="confirmDeleteLoan({{ $loan->id }}, '{{ addslashes($loan->tool->nombre ?? 'Herramienta') }}')" class="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50 transition-colors" title="Eliminar Préstamo">
+                                                        <button type="button" onclick="confirmDeleteLoan({{ $loan->id }}, '{{ addslashes($loan->tool->nombre ?? 'Herramienta') }}')" class="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50 transition-colors" title="Eliminar Préstamo">
                                                             <i class="fas fa-trash-alt"></i>
                                                         </button>
                                                     @elseif($isApproved)
                                                         @if($hasReturn)
-                                                            <span class="text-gray-400 text-xs">Ya devuelto</span>
+                                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
+                                                                <i class="fas fa-check-circle mr-1"></i> Ya devuelto
+                                                            </span>
                                                         @else
-                                                            <button @click="openReturnModal({{ $loan->id }})" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200 flex items-center" title="Registrar Devolución">
+                                                            <button type="button" @click="openReturnModal({{ $loan->id }})" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200 flex items-center" title="Registrar Devolución">
                                                                 <i class="fas fa-undo mr-2"></i> Devolver
                                                             </button>
                                                         @endif
@@ -342,35 +395,42 @@
                     </div>
                     <form method="POST" action="{{ route('infrastock.instructor.store-loan') }}" enctype="multipart/form-data">
                         @csrf
+                        <input type="hidden" name="_form_type" value="create">
                         <div class="mb-4">
                             <label for="tool_id" class="block text-gray-700 text-sm font-bold mb-2">Herramienta: <span class="text-red-500">*</span></label>
                             <select name="tool_id" id="tool_id" x-model="createForm.tool_id" @change="updateToolState()" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('tool_id') border-red-500 @enderror" required>
                                 <option value="">Seleccione una herramienta</option>
-                                @foreach($tools as $tool)
-                                    <option value="{{ $tool->id }}" data-estado="{{ $tool->estado ?? 'disponible' }}" {{ old('tool_id') == $tool->id ? 'selected' : '' }}>
-                                        {{ $tool->nombre ?? 'N/A' }} @if($tool->placa) - Placa: {{ $tool->placa }} @endif
+                                <template x-for="tool in toolsData" :key="tool.id">
+                                    <option
+                                        :value="tool.id"
+                                        :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
+                                        :class="(tool.estado === 'mantenimiento' || tool.disponible <= 0) ? 'text-gray-400' : ''"
+                                        x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (En mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
                                     </option>
-                                @endforeach
+                                </template>
                             </select>
                             @error('tool_id')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
-                            <!-- Mostrar estado de la herramienta seleccionada -->
+                            <!-- Mostrar estado y stock de la herramienta seleccionada -->
                             <template x-if="selectedToolState">
                                 <div class="mt-2 p-3 rounded-md" :class="{
-                                    'bg-green-100 border border-green-300': selectedToolState === 'disponible',
+                                    'bg-green-100 border border-green-300': selectedToolState === 'disponible' && selectedToolStock > 0,
                                     'bg-yellow-100 border border-yellow-300': selectedToolState === 'en_prestamo',
                                     'bg-orange-100 border border-orange-300': selectedToolState === 'mantenimiento',
-                                    'bg-red-100 border border-red-300': selectedToolState === 'no_disponible'
+                                    'bg-red-100 border border-red-300': selectedToolState === 'no_disponible' || selectedToolStock <= 0
                                 }">
                                     <p class="text-sm font-semibold" :class="{
-                                        'text-green-800': selectedToolState === 'disponible',
+                                        'text-green-800': selectedToolState === 'disponible' && selectedToolStock > 0,
                                         'text-yellow-800': selectedToolState === 'en_prestamo',
                                         'text-orange-800': selectedToolState === 'mantenimiento',
-                                        'text-red-800': selectedToolState === 'no_disponible'
+                                        'text-red-800': selectedToolState === 'no_disponible' || selectedToolStock <= 0
                                     }">
                                         <i class="fas fa-info-circle mr-2"></i>
                                         Estado: <span x-text="getEstadoLabel(selectedToolState)"></span>
+                                        <span class="ml-2">|</span>
+                                        <i class="fas fa-boxes ml-2 mr-1"></i>
+                                        Disponible: <span x-text="selectedToolStock"></span> unidad(es)
                                     </p>
                                 </div>
                             </template>
@@ -391,8 +451,15 @@
                         </div>
                         <div class="mb-4">
                             <label for="amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad: <span class="text-gray-500 text-xs">(Opcional)</span></label>
-                            <input type="number" name="amount" id="amount" value="{{ old('amount') }}" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" placeholder="Ej: 1">
-                            <p class="text-gray-500 text-xs mt-1">Cantidad de herramientas (si aplica)</p>
+                            <input type="number" name="amount" id="amount"
+                                   x-model="createForm.amount"
+                                   @input="clampAmount('create')"
+                                   min="1"
+                                   :max="selectedToolStock > 0 ? selectedToolStock : 1"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" placeholder="Ej: 1">
+                            <p class="text-xs mt-1" :class="selectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="createForm.tool_id">
+                                <i class="fas fa-boxes mr-1"></i> Máximo disponible: <span x-text="selectedToolStock"></span> unidad(es)
+                            </p>
                             @error('amount')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -411,21 +478,14 @@
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        <div class="mb-4">
-                            <label for="delivery_image" class="block text-gray-700 text-sm font-bold mb-2">Foto de Entrega: <span class="text-gray-500 text-xs">(Opcional)</span></label>
-                            <input type="file" name="delivery_image" id="delivery_image" accept="image/*" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('delivery_image') border-red-500 @enderror">
-                            <p class="text-gray-500 text-xs mt-1">Foto que muestre cómo se entrega la herramienta</p>
-                            @error('delivery_image')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                            <!-- Vista previa de la imagen seleccionada -->
-                            <div id="deliveryImagePreview" class="mt-2 hidden">
-                                <img id="previewDeliveryImg" src="" alt="Vista previa" class="max-w-full h-48 object-cover rounded-md border border-gray-300">
-                            </div>
-                        </div>
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Registrar Préstamo</button>
+                            <button type="submit"
+                                    :disabled="!createForm.tool_id || selectedToolStock <= 0"
+                                    :class="(!createForm.tool_id || selectedToolStock <= 0) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                                    class="text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                                Registrar Préstamo
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -441,34 +501,43 @@
                     <form method="POST" :action="`{{ route('infrastock.instructor.update-loan', '') }}/${currentEditLoan}`" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="_form_type" value="edit">
+                        <input type="hidden" name="_edit_loan_id" :value="currentEditLoan">
                         <div class="mb-4">
                             <label for="edit_tool_id" class="block text-gray-700 text-sm font-bold mb-2">Herramienta: <span class="text-red-500">*</span></label>
                             <select name="tool_id" id="edit_tool_id" x-model="editForm.tool_id" @change="updateToolState()" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('tool_id') border-red-500 @enderror" required>
                                 <option value="">Seleccione una herramienta</option>
-                                @foreach($tools as $tool)
-                                    <option value="{{ $tool->id }}" data-estado="{{ $tool->estado ?? 'disponible' }}" :selected="editForm.tool_id == {{ $tool->id }}">
-                                        {{ $tool->nombre ?? 'N/A' }} @if($tool->placa) - Placa: {{ $tool->placa }} @endif
+                                <template x-for="tool in toolsData" :key="tool.id">
+                                    <option
+                                        :value="tool.id"
+                                        :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
+                                        :class="(tool.estado === 'mantenimiento' || tool.disponible <= 0) ? 'text-gray-400' : ''"
+                                        :selected="editForm.tool_id == tool.id"
+                                        x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (En mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
                                     </option>
-                                @endforeach
+                                </template>
                             </select>
                             @error('tool_id')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                             <template x-if="selectedToolState">
                                 <div class="mt-2 p-3 rounded-md" :class="{
-                                    'bg-green-100 border border-green-300': selectedToolState === 'disponible',
+                                    'bg-green-100 border border-green-300': selectedToolState === 'disponible' && selectedToolStock > 0,
                                     'bg-yellow-100 border border-yellow-300': selectedToolState === 'en_prestamo',
                                     'bg-orange-100 border border-orange-300': selectedToolState === 'mantenimiento',
-                                    'bg-red-100 border border-red-300': selectedToolState === 'no_disponible'
+                                    'bg-red-100 border border-red-300': selectedToolState === 'no_disponible' || selectedToolStock <= 0
                                 }">
                                     <p class="text-sm font-semibold" :class="{
-                                        'text-green-800': selectedToolState === 'disponible',
+                                        'text-green-800': selectedToolState === 'disponible' && selectedToolStock > 0,
                                         'text-yellow-800': selectedToolState === 'en_prestamo',
                                         'text-orange-800': selectedToolState === 'mantenimiento',
-                                        'text-red-800': selectedToolState === 'no_disponible'
+                                        'text-red-800': selectedToolState === 'no_disponible' || selectedToolStock <= 0
                                     }">
                                         <i class="fas fa-info-circle mr-2"></i>
                                         Estado: <span x-text="getEstadoLabel(selectedToolState)"></span>
+                                        <span class="ml-2">|</span>
+                                        <i class="fas fa-boxes ml-2 mr-1"></i>
+                                        Disponible: <span x-text="selectedToolStock"></span> unidad(es)
                                     </p>
                                 </div>
                             </template>
@@ -489,8 +558,15 @@
                         </div>
                         <div class="mb-4">
                             <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad: <span class="text-gray-500 text-xs">(Opcional)</span></label>
-                            <input type="number" name="amount" id="edit_amount" x-model="editForm.amount" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" placeholder="Ej: 1">
-                            <p class="text-gray-500 text-xs mt-1">Cantidad de herramientas (si aplica)</p>
+                            <input type="number" name="amount" id="edit_amount"
+                                   x-model="editForm.amount"
+                                   @input="clampAmount('edit')"
+                                   min="1"
+                                   :max="selectedToolStock > 0 ? selectedToolStock : 1"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" placeholder="Ej: 1">
+                            <p class="text-xs mt-1" :class="selectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="editForm.tool_id">
+                                <i class="fas fa-boxes mr-1"></i> Máximo disponible: <span x-text="selectedToolStock"></span> unidad(es)
+                            </p>
                             @error('amount')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -551,6 +627,8 @@
                     </div>
                     <form method="POST" :action="`{{ route('infrastock.instructor.return-loan', '') }}/${currentReturnLoan}`" enctype="multipart/form-data">
                         @csrf
+                        <input type="hidden" name="_form_type" value="return">
+                        <input type="hidden" name="_return_loan_id" :value="currentReturnLoan">
                         
                         <!-- Descripción -->
                         <div class="mb-6">
@@ -736,27 +814,6 @@ function confirmDeleteLoan(loanId, toolName) {
 document.addEventListener('DOMContentLoaded', function() {
     setupAutoFilter();
     
-    // Vista previa para imagen de entrega (modal de creación)
-    const deliveryImageInput = document.getElementById('delivery_image');
-    const deliveryImagePreview = document.getElementById('deliveryImagePreview');
-    const previewDeliveryImg = document.getElementById('previewDeliveryImg');
-    
-    if (deliveryImageInput) {
-        deliveryImageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewDeliveryImg.src = e.target.result;
-                    deliveryImagePreview.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            } else {
-                deliveryImagePreview.classList.add('hidden');
-            }
-        });
-    }
-    
     // Vista previa para imagen de entrega (modal de edición)
     const editDeliveryImageInput = document.getElementById('edit_delivery_image');
     const editDeliveryImagePreview = document.getElementById('editDeliveryImagePreview');
@@ -774,27 +831,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 reader.readAsDataURL(file);
             } else {
                 editDeliveryImagePreview.classList.add('hidden');
-            }
-        });
-    }
-    
-    // Vista previa para imagen legacy (modal de devolución)
-    const imagenInput = document.getElementById('return_imagen');
-    const imagePreview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    
-    if (imagenInput) {
-        imagenInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewImg.src = e.target.result;
-                    imagePreview.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            } else {
-                imagePreview.classList.add('hidden');
             }
         });
     }

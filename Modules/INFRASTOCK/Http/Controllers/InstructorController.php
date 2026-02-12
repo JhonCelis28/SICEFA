@@ -181,7 +181,6 @@ class InstructorController extends Controller
             'purpose' => 'required|string|max:1000',
             'required_date' => 'required|date|after_or_equal:today',
             'amount' => 'nullable|integer|min:1',
-            'delivery_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ], [
             'tool_id.required' => 'Debe seleccionar una herramienta.',
             'productive_unit_warehouse_id.required' => 'Debe seleccionar una unidad productiva.',
@@ -192,20 +191,32 @@ class InstructorController extends Controller
             'required_date.after_or_equal' => 'La fecha requerida debe ser hoy o una fecha futura.',
             'amount.integer' => 'La cantidad debe ser un número entero.',
             'amount.min' => 'La cantidad debe ser al menos 1.',
-            'delivery_image.image' => 'El archivo debe ser una imagen.',
-            'delivery_image.mimes' => 'La imagen debe ser de tipo: jpeg, png, jpg o gif.',
-            'delivery_image.max' => 'La imagen no puede pesar más de 2MB.',
         ]);
 
         $tool = Tool::find($request->tool_id);
         
         if (!$tool) {
-            return redirect()->back()->with('error', 'La herramienta seleccionada no existe.');
+            return redirect()->back()->with('error', 'La herramienta seleccionada no existe.')->withInput();
+        }
+
+        // Validar que la herramienta esté disponible
+        if ($tool->estado === 'mantenimiento') {
+            return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" se encuentra en mantenimiento y no puede ser prestada.")->withInput();
+        }
+
+        // Validar que haya stock suficiente
+        $amount = $request->filled('amount') ? (int) $request->amount : 1;
+        $available = $tool->cantidad_disponible ?? 0;
+        if ($available <= 0) {
+            return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" no tiene unidades disponibles.")->withInput();
+        }
+        if ($amount > $available) {
+            return redirect()->back()->with('error', "Stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$amount}.")->withInput();
         }
 
         $productiveUnitWarehouse = ProductiveUnitWarehouse::find($request->productive_unit_warehouse_id);
         if (!$productiveUnitWarehouse) {
-            return redirect()->back()->with('error', 'La unidad productiva seleccionada no existe.');
+            return redirect()->back()->with('error', 'La unidad productiva seleccionada no existe.')->withInput();
         }
 
         try {
@@ -224,13 +235,6 @@ class InstructorController extends Controller
             // Agregar cantidad si se proporciona
             if ($request->filled('amount')) {
                 $data['amount'] = $request->amount;
-            }
-            
-            // Manejar la carga de imagen de entrega
-            if ($request->hasFile('delivery_image')) {
-                $deliveryImage = $request->file('delivery_image');
-                $deliveryImagePath = $deliveryImage->store('loan-deliveries', 'public');
-                $data['delivery_image'] = $deliveryImagePath;
             }
             
             // Crear el movimiento de préstamo en WarehouseMovement
@@ -305,7 +309,7 @@ class InstructorController extends Controller
             'purpose' => 'required|string|max:1000',
             'required_date' => 'required|date|after_or_equal:today',
             'amount' => 'nullable|integer|min:1',
-            'delivery_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'delivery_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ], [
             'tool_id.required' => 'Debe seleccionar una herramienta.',
             'productive_unit_warehouse_id.required' => 'Debe seleccionar una unidad productiva.',
@@ -318,8 +322,24 @@ class InstructorController extends Controller
             'amount.min' => 'La cantidad debe ser al menos 1.',
             'delivery_image.image' => 'El archivo debe ser una imagen.',
             'delivery_image.mimes' => 'La imagen debe ser de tipo: jpeg, png, jpg o gif.',
-            'delivery_image.max' => 'La imagen no puede pesar más de 2MB.',
+            'delivery_image.max' => 'La imagen no puede pesar más de 10MB.',
         ]);
+
+        // Validar stock disponible de la herramienta
+        $tool = Tool::find($request->tool_id);
+        if ($tool) {
+            $amount = $request->filled('amount') ? (int) $request->amount : 1;
+            $available = $tool->cantidad_disponible ?? 0;
+            if ($tool->estado === 'mantenimiento') {
+                return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" se encuentra en mantenimiento.")->withInput();
+            }
+            if ($available <= 0) {
+                return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" no tiene unidades disponibles.")->withInput();
+            }
+            if ($amount > $available) {
+                return redirect()->back()->with('error', "Stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$amount}.")->withInput();
+            }
+        }
 
         try {
             // Preparar datos para actualizar
@@ -417,17 +437,17 @@ class InstructorController extends Controller
         
         $request->validate([
             'description' => 'required|string|max:1000',
-            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'return_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'return_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ], [
             'description.required' => 'La descripción de entrega es obligatoria.',
             'description.max' => 'La descripción no puede exceder 1000 caracteres.',
             'imagen.image' => 'El archivo debe ser una imagen.',
             'imagen.mimes' => 'La imagen debe ser de tipo: jpeg, png, jpg o gif.',
-            'imagen.max' => 'La imagen no puede pesar más de 2MB.',
+            'imagen.max' => 'La imagen no puede pesar más de 10MB.',
             'return_image.image' => 'El archivo debe ser una imagen.',
             'return_image.mimes' => 'La imagen debe ser de tipo: jpeg, png, jpg o gif.',
-            'return_image.max' => 'La imagen no puede pesar más de 2MB.',
+            'return_image.max' => 'La imagen no puede pesar más de 10MB.',
         ]);
 
         $loan = WarehouseMovement::with('tool')
@@ -515,7 +535,13 @@ class InstructorController extends Controller
             }
             
             // Crear el movimiento de devolución
-            WarehouseMovement::create($data);
+            $returnMovement = WarehouseMovement::create($data);
+
+            // Cargar relaciones para la notificación
+            $returnMovement->load(['tool', 'user']);
+
+            // Notificar al administrador sobre la nueva devolución
+            $this->notifyAdminNewReturn($returnMovement, $loan);
 
             return redirect()->route('infrastock.instructor.my-loans')
                 ->with('success', 'Devolución registrada exitosamente. Está pendiente de aprobación por el administrador.');
@@ -713,6 +739,66 @@ class InstructorController extends Controller
             }
         } catch (\Exception $e) {
             \Log::error('Error en notifyAdminNewLoan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifica a los administradores sobre una nueva devolución de herramienta.
+     * @param WarehouseMovement $returnMovement Movimiento de devolución creado.
+     * @param WarehouseMovement $originalLoan Préstamo original al que corresponde la devolución.
+     */
+    private function notifyAdminNewReturn($returnMovement, $originalLoan)
+    {
+        try {
+            // Buscar administradores (misma lógica que notifyAdminNewLoan)
+            $admins = User::whereHas('roles', function($query) {
+                $query->where('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador')
+                      ->orWhere('slug', 'infrastock.admin');
+            })->get();
+
+            if ($admins->isEmpty()) {
+                $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38];
+                $admins = User::whereHas('roles', function($query) use ($adminRoleIds) {
+                    $query->whereIn('roles.id', $adminRoleIds);
+                })->get();
+            }
+
+            if ($admins->isEmpty()) {
+                \Log::warning('No se encontraron administradores para notificar sobre la devolución');
+                return;
+            }
+
+            $toolName = $returnMovement->tool ? ($returnMovement->tool->nombre ?? 'Herramienta') : 'Herramienta';
+            $userName = $returnMovement->user ? ($returnMovement->user->nickname ?? 'Instructor') : 'Instructor';
+            $description = $returnMovement->description ? " - Estado: " . substr($returnMovement->description, 0, 60) . (strlen($returnMovement->description) > 60 ? '...' : '') : '';
+
+            foreach ($admins as $admin) {
+                try {
+                    Notification::create([
+                        'type' => 'return_created',
+                        'notifiable_type' => 'App\Models\User',
+                        'notifiable_id' => $admin->id,
+                        'data' => [
+                            'title' => 'Nueva Devolución de Herramienta',
+                            'message' => "El instructor {$userName} ha registrado la devolución de la herramienta: {$toolName}{$description}.",
+                            'tool_id' => $returnMovement->tool ? $returnMovement->tool->id : null,
+                            'tool_name' => $toolName,
+                            'loan_id' => $originalLoan->id,
+                            'return_id' => $returnMovement->id,
+                            'user_id' => $returnMovement->user_id,
+                            'user_name' => $userName,
+                            'created_at' => now()->format('d/m/Y H:i'),
+                            'action_url' => route('infrastock.admin.loans.index'),
+                        ],
+                        'read_at' => null,
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Error al crear notificación de devolución para admin ID ' . $admin->id . ': ' . $e->getMessage());
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error en notifyAdminNewReturn: ' . $e->getMessage());
         }
     }
 

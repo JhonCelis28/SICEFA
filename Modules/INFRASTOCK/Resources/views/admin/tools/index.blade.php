@@ -38,8 +38,8 @@
         createForm: { nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', amount: '', price: '' },
 
         init() {
-            // Solo abrir modal si hay errores de validación del servidor
-            @if($errors->any() || session('error'))
+            // Solo abrir modal si hay errores de validación del formulario de creación
+            @if($errors->any() && old('_token'))
                 this.isCreateModalOpen = true;
                 this.validationErrors = @json($errors->messages());
                 const oldData = @json(old());
@@ -64,14 +64,6 @@
                 this.createForm.labor_id = oldData.labor_id || '';
                 this.createForm.amount = oldData.amount || '';
                 this.createForm.price = oldData.price || '';
-                if ('{{ session('error') }}') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: '{{ session('error') }}',
-                        confirmButtonText: 'Entendido'
-                    });
-                }
             @endif
         },
 
@@ -135,25 +127,24 @@
         },
 
     }">
-        <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center space-x-2">
-                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center">
-                        <i class="fas fa-plus mr-2"></i> Registrar Nueva Herramienta
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex flex-col md:flex-row md:items-start mb-6 gap-4">
+                <div class="flex space-x-2">
+                    <!-- Botón de registrar nueva herramienta -->
+                    <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 flex items-center">
+                        <i class="fas fa-plus mr-2"></i>Registrar Herramienta
                     </button>
-                </div>
-                <div class="flex items-center space-x-2">
                     <!-- Botón de exportación PDF -->
                     <a href="{{ route('infrastock.admin.tools.export.pdf') }}" 
-                       class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 flex items-center"
-                       title="Exportar Herramientas a PDF">
-                        <i class="fas fa-file-pdf"></i>
+                       class="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 flex items-center justify-center"
+                       title="Exportar a PDF">
+                        <i class="fas fa-file-pdf text-lg"></i>
                     </a>
                     <!-- Botón de exportación Excel -->
                     <a href="{{ route('infrastock.admin.tools.export.excel') }}" 
-                       class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center"
-                       title="Exportar Herramientas a Excel">
-                        <i class="fas fa-file-excel"></i>
+                       class="px-3 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center justify-center"
+                       title="Exportar a Excel">
+                        <i class="fas fa-file-excel text-lg"></i>
                     </a>
                 </div>
             </div>
@@ -250,10 +241,10 @@
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <!-- Botón para eliminar -->
-                                                <form method="POST" action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($tool->nombre ?? 'Herramienta') }}')">
+                                                <form id="delete-tool-{{ $tool->id }}" method="POST" action="{{ route('infrastock.admin.tools.destroy', $tool->id) }}" style="display: inline;">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50 transition-colors" title="Eliminar">
+                                                    <button type="button" onclick="confirmDelete({{ $tool->id }}, '{{ addslashes($tool->nombre ?? 'Herramienta') }}')" class="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50 transition-colors" title="Eliminar">
                                                         <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 </form>
@@ -732,10 +723,8 @@ async function submitToolForm() {
     return false;
 }
 
-// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
-function confirmDeleteSync(toolName) {
-    let confirmed = false;
-    
+// Función para confirmar eliminación con SweetAlert2
+function confirmDelete(toolId, toolName) {
     Swal.fire({
         title: '¿Estás seguro?',
         text: `¿Quieres eliminar la herramienta "${toolName}"?`,
@@ -757,16 +746,11 @@ function confirmDeleteSync(toolName) {
                     Swal.showLoading();
                 }
             });
-            
-            // Permitir que el formulario se envíe
-            confirmed = true;
-            // Enviar el formulario manualmente
-            event.target.submit();
+
+            // Enviar el formulario por su ID único
+            document.getElementById('delete-tool-' + toolId).submit();
         }
     });
-    
-    // Retornar false para prevenir el envío inmediato del formulario
-    return false;
 }
 
 // Verificar si hay mensajes de sesión

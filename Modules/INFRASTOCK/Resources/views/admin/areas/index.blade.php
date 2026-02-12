@@ -78,14 +78,14 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $area->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $area->description }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button @click="openEditModal({{ $area->id }}, '{{ addslashes($area->name) }}', '{{ addslashes($area->description) }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                                <i class="fas fa-edit"></i> Editar
+                                            <button @click="openEditModal({{ $area->id }}, '{{ addslashes($area->name) }}', '{{ addslashes($area->description) }}')" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Editar">
+                                                <i class="fas fa-edit"></i>
                                             </button>
-                                            <form method="POST" action="{{ route('infrastock.admin.areas.destroy', $area->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($area->name) }}')"
+                                            <form id="delete-area-{{ $area->id }}" method="POST" action="{{ route('infrastock.admin.areas.destroy', $area->id) }}" style="display: inline;">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">
-                                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                                <button type="button" onclick="confirmDelete({{ $area->id }}, '{{ addslashes($area->name) }}')" class="text-red-600 hover:text-red-900" title="Eliminar">
+                                                    <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </form>
                                         </td>
@@ -186,21 +186,17 @@
 console.log('Script cargado correctamente');
 
 // Verificar si hay errores de validación y abrir modal automáticamente
-@if($errors->hasAny(['name', 'description']) || session('error'))
+@if($errors->hasAny(['name', 'description']) && old('_token'))
     document.addEventListener('DOMContentLoaded', function() {
-        // Buscar el componente Alpine.js y abrir el modal de creación
         const alpineComponent = document.querySelector('[x-data]');
         if (alpineComponent && alpineComponent._x_dataStack) {
             alpineComponent._x_dataStack[0].isCreateModalOpen = true;
         }
-        console.log('Errores encontrados:', @json($errors->messages()));
     });
 @endif
 
-// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
-function confirmDeleteSync(areaName) {
-    let confirmed = false;
-    
+// Función para confirmar eliminación con SweetAlert2
+function confirmDelete(areaId, areaName) {
     Swal.fire({
         title: '¿Estás seguro?',
         text: `¿Quieres eliminar el área "${areaName}"?`,
@@ -212,7 +208,6 @@ function confirmDeleteSync(areaName) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Mostrar loading
             Swal.fire({
                 title: 'Eliminando...',
                 text: 'Por favor espera',
@@ -222,16 +217,10 @@ function confirmDeleteSync(areaName) {
                     Swal.showLoading();
                 }
             });
-            
-            // Permitir que el formulario se envíe
-            confirmed = true;
-            // Enviar el formulario manualmente
-            event.target.submit();
+
+            document.getElementById('delete-area-' + areaId).submit();
         }
     });
-    
-    // Retornar false para prevenir el envío inmediato del formulario
-    return false;
 }
 
 // Verificar si hay mensajes de sesión

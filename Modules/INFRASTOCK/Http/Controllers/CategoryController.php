@@ -139,36 +139,33 @@ class CategoryController extends Controller
      */
     public function destroy($id)
     {
-        $category = InfrastockCategory::findOrFail($id); // Encuentra la categoría por su ID o lanza una excepción.
-        
-        // Por ahora, permitir eliminar todas las categorías sin validación
-        // TODO: Implementar validación cuando se definan las relaciones correctas
-        $hasRelatedRecords = false; // Temporalmente deshabilitado
-        
-        if ($hasRelatedRecords) {
-            // Si es una petición AJAX, devolver respuesta JSON
+        $category = InfrastockCategory::findOrFail($id);
+
+        // Verificar si tiene herramientas asignadas
+        $toolCount = $category->tools()->count();
+        if ($toolCount > 0) {
+            $message = "No se puede eliminar la categoría porque tiene {$toolCount} herramienta(s) asignada(s).";
             if (request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar la categoría porque tiene registros relacionados.'
-                ], 422);
+                return response()->json(['success' => false, 'message' => $message], 422);
             }
-
-            // Redirige a la vista index con un parámetro de error para SweetAlert2
-            return redirect()->route('infrastock.admin.categories.index')->with('error', 'No se puede eliminar la categoría porque tiene registros relacionados.');
+            return redirect()->route('infrastock.admin.categories.index')->with('error', $message);
         }
-        
-        $category->delete(); // Elimina la categoría de la base de datos (soft delete si está configurado).
 
-        // Si es una petición AJAX, devolver respuesta JSON
+        // Verificar si tiene insumos asignados
+        $equipmentCount = $category->equipments()->count();
+        if ($equipmentCount > 0) {
+            $message = "No se puede eliminar la categoría porque tiene {$equipmentCount} insumo(s) asignado(s).";
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+            return redirect()->route('infrastock.admin.categories.index')->with('error', $message);
+        }
+
+        $category->delete();
+
         if (request()->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Categoría eliminada exitosamente.'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Categoría eliminada exitosamente.']);
         }
-
-        // Redirige a la vista index con un parámetro de éxito para SweetAlert2
         return redirect()->route('infrastock.admin.categories.index')->with('success', 'deleted');
     }
 }
