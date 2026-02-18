@@ -46,21 +46,6 @@
         </a>
     </li>
 
-    <!-- Notificaciones -->
-    <li>
-        <a href="{{ route('infrastock.instructor.notifications') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.instructor.notifications')) active @endif">
-            <i class="fas fa-bell w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
-            <span x-show="isSidebarExpanded || !isDesktop" 
-                  x-cloak
-                  x-transition:enter="transition ease-out duration-300" 
-                  x-transition:enter-start="opacity-0 transform scale-x-0" 
-                  x-transition:enter-end="opacity-100 transform scale-x-100" 
-                  x-transition:leave="transition ease-in duration-200" 
-                  x-transition:leave-start="opacity-100 transform scale-x-100" 
-                  x-transition:leave-end="opacity-0 transform scale-x-0" 
-                  class="origin-left whitespace-nowrap">Notificaciones</span>
-        </a>
-    </li>
 @endsection
 
 @section('navbar-notifications')
@@ -138,7 +123,7 @@
 @endsection
 
 @section('navbar-user-menu')
-    <button onclick="openProfileModal()" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</button>
+    <a href="{{ route('infrastock.instructor.profile') }}" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2 text-blue-500"></i> Editar Perfil</a>
     <a href="{{ route('infrastock.instructor.logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Cerrar Sesión</a>
     <form id="logout-form" action="{{ route('infrastock.instructor.logout') }}" method="POST" class="hidden">
         @csrf
@@ -221,14 +206,5 @@
             }
         }
     </script>
-    @if(function_exists('openProfileModal'))
-    <script>
-        // Función para abrir el modal de perfil (si existe en las vistas)
-        function openProfileModal() {
-            // Esta función puede ser sobrescrita en las vistas específicas
-            console.log('Modal de perfil');
-        }
-    </script>
-    @endif
     @yield('additional-scripts')
 @endsection

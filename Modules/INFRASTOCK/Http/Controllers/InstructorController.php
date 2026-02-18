@@ -614,7 +614,7 @@ class InstructorController extends Controller
     /**
      * Actualiza el perfil del instructor.
      * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function updateProfile(Request $request)
     {
@@ -648,16 +648,12 @@ class InstructorController extends Controller
 
             $user->update($data);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Perfil actualizado exitosamente.'
-            ]);
+            return redirect()->route('infrastock.instructor.profile')
+                ->with('success', 'Perfil actualizado exitosamente.');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar el perfil: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('infrastock.instructor.profile')
+                ->with('error', 'Error al actualizar el perfil: ' . $e->getMessage());
         }
     }
 
@@ -671,29 +667,15 @@ class InstructorController extends Controller
         try {
             \Log::info('notifyAdminNewLoan: Iniciando notificación para préstamo ID: ' . $loanMovement->id);
             
-            // Buscar usuarios con roles de administrador
-            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38];
-            $admins = User::whereHas('roles', function($query) use ($adminRoleIds) {
-                $query->whereIn('roles.id', $adminRoleIds);
+            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
+            $admins = User::whereHas('roles', function($query) {
+                $query->where('slug', 'infrastock.admin')
+                      ->orWhere('slug', 'superadmin')
+                      ->orWhere('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
             })->get();
 
-            \Log::info('notifyAdminNewLoan: Administradores encontrados por IDs: ' . $admins->count());
-
-            if ($admins->isEmpty()) {
-                $admins = User::whereHas('roles', function($query) {
-                    $query->where('name', 'Administrador')
-                          ->orWhere('name', 'Super Administrador');
-                })->get();
-                \Log::info('notifyAdminNewLoan: Administradores encontrados por nombre: ' . $admins->count());
-            }
-
-            if ($admins->isEmpty()) {
-                // Si no hay administradores con esos roles, buscar por slug
-                $admins = User::whereHas('roles', function($query) {
-                    $query->where('slug', 'infrastock.admin');
-                })->get();
-                \Log::info('notifyAdminNewLoan: Administradores encontrados por slug: ' . $admins->count());
-            }
+            \Log::info('notifyAdminNewLoan: Administradores encontrados: ' . $admins->count());
 
             if ($admins->isEmpty()) {
                 \Log::warning('No se encontraron administradores para notificar sobre el nuevo préstamo');

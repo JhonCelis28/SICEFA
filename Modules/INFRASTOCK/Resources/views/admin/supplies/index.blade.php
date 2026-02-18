@@ -52,9 +52,12 @@
         
         openCreateModal() {
             console.log('Abriendo modal de creación');
-            this.isCreateModalOpen = true;
+            // Resetear el formulario para que aparezca limpio
+            const form = document.getElementById('createSupplyForm');
+            if (form) form.reset();
             this.createUnitMeasure = '';
             this.createUnitMeasureOther = '';
+            this.isCreateModalOpen = true;
         },
         
         openEditModal(id, name, category_id, characteristics, initial_amount, minimum_stock, unit_measure, observations, expiration_date) {
@@ -98,6 +101,9 @@
             this.isLoanModalOpen = false;
             this.createUnitMeasure = '';
             this.createUnitMeasureOther = '';
+            // Resetear el formulario de creación al cerrar
+            const form = document.getElementById('createSupplyForm');
+            if (form) form.reset();
         },
         
         getUnitMeasureValue() {
@@ -320,7 +326,7 @@
                         </button>
                     </div>
                     <!-- Formulario de creación de insumo -->
-                    <form method="POST" action="{{ route('infrastock.admin.supplies.store') }}">
+                    <form id="createSupplyForm" method="POST" action="{{ route('infrastock.admin.supplies.store') }}">
                         @csrf
                         <div class="mb-4">
                             <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Nombre del Insumo: <span class="text-red-500">*</span></label>

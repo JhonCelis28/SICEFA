@@ -605,24 +605,13 @@ class CleaningStaffController extends Controller
     private function notifyAdminNewGroupedRequest($request)
     {
         try {
-            // Buscar usuarios con roles de administrador
-            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38]; // IDs de roles de administrador
-            $admins = User::whereHas('roles', function($query) use ($adminRoleIds) {
-                $query->whereIn('roles.id', $adminRoleIds);
+            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
+            $admins = User::whereHas('roles', function($query) {
+                $query->where('slug', 'infrastock.admin')
+                      ->orWhere('slug', 'superadmin')
+                      ->orWhere('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
             })->get();
-
-            // Si no hay administradores específicos, usar usuarios con rol "Administrador" o "Super Administrador"
-            if ($admins->isEmpty()) {
-                $admins = User::whereHas('roles', function($query) {
-                    $query->where('name', 'Administrador')
-                          ->orWhere('name', 'Super Administrador');
-                })->get();
-            }
-
-            // Si aún no hay administradores, usar el primer usuario del sistema como fallback
-            if ($admins->isEmpty()) {
-                $admins = User::take(1)->get();
-            }
 
             $totalItems = $request->items->count();
             $equipmentNames = $request->items->pluck('equipment.name')->toArray();
@@ -805,16 +794,12 @@ class CleaningStaffController extends Controller
 
             $user->update($data);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Perfil actualizado exitosamente.'
-            ]);
+            return redirect()->route('infrastock.cleaning-staff.profile')
+                ->with('success', 'Perfil actualizado exitosamente.');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar el perfil: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('infrastock.cleaning-staff.profile')
+                ->with('error', 'Error al actualizar el perfil: ' . $e->getMessage());
         }
     }
 

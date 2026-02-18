@@ -24,19 +24,6 @@
         </div>
     </div>
 
-    <!-- Mensajes de éxito/error -->
-    @if(session('success'))
-        <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-            <span class="block sm:inline">{{ session('success') }}</span>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <span class="block sm:inline">{{ session('error') }}</span>
-        </div>
-    @endif
-
     <!-- Lista de Solicitudes Aprobadas -->
     <div class="bg-white rounded-xl shadow-md p-6">
         <div class="flex items-center justify-between mb-6">
@@ -139,11 +126,24 @@
                                                 <i class="fas fa-edit mr-1"></i>
                                                 {{ $surplus->surplus_amount > 0 ? 'Editar' : 'Registrar' }}
                                             </button>
+                                            {{-- Botón eliminar deshabilitado para estado Pendiente --}}
+                                            <button disabled
+                                                    title="No se puede eliminar un sobrante en estado Pendiente"
+                                                    class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed text-sm">
+                                                <i class="fas fa-trash-alt mr-1"></i>
+                                                Eliminar
+                                            </button>
                                         @else
                                             <button disabled
                                                     class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed text-sm">
                                                 <i class="fas fa-lock mr-1"></i>
                                                 {{ $surplus->status === 'approved' ? 'Aprobado' : 'Rechazado' }}
+                                            </button>
+                                            {{-- Botón eliminar habilitado para estado Aprobado o Rechazado --}}
+                                            <button onclick="confirmDeleteSurplus({{ $surplus->id }})"
+                                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm">
+                                                <i class="fas fa-trash-alt mr-1"></i>
+                                                Eliminar
                                             </button>
                                         @endif
                                     </div>
@@ -235,8 +235,35 @@
     </div>
 </div>
 
+<!-- Formulario oculto para eliminar sobrante -->
+<form id="deleteSurplusForm" method="POST" class="hidden">
+    @csrf
+    @method('DELETE')
+</form>
+
 <script>
 let currentMaxAmount = 0;
+
+// Confirmar eliminación de sobrante con SweetAlert2
+function confirmDeleteSurplus(surplusId) {
+    Swal.fire({
+        title: '¿Está seguro?',
+        text: '¿Está seguro de que desea eliminar este sobrante? Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.getElementById('deleteSurplusForm');
+            form.action = `{{ route('infrastock.cleaning-staff.surplus.destroy', '') }}/${surplusId}`;
+            form.submit();
+        }
+    });
+}
 
 // Abrir modal de edición
 function openEditModal(surplusId) {
@@ -244,7 +271,13 @@ function openEditModal(surplusId) {
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                alert('Error: ' + data.error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.error,
+                    confirmButtonColor: '#ef4444',
+                    confirmButtonText: 'Aceptar'
+                });
                 return;
             }
             
@@ -291,7 +324,13 @@ function openEditModal(surplusId) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error al cargar los detalles del sobrante');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al cargar los detalles del sobrante',
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Aceptar'
+            });
         });
 }
 

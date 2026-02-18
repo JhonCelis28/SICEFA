@@ -176,10 +176,10 @@
                                             <button @click="openEditModal({{ $user->id }}, '{{ addslashes($user->person->first_name ?? '') }}', '{{ addslashes($user->person->first_last_name ?? '') }}', '{{ addslashes($user->person->second_last_name ?? '') }}', '{{ $user->person->document_type ?? '' }}', '{{ $user->person->document_number ?? '' }}', '{{ $user->person->telephone1 ?? '' }}', '{{ $user->email }}', '{{ addslashes($user->person->address ?? '') }}', {{ $user->roles->first()->id ?? 0 }}, '{{ $user->trashed() ? '0' : '1' }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
                                                 <i class="fas fa-edit"></i> Editar
                                             </button>
-                                            <form method="POST" action="{{ route('infrastock.admin.users.destroy', $user->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($user->nickname ?? 'Usuario') }}')">
+                                            <form method="POST" action="{{ route('infrastock.admin.users.destroy', $user->id) }}" style="display: inline;" id="delete-form-{{ $user->id }}">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">
+                                                <button type="button" onclick="confirmDeleteUser({{ $user->id }}, '{{ addslashes($user->nickname ?? $user->name ?? 'Usuario') }}')" class="text-red-600 hover:text-red-900">
                                                     <i class="fas fa-trash-alt"></i> Eliminar
                                                 </button>
                                             </form>
@@ -510,22 +510,20 @@
 
 @section('script')
 <script>
-// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
-function confirmDeleteSync(userName) {
-    let confirmed = false;
-    
+// Función para confirmar eliminación con SweetAlert2
+function confirmDeleteUser(userId, userName) {
     Swal.fire({
         title: '¿Estás seguro?',
-        text: `¿Quieres eliminar al usuario "${userName}"?`,
+        text: `¿Quieres eliminar al usuario "${userName}"? Esta acción no se puede deshacer.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        cancelButtonColor: '#6b7280',
         confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
     }).then((result) => {
         if (result.isConfirmed) {
-            // Mostrar loading
             Swal.fire({
                 title: 'Eliminando...',
                 text: 'Por favor espera',
@@ -535,21 +533,15 @@ function confirmDeleteSync(userName) {
                     Swal.showLoading();
                 }
             });
-            
-            // Permitir que el formulario se envíe
-            confirmed = true;
-            // Enviar el formulario manualmente
-            event.target.submit();
+
+            document.getElementById('delete-form-' + userId).submit();
         }
     });
-    
-    // Retornar false para prevenir el envío inmediato del formulario
-    return false;
 }
 
 // Verificar si hay mensajes de sesión
 document.addEventListener('DOMContentLoaded', function() {
-    @if(session('success') === 'deleted')
+    @if(session('user_deleted'))
         Swal.fire({
             icon: 'success',
             title: '¡Eliminado!',

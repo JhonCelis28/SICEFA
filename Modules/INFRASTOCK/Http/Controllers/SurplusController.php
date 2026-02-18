@@ -259,27 +259,15 @@ class SurplusController extends Controller
             
             \Log::info('Usuario que reporta sobrante: ' . $userName . ' (ID: ' . $user->id . ')');
             
-            // Buscar administradores - usando la misma lógica que CleaningStaffController
-            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38];
-            $admins = \App\Models\User::whereHas('roles', function($query) use ($adminRoleIds) {
-                $query->whereIn('roles.id', $adminRoleIds);
+            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
+            $admins = \App\Models\User::whereHas('roles', function($query) {
+                $query->where('slug', 'infrastock.admin')
+                      ->orWhere('slug', 'superadmin')
+                      ->orWhere('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
             })->get();
 
-            \Log::info('Administradores encontrados (por IDs): ' . $admins->count());
-
-            if ($admins->isEmpty()) {
-                $admins = \App\Models\User::whereHas('roles', function($query) {
-                    $query->where('name', 'Administrador')
-                          ->orWhere('name', 'Super Administrador');
-                })->get();
-                \Log::info('Administradores encontrados (por nombre): ' . $admins->count());
-            }
-
-            // Si aún no hay administradores, usar el primer usuario del sistema como fallback
-            if ($admins->isEmpty()) {
-                $admins = \App\Models\User::take(1)->get();
-                \Log::info('Usando fallback: primer usuario del sistema (ID: ' . ($admins->first()->id ?? 'N/A') . ')');
-            }
+            \Log::info('Administradores encontrados: ' . $admins->count());
 
             if ($admins->isEmpty()) {
                 \Log::warning('No se encontraron administradores para enviar notificación de sobrante');
@@ -327,15 +315,35 @@ class SurplusController extends Controller
     private function notifyAdminReturn($surplus, $returnMovement)
     {
         try {
-            // Obtener todos los administradores
+            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
             $admins = \App\Models\User::whereHas('roles', function($query) {
-                $query->where('name', 'Administrador')
-                      ->where('app_id', 19); // ID de la app INFRASTOCK
+                $query->where('slug', 'infrastock.admin')
+                      ->orWhere('slug', 'superadmin')
+                      ->orWhere('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
             })->get();
 
+            $equipmentName = $returnMovement->equipment ? $returnMovement->equipment->name : 'Insumo';
+            $userName = $returnMovement->user ? ($returnMovement->user->nickname ?? $returnMovement->user->name) : 'Usuario';
+
             foreach ($admins as $admin) {
-                // Crear notificación en la base de datos
-                $admin->notify(new \Modules\INFRASTOCK\Notifications\ReturnNotification($surplus, $returnMovement));
+                // Crear notificación usando el modelo Notification de INFRASTOCK
+                \Modules\INFRASTOCK\Entities\Notification::create([
+                    'type' => 'return_created',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $admin->id,
+                    'data' => [
+                        'title' => 'Nueva Devolución de Insumos',
+                        'message' => "El usuario {$userName} ha registrado una devolución de {$returnMovement->amount} unidades de {$equipmentName}.",
+                        'return_id' => $returnMovement->id,
+                        'surplus_id' => $surplus->id,
+                        'equipment_name' => $equipmentName,
+                        'amount' => $returnMovement->amount,
+                        'user_name' => $userName,
+                        'action_url' => route('infrastock.admin.supply-returns.index'),
+                        'created_at' => now()->format('d/m/Y H:i'),
+                    ],
+                ]);
 
                 // Enviar email al administrador
                 try {
@@ -352,13 +360,16 @@ class SurplusController extends Controller
     }
 
     /**
-     * Elimina un registro de sobrante
+     * Elimina un registro de sobrante.
+     * Solo permite eliminar sobrantes con estado "approved" o "rejected".
+     *
      * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy($id)
     {
         $this->verifyRole();
+
         $surplus = Surplus::where('id', $id)
             ->where('user_id', auth()->id())
             ->first();
@@ -368,8 +379,18 @@ class SurplusController extends Controller
                 ->with('error', 'Sobrante no encontrado.');
         }
 
+        // Solo permitir eliminación cuando el estado es "approved" o "rejected"
+        if ($surplus->isPending()) {
+            return redirect()->route('infrastock.cleaning-staff.surplus.index')
+                ->with('error', 'No se puede eliminar un sobrante que se encuentra en estado Pendiente.');
+        }
+
         try {
+            // Eliminar movimientos de almacén relacionados (si existen)
+            \Modules\INFRASTOCK\Entities\WarehouseMovement::where('surplus_id', $surplus->id)->delete();
+
             $surplus->delete();
+
             return redirect()->route('infrastock.cleaning-staff.surplus.index')
                 ->with('success', 'Sobrante eliminado exitosamente.');
         } catch (\Exception $e) {

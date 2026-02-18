@@ -209,7 +209,7 @@
                             Experto en diseño de interfaces y experiencia de usuario.
                         </p>
                         <div class="flex justify-center space-x-4">
-                            <a href="#" class="text-green-600 hover:text-green-800 transition-colors">
+                            <a href="https://github.com/PaulaDayana" class="text-green-600 hover:text-green-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
                             <a href="#" class="text-green-600 hover:text-green-800 transition-colors">
@@ -225,8 +225,8 @@
                         <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-purple-500 bg-purple-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador3.jpg') }}" 
                                  alt="Desarrollador 3" 
-                                 class="w-full h-full object-contain object-center"
-                                 style="object-fit: contain;"
+                                 class="w-full h-full"
+                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador3.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
                             <div class="absolute inset-0 w-full h-full items-center justify-center hidden" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
@@ -238,7 +238,7 @@
                             Especialista en bases de datos y lógica de negocio.
                         </p>
                         <div class="flex justify-center space-x-4">
-                            <a href="#" class="text-purple-600 hover:text-purple-800 transition-colors">
+                            <a href="https://github.com/johanprogam" class="text-purple-600 hover:text-purple-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
                             <a href="#" class="text-purple-600 hover:text-purple-800 transition-colors">
@@ -254,8 +254,8 @@
                         <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-orange-500 bg-orange-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador4.jpg') }}" 
                                  alt="Desarrollador 4" 
-                                 class="w-full h-full object-contain object-center"
-                                 style="object-fit: contain;"
+                                 class="w-full h-full"
+                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador4.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
                             <div class="absolute inset-0 w-full h-full items-center justify-center hidden" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
@@ -267,7 +267,7 @@
                             Desarrollador versátil con experiencia en múltiples tecnologías.
                         </p>
                         <div class="flex justify-center space-x-4">
-                            <a href="#" class="text-orange-600 hover:text-orange-800 transition-colors">
+                            <a href="https://github.com/sharonlondono07" class="text-orange-600 hover:text-orange-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
                             <a href="#" class="text-orange-600 hover:text-orange-800 transition-colors">

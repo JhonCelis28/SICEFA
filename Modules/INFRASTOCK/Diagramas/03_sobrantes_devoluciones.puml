@@ -1,0 +1,119 @@
+@startuml Flujo_Sobrantes_Devoluciones
+title **INFRASTOCK - Diagrama de Actividades: Sobrantes y Devoluciones de Insumos**
+
+|#LightBlue| Usuario (Solicitante) |
+|#LightGreen| Sistema |
+|#LightYellow| Administrador |
+
+|Usuario (Solicitante)|
+start
+:Acceder al módulo\n"Registro de Sobrantes";
+
+|Sistema|
+:Cargar historial de sobrantes\ndel usuario (pendientes,\naprobados, rechazados);
+:Mostrar sobrantes asociados\na solicitudes aprobadas;
+
+|Usuario (Solicitante)|
+:Seleccionar sobrante pendiente\npara editar/registrar;
+
+|Sistema|
+:Cargar detalles del sobrante\n(insumo, categoría, cantidad\nsolicitada, solicitud asociada);
+
+|Usuario (Solicitante)|
+:Ingresar cantidad sobrante;
+:Ingresar descripción del sobrante;
+:Enviar registro;
+
+|Sistema|
+:Validar datos;
+
+if (¿Datos válidos?) then (Sí)
+  if (¿Cantidad <= Cantidad solicitada?) then (Sí)
+    :Actualizar registro de Surplus\n(surplus_amount, description);
+    
+    if (¿Cantidad sobrante > 0?) then (Sí)
+      :Verificar si existe devolución\nprevia para este sobrante;
+      
+      if (¿Existe devolución previa?) then (Sí)
+        :Actualizar WarehouseMovement\nexistente (amount, description,\nstatus='pending');
+      else (No)
+        :Crear WarehouseMovement\n(role='Devolución',\nitem_type='equipment',\nstatus='pending');
+      endif
+      
+      :Enviar notificación al admin\n(return_created);
+      
+      |Administrador|
+      :Recibir notificación\n"Nueva devolución de insumos";
+      :Acceder a módulo de\nDevoluciones de Insumos;
+      :Revisar detalles:\n- Insumo\n- Cantidad devuelta\n- Usuario\n- Descripción;
+      
+      if (¿Aprobar devolución?) then (Aprobar)
+        :Aprobar devolución;
+        
+        |Sistema|
+        :Crear WarehouseMovement\n(role='Recibe',\namount=surplus_amount);
+        :Actualizar Surplus\n(status='approved',\nprocessed_at, processed_by);
+        :Incrementar stock del insumo;
+        :Enviar notificación al usuario;
+        
+        |Usuario (Solicitante)|
+        :Recibir notificación\n"Devolución aprobada";
+        :Sobrante marcado como\n**Aprobado** (verde);
+        
+      else (Rechazar)
+        :Rechazar devolución;
+        :Ingresar motivo de rechazo;
+        
+        |Sistema|
+        :Actualizar Surplus\n(status='rejected',\nprocessed_at, processed_by);
+        :Registrar motivo de rechazo\nen descripción;
+        :Enviar notificación al usuario;
+        
+        |Usuario (Solicitante)|
+        :Recibir notificación\n"Devolución rechazada"\ncon motivo;
+        :Sobrante marcado como\n**Rechazado** (rojo);
+        
+      endif
+      
+    else (No - Cantidad = 0)
+      :Guardar registro sin\ncrear devolución;
+      
+      |Usuario (Solicitante)|
+      :Confirmación:\n"Sobrante actualizado";
+      
+    endif
+    
+  else (No)
+    :Mostrar error:\n"La cantidad debe ser menor\na la cantidad solicitada";
+    
+    |Usuario (Solicitante)|
+    :Ajustar cantidad;
+    
+  endif
+  
+else (No)
+  :Mostrar errores de validación;
+  
+  |Usuario (Solicitante)|
+  :Corregir datos;
+  
+endif
+
+note right
+  **Eliminación de Sobrantes:**
+  - Solo permitida si estado es
+    Aprobado o Rechazado
+  - No permitida si está Pendiente
+  - Requiere confirmación SweetAlert2
+end note
+
+stop
+
+legend right
+  |= Estado |= Puede editar |= Puede eliminar |
+  | pending | Sí | No |
+  | approved | No | Sí |
+  | rejected | No | Sí |
+endlegend
+
+@enduml

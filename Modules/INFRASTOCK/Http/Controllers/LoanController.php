@@ -841,15 +841,31 @@ class LoanController extends Controller
             if ($status === 'approved') {
                 $title = 'Devolución Aprobada';
                 $message = "Tu devolución de la {$itemLabel}: {$itemName} ha sido aprobada.";
+                $type = 'return_approved';
             } else {
                 $title = 'Devolución Rechazada';
                 $message = "Tu devolución de la {$itemLabel}: {$itemName} ha sido rechazada.";
                 if ($rejectionReason) {
                     $message .= " Motivo: {$rejectionReason}";
                 }
+                $type = 'return_rejected';
             }
 
-            $user->notify(new \Modules\INFRASTOCK\Notifications\ReturnStatusNotification($returnMovement, $status, $title, $message, $actionUrl));
+            // Usar el modelo Notification de INFRASTOCK (compatible con la tabla notifications)
+            \Modules\INFRASTOCK\Entities\Notification::create([
+                'type' => $type,
+                'notifiable_type' => 'App\Models\User',
+                'notifiable_id' => $user->id,
+                'data' => [
+                    'title' => $title,
+                    'message' => $message,
+                    'return_id' => $returnMovement->id,
+                    'status' => $status,
+                    'rejection_reason' => $rejectionReason,
+                    'action_url' => $actionUrl,
+                    'created_at' => now()->format('d/m/Y H:i'),
+                ],
+            ]);
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de estado de devolución: ' . $e->getMessage());
         }
@@ -884,13 +900,11 @@ class LoanController extends Controller
             }
 
             // Crear notificación usando el modelo Notification de INFRASTOCK
-            try {
-                $notification = new \Modules\INFRASTOCK\Entities\Notification();
-                // El ID se genera automáticamente en el boot() del modelo
-                $notification->type = $status === 'approved' ? 'loan_approved' : 'loan_rejected';
-                $notification->notifiable_type = 'App\Models\User';
-                $notification->notifiable_id = $user->id;
-                $notification->data = [
+            \Modules\INFRASTOCK\Entities\Notification::create([
+                'type' => $status === 'approved' ? 'loan_approved' : 'loan_rejected',
+                'notifiable_type' => 'App\Models\User',
+                'notifiable_id' => $user->id,
+                'data' => [
                     'title' => $title,
                     'message' => $message,
                     'tool_id' => $loanMovement->tool ? $loanMovement->tool->id : null,
@@ -900,14 +914,8 @@ class LoanController extends Controller
                     'rejection_reason' => $rejectionReason,
                     'created_at' => now()->format('d/m/Y H:i'),
                     'action_url' => route('infrastock.instructor.my-loans'),
-                ];
-                $notification->read_at = null;
-                $notification->save();
-                \Log::info('Notificación de préstamo ' . $status . ' creada exitosamente para usuario ID: ' . $user->id);
-            } catch (\Exception $notificationError) {
-                \Log::error('Error al crear la notificación del préstamo: ' . $notificationError->getMessage());
-                \Log::error('Stack trace: ' . $notificationError->getTraceAsString());
-            }
+                ],
+            ]);
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de estado de préstamo: ' . $e->getMessage());
         }

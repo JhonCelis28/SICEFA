@@ -611,12 +611,19 @@ class UserManagementController extends Controller
                 return redirect()->route('infrastock.admin.users.index')->with('error', 'No se puede eliminar el usuario porque tiene registros relacionados.');
             }
             
+            // Guardar referencia a la persona antes de eliminar el usuario
+            $person = $user->person;
+            
             // Eliminar relaciones primero
             $user->roles()->detach();
             
-            // Eliminar usuario y persona permanentemente
+            // Eliminar usuario permanentemente
             $user->forceDelete();
-            $user->person->delete();
+            
+            // Eliminar persona asociada (si existe)
+            if ($person) {
+                $person->delete();
+            }
 
             \Log::info('Usuario eliminado exitosamente');
 
@@ -626,7 +633,7 @@ class UserManagementController extends Controller
                     'message' => 'Usuario eliminado permanentemente.'
                 ]);
             }
-            return redirect()->route('infrastock.admin.users.index')->with('success', 'deleted');
+            return redirect()->route('infrastock.admin.users.index')->with('user_deleted', true);
 
         } catch (\Exception $e) {
             \Log::error('Error al eliminar usuario: ' . $e->getMessage());

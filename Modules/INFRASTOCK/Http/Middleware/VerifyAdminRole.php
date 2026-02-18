@@ -26,7 +26,9 @@ class VerifyAdminRole
         $userSlugs = $user->roles->pluck('slug')->toArray();
 
         $isAdmin = in_array('Administrador', $userRoles) 
-                || in_array('infrastock.admin', $userSlugs);
+                || in_array('Super Administrador', $userRoles)
+                || in_array('infrastock.admin', $userSlugs)
+                || in_array('superadmin', $userSlugs);
 
         if (!$isAdmin) {
             if ($request->ajax() || $request->wantsJson()) {

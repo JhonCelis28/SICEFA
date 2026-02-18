@@ -575,7 +575,7 @@
                                                 <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }}, {{ $loan->amount ?? 'null' }}, '{{ addslashes($loan->description ?? '') }}')" class="text-yellow-600 hover:text-yellow-900 mr-2" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <form method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($loan->role) }}')">
+                                                <form method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($loan->role) }}', this)">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="text-red-600 hover:text-red-900" title="Eliminar">
@@ -872,15 +872,15 @@
             </div>
 
             <!-- Modal para Ver Descripción de Devolución -->
-            <div id="returnDescriptionModal" class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto p-6">
-                    <div class="flex justify-between items-center mb-4">
+            <div id="returnDescriptionModal" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto p-6 flex flex-col" style="max-height: 90vh;">
+                    <div class="flex justify-between items-center mb-4 flex-shrink-0">
                         <h3 class="text-2xl font-bold text-gray-800">Descripción de Devolución</h3>
                         <button onclick="closeReturnDescriptionModal()" class="text-gray-500 hover:text-gray-700">
                             <i class="fas fa-times text-xl"></i>
                         </button>
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-4 overflow-y-auto flex-grow" style="min-height: 0;">
                         <p class="text-sm text-gray-600 mb-2"><strong>Herramienta:</strong> <span id="modalToolName"></span></p>
                         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">
@@ -893,13 +893,13 @@
                             <label class="block text-gray-700 text-sm font-bold mb-2">
                                 Imagen de la Devolución:
                             </label>
-                            <div class="mt-2">
-                                <img id="modalReturnImage" src="" alt="Imagen de devolución" class="max-w-full h-auto rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity" onclick="showImageFullscreen(this.src)">
+                            <div class="mt-2 flex justify-center">
+                                <img id="modalReturnImage" src="" alt="Imagen de devolución" class="rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity" style="max-width: 100%; max-height: 40vh; object-fit: contain;" onclick="showImageFullscreen(this.src)">
                             </div>
                             <p class="text-xs text-gray-500 mt-1">Haz clic en la imagen para verla en tamaño completo</p>
                         </div>
                     </div>
-                    <div class="flex justify-end space-x-4">
+                    <div class="flex justify-end space-x-4 flex-shrink-0 pt-4 border-t border-gray-200">
                         <button onclick="closeReturnDescriptionModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">
                             Cerrar
                         </button>
@@ -983,9 +983,10 @@ function confirmReturnLoan(loanId, toolName) {
     });
 }
 
-// Función para confirmar eliminación con SweetAlert2 (versión síncrona)
-function confirmDeleteSync(movementType) {
-    let confirmed = false;
+// Función para confirmar eliminación con SweetAlert2
+function confirmDeleteSync(movementType, formElement) {
+    // Prevenir el envío inmediato del formulario
+    event.preventDefault();
     
     Swal.fire({
         title: '¿Estás seguro?',
@@ -1009,14 +1010,11 @@ function confirmDeleteSync(movementType) {
                 }
             });
             
-            // Permitir que el formulario se envíe
-            confirmed = true;
-            // Enviar el formulario manualmente
-            event.target.submit();
+            // Enviar el formulario directamente (sin pasar por onsubmit otra vez)
+            formElement.submit();
         }
     });
     
-    // Retornar false para prevenir el envío inmediato del formulario
     return false;
 }
 

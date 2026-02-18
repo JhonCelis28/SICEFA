@@ -631,16 +631,12 @@ class PsicolaController extends Controller
 
             $user->update($data);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Perfil actualizado exitosamente.'
-            ]);
+            return redirect()->route('infrastock.psicola.profile')
+                ->with('success', 'Perfil actualizado exitosamente.');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar el perfil: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('infrastock.psicola.profile')
+                ->with('error', 'Error al actualizar el perfil: ' . $e->getMessage());
         }
     }
 
@@ -869,22 +865,13 @@ class PsicolaController extends Controller
     private function notifyAdminNewRequest($request)
     {
         try {
-            // Buscar usuarios con roles de administrador
-            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38];
-            $admins = User::whereHas('roles', function($query) use ($adminRoleIds) {
-                $query->whereIn('roles.id', $adminRoleIds);
+            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
+            $admins = User::whereHas('roles', function($query) {
+                $query->where('slug', 'infrastock.admin')
+                      ->orWhere('slug', 'superadmin')
+                      ->orWhere('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
             })->get();
-
-            if ($admins->isEmpty()) {
-                $admins = User::whereHas('roles', function($query) {
-                    $query->where('name', 'Administrador')
-                          ->orWhere('name', 'Super Administrador');
-                })->get();
-            }
-
-            if ($admins->isEmpty()) {
-                $admins = User::take(1)->get();
-            }
 
             $totalItems = $request->items->count();
             $equipmentNames = $request->items->pluck('equipment.name')->toArray();
@@ -944,17 +931,13 @@ class PsicolaController extends Controller
     private function notifyAdminSurplus($surplus)
     {
         try {
-            $adminRoleIds = [1, 5, 7, 16, 19, 24, 30, 38];
-            $admins = User::whereHas('roles', function($query) use ($adminRoleIds) {
-                $query->whereIn('roles.id', $adminRoleIds);
+            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
+            $admins = User::whereHas('roles', function($query) {
+                $query->where('slug', 'infrastock.admin')
+                      ->orWhere('slug', 'superadmin')
+                      ->orWhere('name', 'Administrador')
+                      ->orWhere('name', 'Super Administrador');
             })->get();
-
-            if ($admins->isEmpty()) {
-                $admins = User::whereHas('roles', function($query) {
-                    $query->where('name', 'Administrador')
-                          ->orWhere('name', 'Super Administrador');
-                })->get();
-            }
 
             foreach ($admins as $admin) {
                 Notification::create([

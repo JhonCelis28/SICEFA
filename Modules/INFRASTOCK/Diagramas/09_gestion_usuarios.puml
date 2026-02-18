@@ -1,0 +1,143 @@
+@startuml Flujo_Gestion_Usuarios
+title **INFRASTOCK - Diagrama de Actividades: Gestión de Usuarios (Administrador)**
+
+|#LightYellow| Administrador |
+|#LightGreen| Sistema |
+
+|Administrador|
+start
+:Acceder al módulo\n"Gestión de Usuarios";
+
+|Sistema|
+:Cargar lista de usuarios\ncon roles de INFRASTOCK\n(app_id = 19);
+:Mostrar tabla con:\n- Nombre\n- Email\n- Rol\n- Estado (activo/inactivo);
+
+|Administrador|
+
+switch (¿Qué acción realizar?)
+case (Crear Usuario)
+  :Seleccionar "Nuevo Usuario";
+  
+  |Sistema|
+  :Cargar formulario con\nroles disponibles de INFRASTOCK;
+  
+  |Administrador|
+  :Ingresar datos personales:\n- Nombre completo\n- Tipo de documento\n- Número de documento\n- Email\n- Teléfono (opcional)\n- Dirección (opcional);
+  :Seleccionar rol:\n- Personal de Aseo\n- Operario\n- Instructor\n- Centro de Convivencia\n- Ganadería\n- Vigilancia\n- Psicola\n- Ciencias Básicas\n- Agroindustria;
+  :Ingresar contraseña\n(o dejar vacío para\ngenerar por defecto);
+  :Enviar formulario;
+  
+  |Sistema|
+  :Validar datos;
+  
+  if (¿Datos válidos?) then (Sí)
+    :Crear registro Person\n(nombre, documento, teléfono);
+    :Crear registro User\n(email, password);
+    :Asignar rol seleccionado\n(app_id = 19);
+    
+    if (¿Se generó contraseña?) then (Sí)
+      :Mostrar contraseña\ngenerada al admin;
+    endif
+    
+    :Mostrar mensaje de éxito;
+  else (No)
+    :Mostrar errores\nde validación;
+  endif
+
+case (Editar Usuario)
+  :Seleccionar usuario a editar;
+  
+  |Sistema|
+  :Cargar formulario con\ndatos actuales del usuario;
+  
+  |Administrador|
+  :Modificar datos necesarios:\n- Datos personales\n- Rol\n- Contraseña (opcional);
+  :Guardar cambios;
+  
+  |Sistema|
+  :Validar datos;
+  :Actualizar Person y User;
+  
+  if (¿Se cambió el rol?) then (Sí)
+    :Reasignar rol de INFRASTOCK;
+  endif
+  
+  if (¿Se cambió la contraseña?) then (Sí)
+    :Encriptar y actualizar\ncontraseña;
+  endif
+  
+  :Mostrar mensaje de éxito;
+
+case (Cambiar Estado)
+  :Seleccionar usuario;
+  :Hacer clic en\n"Activar/Desactivar";
+  
+  |Sistema|
+  :Enviar petición AJAX;
+  
+  if (¿Usuario activo?) then (Sí - Desactivar)
+    :Aplicar Soft Delete\n(deleted_at = now);
+    :Cambiar badge a\n"Inactivo" (rojo);
+  else (No - Activar)
+    :Remover Soft Delete\n(deleted_at = null);
+    :Cambiar badge a\n"Activo" (verde);
+  endif
+  
+  :Actualizar interfaz\nen tiempo real;
+
+case (Eliminar Usuario)
+  :Seleccionar usuario\na eliminar;
+  
+  |Sistema|
+  :Verificar solicitudes\npendientes del usuario\n(AJAX: check-requests);
+  
+  if (¿Tiene solicitudes pendientes?) then (Sí)
+    :Mostrar advertencia:\n"Este usuario tiene\nsolicitudes pendientes.\n¿Desea continuar?";
+    
+    |Administrador|
+    if (¿Confirmar eliminación?) then (Sí)
+      |Sistema|
+      :Eliminar usuario\npermanentemente;
+      :Eliminar persona asociada;
+      :Mostrar mensaje de éxito;
+    else (No)
+      :Cancelar operación;
+    endif
+  else (No)
+    :Mostrar confirmación\nestándar;
+    
+    |Administrador|
+    if (¿Confirmar eliminación?) then (Sí)
+      |Sistema|
+      :Eliminar usuario\npermanentemente;
+      :Eliminar persona asociada;
+      :Mostrar mensaje de éxito;
+    else (No)
+      :Cancelar operación;
+    endif
+  endif
+
+case (Ver Detalle)
+  :Seleccionar usuario;
+  
+  |Sistema|
+  :Mostrar información:\n- Datos personales\n- Rol asignado\n- Estado de cuenta\n- Fecha de registro\n- Última actividad;
+
+endswitch
+
+stop
+
+legend right
+  |= Rol INFRASTOCK |= Permisos principales |
+  | Personal de Aseo | Solicitudes + Sobrantes |
+  | Operario | Solicitudes + Sobrantes + Stock |
+  | Instructor | Préstamos de herramientas |
+  | Centro de Convivencia | Solicitudes + Sobrantes + Stock |
+  | Ganadería | Solicitudes + Sobrantes + Stock |
+  | Vigilancia | Solicitudes + Sobrantes + Stock |
+  | Psicola | Solicitudes + Sobrantes + Stock |
+  | Ciencias Básicas | Solicitudes + Sobrantes + Stock |
+  | Agroindustria | Solicitudes + Sobrantes + Stock |
+endlegend
+
+@enduml
