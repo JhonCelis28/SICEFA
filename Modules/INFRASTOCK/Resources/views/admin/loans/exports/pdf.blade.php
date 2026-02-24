@@ -141,6 +141,7 @@
                     <th style="width: 80px;">HERRAMIENTA</th>
                     <th style="width: 70px;">USUARIO / PRESTATARIO</th>
                     <th style="width: 35px;">CANT.</th>
+                    <th style="width: 60px;">ÁREA / BODEGA</th>
                     <th style="width: 55px;">MOVIMIENTO</th>
                     <th style="width: 50px;">ESTADO</th>
                     <th style="width: 55px;">FECHA</th>
@@ -154,6 +155,12 @@
                         <td class="text-left">{{ $loan->tool->nombre ?? 'N/A' }} {{ $loan->tool->placa ? '['.$loan->tool->placa.']' : '' }}</td>
                         <td class="text-left">{{ $loan->user->person->first_name ?? 'N/A' }} {{ $loan->user->person->first_last_name ?? '' }}</td>
                         <td>{{ $loan->amount ?? 'N/A' }}</td>
+                        <td class="text-left">
+                            {{ $loan->productiveUnitWarehouse->productiveUnit->name ?? 'N/A' }}
+                            @if($loan->productiveUnitWarehouse && $loan->productiveUnitWarehouse->warehouse)
+                                ({{ $loan->productiveUnitWarehouse->warehouse->name }})
+                            @endif
+                        </td>
                         <td><span class="role-{{ $loan->role === 'Préstamo' ? 'prestamo' : 'devolucion' }}">{{ $loan->role }}</span></td>
                         <td><span class="status-{{ $loan->status ?? 'pending' }}">{{ $statusLabels[$loan->status] ?? 'N/A' }}</span></td>
                         <td>{{ $loan->created_at->format('d/m/Y') }}</td>

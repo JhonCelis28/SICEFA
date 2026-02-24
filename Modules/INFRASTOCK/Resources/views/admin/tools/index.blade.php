@@ -33,9 +33,9 @@
     <div x-data="{
         isCreateModalOpen: false,
         isEditModalOpen: false,
-        currentTool: { id: null, nombre: '', imagen: '', placa: '', descripcion: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', descripcion_mantenimiento: '', amount: '' },
+        currentTool: { id: null, nombre: '', imagen: '', placa: '', descripcion: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', descripcion_mantenimiento: '' },
         validationErrors: {},
-        createForm: { nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', amount: '', price: '' },
+        createForm: { nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', price: '' },
 
         init() {
             // Solo abrir modal si hay errores de validación del formulario de creación
@@ -62,7 +62,6 @@
                 this.createForm.descripcion_mantenimiento = oldData.descripcion_mantenimiento || '';
                 this.createForm.inventory_id = oldData.inventory_id || '';
                 this.createForm.labor_id = oldData.labor_id || '';
-                this.createForm.amount = oldData.amount || '';
                 this.createForm.price = oldData.price || '';
             @endif
         },
@@ -70,28 +69,9 @@
         openCreateModal() {
             this.isCreateModalOpen = true;
             this.resetCreateForm();
-            // Esperar a que el modal se renderice y luego agregar el listener
-            this.$nextTick(() => {
-                const form = document.getElementById('createToolForm');
-                if (form) {
-                    // Remover listeners previos si existen
-                    const newForm = form.cloneNode(true);
-                    form.parentNode.replaceChild(newForm, form);
-                    
-                    // Agregar nuestro listener
-                    newForm.addEventListener('submit', function(e) {
-                        console.log('Submit interceptado desde Alpine.js');
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
-                        handleFormSubmit(e);
-                        return false;
-                    }, true);
-                }
-            });
         },
 
-        openEditModal(id, nombre, imagen, placa, descripcion, marca, modelo, categoria_id, category_id, estado, cantidad_total, cantidad_disponible, fecha_mantenimiento, proximo_mantenimiento, fecha_adquisicion, descripcion_mantenimiento, amount) {
+        openEditModal(id, nombre, imagen, placa, descripcion, marca, modelo, categoria_id, category_id, estado, cantidad_total, cantidad_disponible, fecha_mantenimiento, proximo_mantenimiento, fecha_adquisicion, descripcion_mantenimiento) {
             this.isEditModalOpen = true;
             this.currentTool = { 
                 id: id, 
@@ -109,8 +89,7 @@
                 fecha_mantenimiento: fecha_mantenimiento || '', 
                 proximo_mantenimiento: proximo_mantenimiento || '', 
                 fecha_adquisicion: fecha_adquisicion || '', 
-                descripcion_mantenimiento: descripcion_mantenimiento || '', 
-                amount: amount || '' 
+                descripcion_mantenimiento: descripcion_mantenimiento || '' 
             };
             this.validationErrors = {};
         },
@@ -122,7 +101,7 @@
         },
 
         resetCreateForm() {
-            this.createForm = { nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', amount: '', price: '' };
+            this.createForm = { nombre: '', imagen: '', placa: '', descripcion: '', descripcion_actual: '', marca: '', modelo: '', categoria_id: '', category_id: '', estado: 'disponible', cantidad_total: '', cantidad_disponible: '', fecha_mantenimiento: '', proximo_mantenimiento: '', fecha_adquisicion: '', atributos: '', descripcion_mantenimiento: '', inventory_id: '', labor_id: '', price: '' };
             this.validationErrors = {};
         },
 
@@ -237,7 +216,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div class="flex items-center justify-end space-x-2">
                                                 <!-- Botón para editar -->
-                                                <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}', {{ $tool->amount ?? 'null' }})" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
+                                                <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}')" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <!-- Botón para eliminar -->
@@ -296,7 +275,7 @@
                             </div>
                             <div class="mb-4">
                                 <label for="create_placa" class="block text-gray-700 text-sm font-bold mb-2">Placa:</label>
-                                <input type="text" name="placa" id="create_placa" value="{{ old('placa') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('placa') border-red-500 @enderror">
+                                <input type="text" name="placa" id="create_placa" x-model="createForm.placa" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('placa') border-red-500 @enderror">
                                 @error('placa')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
@@ -311,7 +290,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="create_descripcion" class="block text-gray-700 text-sm font-bold mb-2">Descripción:</label>
-                            <textarea name="descripcion" id="create_descripcion" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion') border-red-500 @enderror">{{ old('descripcion') }}</textarea>
+                            <textarea name="descripcion" id="create_descripcion" rows="2" x-model="createForm.descripcion" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion') border-red-500 @enderror"></textarea>
                             @error('descripcion')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -319,14 +298,14 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
                                 <label for="create_marca" class="block text-gray-700 text-sm font-bold mb-2">Marca:</label>
-                                <input type="text" name="marca" id="create_marca" value="{{ old('marca') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('marca') border-red-500 @enderror">
+                                <input type="text" name="marca" id="create_marca" x-model="createForm.marca" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('marca') border-red-500 @enderror">
                                 @error('marca')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div class="mb-4">
                                 <label for="create_modelo" class="block text-gray-700 text-sm font-bold mb-2">Modelo:</label>
-                                <input type="text" name="modelo" id="create_modelo" value="{{ old('modelo') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('modelo') border-red-500 @enderror">
+                                <input type="text" name="modelo" id="create_modelo" x-model="createForm.modelo" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('modelo') border-red-500 @enderror">
                                 @error('modelo')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
@@ -335,10 +314,10 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
                                 <label for="create_category_id" class="block text-gray-700 text-sm font-bold mb-2">Categoría:</label>
-                                <select name="category_id" id="create_category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror">
+                                <select name="category_id" id="create_category_id" x-model="createForm.category_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('category_id') border-red-500 @enderror">
                                     <option value="">Seleccione una categoría</option>
                                     @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('category_id')
@@ -347,11 +326,11 @@
                             </div>
                             <div class="mb-4">
                                 <label for="create_estado" class="block text-gray-700 text-sm font-bold mb-2">Estado:</label>
-                                <select name="estado" id="create_estado" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('estado') border-red-500 @enderror">
-                                    <option value="disponible" {{ old('estado', 'disponible') == 'disponible' ? 'selected' : '' }}>Disponible</option>
-                                    <option value="en_prestamo" {{ old('estado') == 'en_prestamo' ? 'selected' : '' }}>En Préstamo</option>
-                                    <option value="mantenimiento" {{ old('estado') == 'mantenimiento' ? 'selected' : '' }}>Mantenimiento</option>
-                                    <option value="no_disponible" {{ old('estado') == 'no_disponible' ? 'selected' : '' }}>No Disponible</option>
+                                <select name="estado" id="create_estado" x-model="createForm.estado" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('estado') border-red-500 @enderror">
+                                    <option value="disponible">Disponible</option>
+                                    <option value="en_prestamo">En Préstamo</option>
+                                    <option value="mantenimiento">Mantenimiento</option>
+                                    <option value="no_disponible">No Disponible</option>
                                 </select>
                                 @error('estado')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -361,14 +340,15 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
                                 <label for="create_cantidad_total" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Total:</label>
-                                <input type="number" name="cantidad_total" id="create_cantidad_total" value="{{ old('cantidad_total') }}" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('cantidad_total') border-red-500 @enderror">
+                                <input type="number" name="cantidad_total" id="create_cantidad_total" x-model="createForm.cantidad_total" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('cantidad_total') border-red-500 @enderror">
                                 @error('cantidad_total')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div class="mb-4">
                                 <label for="create_cantidad_disponible" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Disponible:</label>
-                                <input type="number" name="cantidad_disponible" id="create_cantidad_disponible" value="{{ old('cantidad_disponible') }}" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('cantidad_disponible') border-red-500 @enderror">
+                                <input type="number" name="cantidad_disponible" id="create_cantidad_disponible" x-model="createForm.cantidad_disponible" min="0" :max="createForm.cantidad_total || 99999" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('cantidad_disponible') border-red-500 @enderror">
+                                <p class="text-xs text-gray-500 mt-1" x-show="createForm.cantidad_total">Máximo: <span x-text="createForm.cantidad_total"></span></p>
                                 @error('cantidad_disponible')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
@@ -377,14 +357,14 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
                                 <label for="create_fecha_adquisicion" class="block text-gray-700 text-sm font-bold mb-2">Fecha de Adquisición:</label>
-                                <input type="date" name="fecha_adquisicion" id="create_fecha_adquisicion" value="{{ old('fecha_adquisicion') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('fecha_adquisicion') border-red-500 @enderror">
+                                <input type="date" name="fecha_adquisicion" id="create_fecha_adquisicion" x-model="createForm.fecha_adquisicion" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('fecha_adquisicion') border-red-500 @enderror">
                                 @error('fecha_adquisicion')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div class="mb-4">
                                 <label for="create_fecha_mantenimiento" class="block text-gray-700 text-sm font-bold mb-2">Fecha Mantenimiento:</label>
-                                <input type="date" name="fecha_mantenimiento" id="create_fecha_mantenimiento" value="{{ old('fecha_mantenimiento') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('fecha_mantenimiento') border-red-500 @enderror">
+                                <input type="date" name="fecha_mantenimiento" id="create_fecha_mantenimiento" x-model="createForm.fecha_mantenimiento" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('fecha_mantenimiento') border-red-500 @enderror">
                                 @error('fecha_mantenimiento')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
@@ -392,7 +372,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="create_proximo_mantenimiento" class="block text-gray-700 text-sm font-bold mb-2">Próximo Mantenimiento:</label>
-                            <input type="date" name="proximo_mantenimiento" id="create_proximo_mantenimiento" value="{{ old('proximo_mantenimiento') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('proximo_mantenimiento') border-red-500 @enderror">
+                            <input type="date" name="proximo_mantenimiento" id="create_proximo_mantenimiento" x-model="createForm.proximo_mantenimiento" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('proximo_mantenimiento') border-red-500 @enderror">
                             @error('proximo_mantenimiento')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -400,21 +380,10 @@
                         
                         <div class="mb-4">
                             <label for="create_descripcion_mantenimiento" class="block text-gray-700 text-sm font-bold mb-2">Descripción de Mantenimiento:</label>
-                            <textarea name="descripcion_mantenimiento" id="create_descripcion_mantenimiento" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion_mantenimiento') border-red-500 @enderror">{{ old('descripcion_mantenimiento') }}</textarea>
+                            <textarea name="descripcion_mantenimiento" id="create_descripcion_mantenimiento" rows="2" x-model="createForm.descripcion_mantenimiento" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion_mantenimiento') border-red-500 @enderror"></textarea>
                             @error('descripcion_mantenimiento')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="mb-4">
-                                <label for="create_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                                <input type="number" name="amount" id="create_amount" value="{{ old('amount') }}" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror">
-                                @error('amount')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        
                         </div>
                         <div class="flex justify-end space-x-4 pt-4 border-t border-gray-200">
                             <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
@@ -526,7 +495,8 @@
                             </div>
                             <div class="mb-4">
                                 <label for="edit_cantidad_disponible" class="block text-gray-700 text-sm font-bold mb-2">Cantidad Disponible:</label>
-                                <input type="number" name="cantidad_disponible" id="edit_cantidad_disponible" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('cantidad_disponible') border-red-500 @enderror" x-model="currentTool.cantidad_disponible">
+                                <input type="number" name="cantidad_disponible" id="edit_cantidad_disponible" min="0" :max="currentTool.cantidad_total || 99999" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('cantidad_disponible') border-red-500 @enderror" x-model="currentTool.cantidad_disponible">
+                                <p class="text-xs text-gray-500 mt-1" x-show="currentTool.cantidad_total">Máximo: <span x-text="currentTool.cantidad_total"></span></p>
                                 @error('cantidad_disponible')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                 @enderror
@@ -559,13 +529,6 @@
                             <label for="edit_descripcion_mantenimiento" class="block text-gray-700 text-sm font-bold mb-2">Descripción de Mantenimiento:</label>
                             <textarea name="descripcion_mantenimiento" id="edit_descripcion_mantenimiento" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('descripcion_mantenimiento') border-red-500 @enderror" x-model="currentTool.descripcion_mantenimiento"></textarea>
                             @error('descripcion_mantenimiento')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div class="mb-4">
-                            <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad (Amount):</label>
-                            <input type="number" name="amount" id="edit_amount" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" x-model="currentTool.amount">
-                            @error('amount')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -774,39 +737,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     @endif
     
-    // Usar MutationObserver para detectar cuando el formulario se agrega al DOM
-    const observer = new MutationObserver(function(mutations) {
-        const createForm = document.getElementById('createToolForm');
-        if (createForm && !createForm.hasAttribute('data-listener-added')) {
-            createForm.setAttribute('data-listener-added', 'true');
-            
-            // Interceptar el submit en la fase de captura
-            createForm.addEventListener('submit', function(e) {
-                console.log('Submit interceptado por MutationObserver');
+    const createForm = document.getElementById('createToolForm');
+    if (createForm) {
+        createForm.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
                 e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                handleFormSubmit(e);
-                return false;
-            }, true);
-            
-            // Prevenir envío por Enter
-            createForm.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
-                    e.preventDefault();
-                    console.log('Enter presionado - previniendo submit automático');
-                }
-            });
-        }
-    });
-    
-    // Observar cambios en el DOM
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    // Configurar filtro automático
+            }
+        });
+    }
+
     setupAutoFilter();
 });
 

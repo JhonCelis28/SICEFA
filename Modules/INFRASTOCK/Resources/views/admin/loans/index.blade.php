@@ -47,36 +47,26 @@
     <div x-data="{
         isCreateModalOpen: false,
         isEditModalOpen: false,
-        currentLoan: { id: null, item_type: 'tool', movement_id: '', user_id: '', role: '', productive_unit_warehouse_id: '', amount: 1, description: '' },
+        currentLoan: { id: null, item_type: 'tool', movement_id: '', user_id: '', role: '', productive_unit_warehouse_id: '', amount: 1, description: '', return_date: '' },
         validationErrors: {},
-        createForm: { movement_id: '', user_mode: 'select', user_id: '', borrower_name: '', amount: 1, description: '' },
-        selectedToolStock: 0,
-        selectedToolName: '',
+        createForm: { tools: [{ movement_id: '', amount: 1 }], user_mode: 'select', user_id: '', borrower_name: '', description: '' },
+        editSelectedToolStock: 0,
 
-        // Datos de herramientas pasados desde el controller
         toolsData: {{ $toolsJson->toJson() }},
 
         init() {
-            @if($errors->any() || session('error'))
+            @if($errors->any() && old('_token'))
                 document.addEventListener('DOMContentLoaded', () => {
                     this.isCreateModalOpen = true;
                     this.validationErrors = @json($errors->messages());
                     const oldData = @json(old());
-                    this.createForm.movement_id = oldData.movement_id || '';
+                    if (oldData.tools && Array.isArray(oldData.tools)) {
+                        this.createForm.tools = oldData.tools.map(t => ({ movement_id: t.movement_id || '', amount: t.amount || 1 }));
+                    }
                     this.createForm.user_id = oldData.user_id || '';
                     this.createForm.borrower_name = oldData.borrower_name || '';
                     this.createForm.user_mode = oldData.borrower_name ? 'manual' : 'select';
-                    this.createForm.amount = oldData.amount || 1;
                     this.createForm.description = oldData.description || '';
-                    this.updateToolStock();
-                    if ('{{ session('error') }}') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: '{{ session('error') }}',
-                            confirmButtonText: 'Entendido'
-                        });
-                    }
                 });
             @endif
         },
@@ -86,10 +76,42 @@
             this.resetCreateForm();
         },
 
-        openEditModal(id, item_type, movement_id, user_id, role, productive_unit_warehouse_id, amount, description) {
+        openEditModal(id, item_type, movement_id, user_id, role, productive_unit_warehouse_id, amount, description, return_date) {
             this.isEditModalOpen = true;
-            this.currentLoan = { id: id, item_type: item_type, movement_id: movement_id, user_id: user_id, role: role, productive_unit_warehouse_id: productive_unit_warehouse_id, amount: amount || 1, description: description || '' };
+            this.currentLoan = {
+                id: id,
+                item_type: item_type,
+                movement_id: String(movement_id),
+                user_id: String(user_id),
+                role: role,
+                productive_unit_warehouse_id: productive_unit_warehouse_id,
+                amount: amount || 1,
+                description: description || '',
+                return_date: return_date || ''
+            };
             this.validationErrors = {};
+            this.$nextTick(() => { this.updateEditToolStock(); });
+        },
+
+        updateEditToolStock() {
+            const toolId = parseInt(this.currentLoan.movement_id);
+            const tool = this.toolsData.find(t => t.id === toolId);
+            if (tool) {
+                this.editSelectedToolStock = tool.disponible;
+                if (parseInt(this.currentLoan.amount) > tool.disponible && tool.disponible > 0) {
+                    this.currentLoan.amount = tool.disponible;
+                }
+            } else {
+                this.editSelectedToolStock = 0;
+            }
+        },
+
+        clampEditAmount() {
+            let val = parseInt(this.currentLoan.amount);
+            if (isNaN(val) || val < 1) { this.currentLoan.amount = 1; return; }
+            if (this.editSelectedToolStock > 0 && val > this.editSelectedToolStock) {
+                this.currentLoan.amount = this.editSelectedToolStock;
+            }
         },
 
         closeModals() {
@@ -99,37 +121,41 @@
         },
 
         resetCreateForm() {
-            this.createForm = { movement_id: '', user_mode: 'select', user_id: '', borrower_name: '', amount: 1, description: '' };
-            this.selectedToolStock = 0;
-            this.selectedToolName = '';
+            this.createForm = { tools: [{ movement_id: '', amount: 1 }], user_mode: 'select', user_id: '', borrower_name: '', description: '' };
             this.validationErrors = {};
         },
 
-        updateToolStock() {
-            const toolId = parseInt(this.createForm.movement_id);
-            const tool = this.toolsData.find(t => t.id === toolId);
-            if (tool) {
-                this.selectedToolStock = tool.disponible;
-                this.selectedToolName = tool.nombre;
-                // Ajustar cantidad si excede disponible
-                if (this.createForm.amount > tool.disponible) {
-                    this.createForm.amount = tool.disponible > 0 ? tool.disponible : 1;
-                }
-            } else {
-                this.selectedToolStock = 0;
-                this.selectedToolName = '';
+        getToolInfo(toolId) {
+            return this.toolsData.find(t => t.id === parseInt(toolId)) || null;
+        },
+
+        addToolRow() {
+            this.createForm.tools.push({ movement_id: '', amount: 1 });
+        },
+
+        removeToolRow(index) {
+            if (this.createForm.tools.length > 1) {
+                this.createForm.tools.splice(index, 1);
             }
         },
 
-        clampAmount() {
-            let val = parseInt(this.createForm.amount);
-            if (isNaN(val) || val < 1) {
-                this.createForm.amount = 1;
-                return;
+        clampToolAmount(index) {
+            const item = this.createForm.tools[index];
+            const tool = this.getToolInfo(item.movement_id);
+            if (!tool) return;
+            let val = parseInt(item.amount);
+            if (isNaN(val) || val < 1) { item.amount = 1; return; }
+            if (tool.disponible > 0 && val > tool.disponible) {
+                item.amount = tool.disponible;
             }
-            if (this.selectedToolStock > 0 && val > this.selectedToolStock) {
-                this.createForm.amount = this.selectedToolStock;
-            }
+        },
+
+        canSubmitCreate() {
+            return this.createForm.tools.length > 0 &&
+                   this.createForm.tools.every(t => {
+                       const info = this.getToolInfo(t.movement_id);
+                       return t.movement_id && info && info.disponible > 0;
+                   });
         }
     }">
         <div class="container mx-auto px-4 py-6">
@@ -568,20 +594,50 @@
                                                     <i class="fas fa-lock mr-1"></i> Bloqueado
                                                 </span>
                                             @else
-                                                {{-- Préstamo activo: Devolver + Editar + Eliminar --}}
-                                                <button onclick="confirmReturnLoan({{ $loan->id }}, '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}')" class="text-green-600 hover:text-green-900 mr-2" title="Registrar Devolución">
-                                                    <i class="fas fa-undo-alt"></i>
-                                                </button>
-                                                <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }}, {{ $loan->amount ?? 'null' }}, '{{ addslashes($loan->description ?? '') }}')" class="text-yellow-600 hover:text-yellow-900 mr-2" title="Editar">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <form method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;" onsubmit="return confirmDeleteSync('{{ addslashes($loan->role) }}', this)">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900" title="Eliminar">
-                                                        <i class="fas fa-trash-alt"></i>
+                                                @php
+                                                    $hasApprovedReturn = \Modules\INFRASTOCK\Entities\WarehouseMovement::where('movement_id', $loan->movement_id)
+                                                        ->where('user_id', $loan->user_id)
+                                                        ->where('item_type', 'tool')
+                                                        ->where('role', 'Devolución')
+                                                        ->where('status', 'approved')
+                                                        ->where('created_at', '>=', $loan->created_at)
+                                                        ->exists();
+                                                    $hasPendingReturn = !$hasApprovedReturn && \Modules\INFRASTOCK\Entities\WarehouseMovement::where('movement_id', $loan->movement_id)
+                                                        ->where('user_id', $loan->user_id)
+                                                        ->where('item_type', 'tool')
+                                                        ->where('role', 'Devolución')
+                                                        ->where('status', 'pending')
+                                                        ->where('created_at', '>=', $loan->created_at)
+                                                        ->exists();
+                                                @endphp
+                                                @if($loan->status === 'rejected')
+                                                    {{-- Préstamo rechazado: sin acciones disponibles --}}
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                                        <i class="fas fa-lock mr-1"></i> Préstamo rechazado
+                                                    </span>
+                                                @elseif($hasApprovedReturn)
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                                        <i class="fas fa-check-circle mr-1"></i> Entregada
+                                                    </span>
+                                                @elseif($hasPendingReturn)
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                                        <i class="fas fa-clock mr-1"></i> Devolución pendiente
+                                                    </span>
+                                                @else
+                                                    <button onclick="confirmReturnLoan({{ $loan->id }}, '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}')" class="text-green-600 hover:text-green-900 mr-2" title="Registrar Devolución">
+                                                        <i class="fas fa-undo-alt"></i>
                                                     </button>
-                                                </form>
+                                                    <button @click="openEditModal({{ $loan->id }}, '{{ $loan->item_type }}', {{ $loan->movement_id }}, {{ $loan->user_id }}, '{{ $loan->role }}', {{ $loan->productive_unit_warehouse_id }}, {{ $loan->amount ?? 'null' }}, '{{ addslashes($loan->description ?? '') }}', '{{ $loan->return_date ? \Carbon\Carbon::parse($loan->return_date)->format('Y-m-d') : '' }}')" class="text-yellow-600 hover:text-yellow-900 mr-2" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <form id="delete-loan-{{ $loan->id }}" method="POST" action="{{ route('infrastock.admin.loans.destroy', $loan->id) }}" style="display: inline;">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="button" onclick="confirmDeleteLoan({{ $loan->id }}, '{{ addslashes($loan->tool->nombre ?? $loan->tool->name ?? 'Herramienta') }}')" class="text-red-600 hover:text-red-900" title="Eliminar">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </td>
                                     </tr>
@@ -615,37 +671,59 @@
                     </div>
                     <form method="POST" action="{{ route('infrastock.admin.loans.store') }}">
                         @csrf
-                        {{-- Herramienta a prestar --}}
+
+                        {{-- Herramientas a prestar (múltiples) --}}
                         <div class="mb-4">
-                            <label for="create_movement_id" class="block text-gray-700 text-sm font-bold mb-2">
-                                <i class="fas fa-wrench mr-1 text-orange-500"></i> Herramienta:
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-wrench mr-1 text-orange-500"></i> Herramientas a prestar:
                             </label>
-                            <select name="movement_id" id="create_movement_id"
-                                    x-model="createForm.movement_id"
-                                    @change="updateToolStock()"
-                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('movement_id') border-red-500 @enderror" required>
-                                <option value="">Selecciona una herramienta</option>
-                                <template x-for="tool in toolsData" :key="tool.id">
-                                    <option
-                                        :value="tool.id"
-                                        :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
-                                        :class="(tool.estado === 'mantenimiento' || tool.disponible <= 0) ? 'text-gray-400' : ''"
-                                        x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (En mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
-                                    </option>
-                                </template>
-                            </select>
-                            @error('movement_id')
+                            <template x-for="(item, index) in createForm.tools" :key="index">
+                                <div class="flex items-start space-x-2 mb-3 p-3 bg-gray-50 rounded-lg border">
+                                    <div class="flex-1">
+                                        <select :name="'tools[' + index + '][movement_id]'" x-model="item.movement_id" @change="clampToolAmount(index)"
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline" required>
+                                            <option value="">Selecciona herramienta</option>
+                                            <template x-for="tool in toolsData" :key="tool.id">
+                                                <option :value="tool.id"
+                                                    :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
+                                                    x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (Mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
+                                                </option>
+                                            </template>
+                                        </select>
+                                        <template x-if="item.movement_id && getToolInfo(item.movement_id)">
+                                            <p class="text-xs mt-1" :class="getToolInfo(item.movement_id).disponible > 0 ? 'text-green-600' : 'text-red-500'">
+                                                <i class="fas fa-boxes mr-1"></i> Stock: <span x-text="getToolInfo(item.movement_id).disponible"></span> disponible(s)
+                                            </p>
+                                        </template>
+                                    </div>
+                                    <div class="w-24">
+                                        <input type="number" :name="'tools[' + index + '][amount]'" x-model="item.amount"
+                                               @input="clampToolAmount(index)" min="1"
+                                               :max="getToolInfo(item.movement_id)?.disponible || 1"
+                                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
+                                               required placeholder="Cant.">
+                                    </div>
+                                    <button type="button" x-show="createForm.tools.length > 1" @click="removeToolRow(index)"
+                                            class="text-red-500 hover:text-red-700 p-2 mt-1 flex-shrink-0" title="Quitar">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
+                                </div>
+                            </template>
+                            <button type="button" @click="addToolRow()" class="text-sm text-blue-600 hover:text-blue-800 font-semibold mt-1">
+                                <i class="fas fa-plus-circle mr-1"></i> Agregar otra herramienta
+                            </button>
+                            @error('tools')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
-                            <p class="text-xs mt-1" :class="selectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="createForm.movement_id">
-                                <i class="fas fa-boxes mr-1"></i> Disponible: <span x-text="selectedToolStock"></span> unidad(es)
-                            </p>
+                            @error('tools.*.movement_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         {{-- Quién recibe la herramienta --}}
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">
-                                <i class="fas fa-user mr-1 text-blue-500"></i> ¿Quién recibe la herramienta?
+                                <i class="fas fa-user mr-1 text-blue-500"></i> ¿Quién recibe las herramientas?
                             </label>
                             <div class="flex space-x-4 mb-3">
                                 <label class="inline-flex items-center cursor-pointer">
@@ -658,7 +736,6 @@
                                 </label>
                             </div>
 
-                            {{-- Selector de instructor --}}
                             <div x-show="createForm.user_mode === 'select'">
                                 <select name="user_id" id="create_user_id"
                                         x-model="createForm.user_id"
@@ -666,7 +743,7 @@
                                         :required="createForm.user_mode === 'select'">
                                     <option value="">Selecciona un instructor</option>
                                     @foreach($instructors as $instructor)
-                                        <option value="{{ $instructor->id }}" {{ old('user_id') == $instructor->id ? 'selected' : '' }}>
+                                        <option value="{{ $instructor->id }}">
                                             {{ $instructor->person->first_name ?? 'N/A' }} {{ $instructor->person->first_last_name ?? '' }}
                                         </option>
                                     @endforeach
@@ -676,7 +753,6 @@
                                 @enderror
                             </div>
 
-                            {{-- Campo para nombre manual --}}
                             <div x-show="createForm.user_mode === 'manual'">
                                 <input type="text" name="borrower_name" id="create_borrower_name"
                                        x-model="createForm.borrower_name"
@@ -684,7 +760,7 @@
                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('borrower_name') border-red-500 @enderror"
                                        :required="createForm.user_mode === 'manual'">
                                 <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-info-circle mr-1"></i> Para personas sin cuenta en el sistema (ej: personal de otra área)
+                                    <i class="fas fa-info-circle mr-1"></i> Para personas sin cuenta en el sistema
                                 </p>
                                 @error('borrower_name')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -692,19 +768,22 @@
                             </div>
                         </div>
 
-                        {{-- Cantidad --}}
+                        {{-- Área / Bodega --}}
                         <div class="mb-4">
-                            <label for="create_amount" class="block text-gray-700 text-sm font-bold mb-2">
-                                <i class="fas fa-sort-numeric-up mr-1 text-purple-500"></i> Cantidad:
+                            <label for="create_productive_unit_warehouse_id" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-warehouse mr-1 text-emerald-500"></i> Área / Bodega: <span class="text-red-500">*</span>
                             </label>
-                            <input type="number" name="amount" id="create_amount"
-                                   x-model="createForm.amount"
-                                   @input="clampAmount()"
-                                   min="1"
-                                   :max="selectedToolStock > 0 ? selectedToolStock : 1"
-                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror"
-                                   required>
-                            @error('amount')
+                            <select name="productive_unit_warehouse_id" id="create_productive_unit_warehouse_id"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('productive_unit_warehouse_id') border-red-500 @enderror"
+                                    required>
+                                <option value="">Seleccione un área / bodega</option>
+                                @foreach($productiveUnitWarehouses as $puw)
+                                    <option value="{{ $puw->id }}">
+                                        {{ $puw->productiveUnit->name ?? 'N/A' }} - {{ $puw->warehouse->name ?? 'N/A' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('productive_unit_warehouse_id')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -726,8 +805,8 @@
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit"
-                                    :disabled="!createForm.movement_id || selectedToolStock <= 0"
-                                    :class="(!createForm.movement_id || selectedToolStock <= 0) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                                    :disabled="!canSubmitCreate()"
+                                    :class="!canSubmitCreate() ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
                                     class="text-white font-bold py-2 px-4 rounded transition-colors duration-200">
                                 <i class="fas fa-hand-holding mr-2"></i>Registrar Préstamo
                             </button>
@@ -736,7 +815,7 @@
                 </div>
             </div>
 
-            <!-- Modal de Edición de Movimiento -->
+            <!-- Modal de Edición de Préstamo -->
             <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
                 <div @click.away="isEditModalOpen = false" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -746,19 +825,26 @@
                     <form method="POST" :action="`{{ route('infrastock.admin.loans.update', '') }}/${currentLoan.id}`">
                         @csrf
                         @method('PUT')
-                        {{-- item_type siempre tool --}}
                         <input type="hidden" name="item_type" value="tool">
 
                         <div class="mb-4">
                             <label for="edit_movement_id" class="block text-gray-700 text-sm font-bold mb-2">
                                 <i class="fas fa-wrench mr-1 text-orange-500"></i> Herramienta:
                             </label>
-                            <select name="movement_id" id="edit_movement_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" x-model="currentLoan.movement_id" required>
+                            <select name="movement_id" id="edit_movement_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" x-model="currentLoan.movement_id" @change="updateEditToolStock()" required>
                                 <option value="">Selecciona una herramienta</option>
-                                @foreach($tools as $tool)
-                                    <option value="{{ $tool->id }}">{{ $tool->nombre }} {{ $tool->placa ? '['.$tool->placa.']' : '' }} — Stock: {{ $tool->cantidad_disponible ?? 0 }}/{{ $tool->cantidad_total ?? 0 }}</option>
-                                @endforeach
+                                <template x-for="tool in toolsData" :key="tool.id">
+                                    <option
+                                        :value="tool.id"
+                                        :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
+                                        :class="(tool.estado === 'mantenimiento' || tool.disponible <= 0) ? 'text-gray-400' : ''"
+                                        x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (En mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
+                                    </option>
+                                </template>
                             </select>
+                            <p class="text-xs mt-1" :class="editSelectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="currentLoan.movement_id">
+                                <i class="fas fa-boxes mr-1"></i> Disponible: <span x-text="editSelectedToolStock"></span> unidad(es)
+                            </p>
                         </div>
                         <div class="mb-4">
                             <label for="edit_user_id" class="block text-gray-700 text-sm font-bold mb-2">
@@ -769,37 +855,55 @@
                                 @foreach($instructors as $instructor)
                                     <option value="{{ $instructor->id }}">{{ $instructor->person->first_name ?? 'N/A' }} {{ $instructor->person->first_last_name ?? '' }}</option>
                                 @endforeach
-                                {{-- Incluir el admin logueado como opción (para préstamos de personas externas) --}}
                                 @if(!$instructors->contains('id', auth()->id()))
                                     <option value="{{ auth()->id() }}">{{ auth()->user()->person->first_name ?? auth()->user()->nickname ?? 'Admin' }} {{ auth()->user()->person->first_last_name ?? '' }} (Admin)</option>
                                 @endif
                             </select>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="mb-4">
-                                <label for="edit_role" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Movimiento:</label>
-                                <select name="role" id="edit_role" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" x-model="currentLoan.role" required>
-                                    <option value="Préstamo">Préstamo</option>
-                                    <option value="Devolución">Devolución</option>
-                                </select>
-                                <p class="text-xs text-orange-600 mt-1" x-show="currentLoan.role === 'Devolución'">
-                                    <i class="fas fa-exclamation-triangle"></i> Al cambiar a Devolución, se restaurará el stock y el registro quedará bloqueado.
-                                </p>
-                            </div>
-                            <div class="mb-4">
-                                <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad:</label>
-                                <input type="number" name="amount" id="edit_amount" x-model="currentLoan.amount" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                            </div>
+                        <div class="mb-4">
+                            <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-sort-numeric-up mr-1 text-purple-500"></i> Cantidad:
+                            </label>
+                            <input type="number" name="amount" id="edit_amount" x-model="currentLoan.amount" @input="clampEditAmount()" min="1" :max="editSelectedToolStock > 0 ? editSelectedToolStock : 1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <p class="text-xs mt-1" :class="editSelectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="currentLoan.movement_id">
+                                <i class="fas fa-boxes mr-1"></i> Máximo disponible: <span x-text="editSelectedToolStock"></span> unidad(es)
+                            </p>
                         </div>
-                        <div class="mb-6">
+                        <div class="mb-4">
+                            <label for="edit_productive_unit_warehouse_id" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-warehouse mr-1 text-emerald-500"></i> Área / Bodega: <span class="text-red-500">*</span>
+                            </label>
+                            <select name="productive_unit_warehouse_id" id="edit_productive_unit_warehouse_id"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    x-model="currentLoan.productive_unit_warehouse_id" required>
+                                <option value="">Seleccione un área / bodega</option>
+                                @foreach($productiveUnitWarehouses as $puw)
+                                    <option value="{{ $puw->id }}">{{ $puw->productiveUnit->name ?? 'N/A' }} - {{ $puw->warehouse->name ?? 'N/A' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-4">
                             <label for="edit_description" class="block text-gray-700 text-sm font-bold mb-2">
                                 <i class="fas fa-comment-alt mr-1 text-gray-500"></i> Descripción / Observaciones:
                             </label>
                             <textarea name="description" id="edit_description" rows="2" x-model="currentLoan.description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
                         </div>
+                        <div class="mb-6">
+                            <label for="edit_return_date" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-calendar-check mr-1 text-indigo-500"></i> Fecha Estimada de Devolución:
+                            </label>
+                            <input type="date"
+                                   name="return_date"
+                                   id="edit_return_date"
+                                   x-model="currentLoan.return_date"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isEditModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Actualizar Movimiento</button>
+                            <button type="submit"
+                                    :disabled="!currentLoan.movement_id || editSelectedToolStock <= 0"
+                                    :class="(!currentLoan.movement_id || editSelectedToolStock <= 0) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
+                                    class="text-white font-bold py-2 px-4 rounded transition-colors duration-200">Actualizar Préstamo</button>
                         </div>
                     </form>
                 </div>
@@ -983,14 +1087,10 @@ function confirmReturnLoan(loanId, toolName) {
     });
 }
 
-// Función para confirmar eliminación con SweetAlert2
-function confirmDeleteSync(movementType, formElement) {
-    // Prevenir el envío inmediato del formulario
-    event.preventDefault();
-    
+function confirmDeleteLoan(loanId, toolName) {
     Swal.fire({
         title: '¿Estás seguro?',
-        text: `¿Quieres eliminar este movimiento de "${movementType}"?`,
+        text: `¿Quieres eliminar el préstamo de "${toolName}"?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -999,23 +1099,16 @@ function confirmDeleteSync(movementType, formElement) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Mostrar loading
             Swal.fire({
                 title: 'Eliminando...',
                 text: 'Por favor espera',
                 allowOutsideClick: false,
                 showConfirmButton: false,
-                willOpen: () => {
-                    Swal.showLoading();
-                }
+                willOpen: () => { Swal.showLoading(); }
             });
-            
-            // Enviar el formulario directamente (sin pasar por onsubmit otra vez)
-            formElement.submit();
+            document.getElementById('delete-loan-' + loanId).submit();
         }
     });
-    
-    return false;
 }
 
 // Verificar si hay mensajes de sesión

@@ -98,6 +98,16 @@ class ToolController extends Controller
             'amount' => 'nullable|integer|min:0',
             'price' => 'nullable|numeric|min:0',
             ]);
+
+            if ($request->filled('cantidad_disponible') && $request->filled('cantidad_total')) {
+                if ((int) $request->cantidad_disponible > (int) $request->cantidad_total) {
+                    $errorMsg = 'La cantidad disponible no puede ser mayor que la cantidad total.';
+                    if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
+                        return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                    }
+                    return redirect()->route('infrastock.admin.tools.index')->with('error', $errorMsg)->withInput();
+                }
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Siempre devolver JSON si tiene el header X-Requested-With
             if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson() || $request->ajax()) {
@@ -236,6 +246,14 @@ class ToolController extends Controller
             'amount' => 'nullable|integer|min:0',
             'price' => 'nullable|numeric|min:0',
         ]);
+
+        if ($request->filled('cantidad_disponible') && $request->filled('cantidad_total')) {
+            if ((int) $request->cantidad_disponible > (int) $request->cantidad_total) {
+                return redirect()->route('infrastock.admin.tools.index')
+                    ->with('error', 'La cantidad disponible no puede ser mayor que la cantidad total.')
+                    ->withInput();
+            }
+        }
 
         $tool = Tool::findOrFail($id);
         

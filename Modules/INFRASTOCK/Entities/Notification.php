@@ -4,24 +4,33 @@ namespace Modules\INFRASTOCK\Entities;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 
 class Notification extends Model
 {
-    /**
-     * La tabla notifications usa bigint auto_increment para el campo id.
-     */
     protected $table = 'notifications';
 
-    public $incrementing = true;
-    protected $keyType = 'int';
+    public $incrementing = false;
+    protected $keyType = 'string';
     
     protected $fillable = [
+        'id',
         'type',
         'notifiable_type',
         'notifiable_id',
         'data',
         'read_at',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
+            }
+        });
+    }
 
     protected $casts = [
         'data' => 'array',

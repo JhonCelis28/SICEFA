@@ -53,15 +53,13 @@ class InstructorController extends Controller
             ->where('role', 'Préstamo')
             ->get();
         
-        $activeLoans = $allLoans->filter(function($loan) {
-            // Verificar si existe una devolución para este préstamo
-            $hasReturn = WarehouseMovement::where('user_id', $loan->user_id)
-                ->where('item_type', 'tool')
-                ->where('role', 'Devolución')
-                ->where('movement_id', $loan->movement_id ?? $loan->id)
-                ->exists();
-            return !$hasReturn;
-        })->count();
+        $approvedLoansCount = $allLoans->where('status', 'approved')->count();
+        $approvedReturnsCount = WarehouseMovement::where('user_id', $user->id)
+            ->where('item_type', 'tool')
+            ->where('role', 'Devolución')
+            ->where('status', 'approved')
+            ->count();
+        $activeLoans = max(0, $approvedLoansCount - $approvedReturnsCount);
 
         $totalLoans = WarehouseMovement::where('user_id', $user->id)
             ->where('item_type', 'tool')
@@ -143,13 +141,15 @@ class InstructorController extends Controller
             $query->where('role', $role);
         }
 
-        // Búsqueda por texto
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('purpose', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
                   ->orWhereHas('tool', function($toolQuery) use ($search) {
-                      $toolQuery->where('placa', 'like', "%{$search}%");
+                      $toolQuery->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('placa', 'like', "%{$search}%");
                   });
             });
         }
@@ -176,100 +176,111 @@ class InstructorController extends Controller
     {
         $this->verifyRole();
         $request->validate([
-            'tool_id' => 'required|exists:tools,id',
+            'tools' => 'required|array|min:1',
+            'tools.*.tool_id' => 'required|exists:tools,id',
+            'tools.*.amount' => 'required|integer|min:1',
             'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
             'purpose' => 'required|string|max:1000',
             'required_date' => 'required|date|after_or_equal:today',
-            'amount' => 'nullable|integer|min:1',
+            'return_date' => 'nullable|date|after_or_equal:required_date',
         ], [
-            'tool_id.required' => 'Debe seleccionar una herramienta.',
+            'tools.required' => 'Debe seleccionar al menos una herramienta.',
+            'tools.*.tool_id.required' => 'Debe seleccionar una herramienta.',
+            'tools.*.tool_id.exists' => 'La herramienta seleccionada no existe.',
             'productive_unit_warehouse_id.required' => 'Debe seleccionar una unidad productiva.',
             'purpose.required' => 'La finalidad del préstamo es obligatoria.',
             'purpose.max' => 'La finalidad no puede exceder 1000 caracteres.',
             'required_date.required' => 'La fecha requerida es obligatoria.',
             'required_date.date' => 'La fecha requerida debe ser una fecha válida.',
             'required_date.after_or_equal' => 'La fecha requerida debe ser hoy o una fecha futura.',
-            'amount.integer' => 'La cantidad debe ser un número entero.',
-            'amount.min' => 'La cantidad debe ser al menos 1.',
+            'return_date.date' => 'La fecha de devolución debe ser una fecha válida.',
+            'return_date.after_or_equal' => 'La fecha de devolución debe ser igual o posterior a la fecha requerida.',
+            'tools.*.amount.required' => 'Debe ingresar la cantidad para cada herramienta seleccionada.',
+            'tools.*.amount.integer' => 'La cantidad debe ser un número entero.',
+            'tools.*.amount.min' => 'La cantidad debe ser al menos 1.',
         ]);
-
-        $tool = Tool::find($request->tool_id);
-        
-        if (!$tool) {
-            return redirect()->back()->with('error', 'La herramienta seleccionada no existe.')->withInput();
-        }
-
-        // Validar que la herramienta esté disponible
-        if ($tool->estado === 'mantenimiento') {
-            return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" se encuentra en mantenimiento y no puede ser prestada.")->withInput();
-        }
-
-        // Validar que haya stock suficiente
-        $amount = $request->filled('amount') ? (int) $request->amount : 1;
-        $available = $tool->cantidad_disponible ?? 0;
-        if ($available <= 0) {
-            return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" no tiene unidades disponibles.")->withInput();
-        }
-        if ($amount > $available) {
-            return redirect()->back()->with('error', "Stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$amount}.")->withInput();
-        }
 
         $productiveUnitWarehouse = ProductiveUnitWarehouse::find($request->productive_unit_warehouse_id);
         if (!$productiveUnitWarehouse) {
             return redirect()->back()->with('error', 'La unidad productiva seleccionada no existe.')->withInput();
         }
 
-        try {
-            // Preparar datos para el préstamo
-            $data = [
-                'productive_unit_warehouse_id' => $productiveUnitWarehouse->id,
-                'movement_id' => $tool->id,
-                'item_type' => 'tool',
-                'user_id' => auth()->id(),
-                'role' => 'Préstamo',
-                'status' => 'pending', // Estado pendiente hasta que el administrador lo apruebe
-                'purpose' => $request->purpose,
-                'required_date' => $request->required_date,
-            ];
-            
-            // Agregar cantidad si se proporciona
-            if ($request->filled('amount')) {
-                $data['amount'] = $request->amount;
+        $toolsToProcess = [];
+        foreach ($request->tools as $toolData) {
+            $tool = Tool::find($toolData['tool_id']);
+            if (!$tool) {
+                return redirect()->back()->with('error', 'Una de las herramientas seleccionadas no existe.')->withInput();
             }
-            
-            // Crear el movimiento de préstamo en WarehouseMovement
-            // Esto se guardará en el módulo "Préstamos y Devoluciones" del administrador
-            $warehouseMovement = WarehouseMovement::create($data);
+            if ($tool->estado === 'mantenimiento') {
+                return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" se encuentra en mantenimiento y no puede ser prestada.")->withInput();
+            }
 
-            // Cargar relaciones necesarias para las notificaciones
-            $warehouseMovement->load(['tool', 'user', 'productiveUnitWarehouse']);
+            // La cantidad es obligatoria desde la validación; se refuerza aquí por seguridad
+            $amount = isset($toolData['amount']) ? (int) $toolData['amount'] : 0;
+            if ($amount <= 0) {
+                return redirect()->back()
+                    ->with('error', "Debe ingresar una cantidad válida para la herramienta \"{$tool->nombre}\".")
+                    ->withInput();
+            }
+            $available = $tool->cantidad_disponible ?? 0;
+            if ($available <= 0) {
+                return redirect()->back()->with('error', "La herramienta \"{$tool->nombre}\" no tiene unidades disponibles.")->withInput();
+            }
+            if ($amount > $available) {
+                return redirect()->back()->with('error', "Stock insuficiente de \"{$tool->nombre}\". Disponible: {$available}, Solicitado: {$amount}.")->withInput();
+            }
+            $toolsToProcess[] = ['tool' => $tool, 'amount' => $amount];
+        }
 
-            // Enviar notificación al administrador sobre el nuevo préstamo
-            $this->notifyAdminNewLoan($warehouseMovement);
+        try {
+            $createdMovements = [];
+            foreach ($toolsToProcess as $tp) {
+                $data = [
+                    'productive_unit_warehouse_id' => $productiveUnitWarehouse->id,
+                    'movement_id' => $tp['tool']->id,
+                    'item_type' => 'tool',
+                    'user_id' => auth()->id(),
+                    'role' => 'Préstamo',
+                    'status' => 'pending',
+                    'purpose' => $request->purpose,
+                    'required_date' => $request->required_date,
+                    'return_date' => $request->return_date,
+                    'amount' => $tp['amount'],
+                ];
 
-            // Crear notificación para el instructor confirmando que registró el préstamo
+                $warehouseMovement = WarehouseMovement::create($data);
+                $warehouseMovement->load(['tool', 'user', 'productiveUnitWarehouse']);
+                $createdMovements[] = $warehouseMovement;
+            }
+
+            foreach ($createdMovements as $wm) {
+                $this->notifyAdminNewLoan($wm);
+            }
+
+            $toolNames = collect($toolsToProcess)->map(fn($tp) => $tp['tool']->nombre)->implode(', ');
             try {
                 $notification = new Notification();
                 $notification->type = 'loan_created';
                 $notification->notifiable_type = 'App\Models\User';
                 $notification->notifiable_id = auth()->id();
-                $toolName = $tool->nombre ?? $tool->name ?? 'Herramienta';
                 $notification->data = [
                     'title' => 'Préstamo Registrado',
-                    'message' => "Has registrado el préstamo de la herramienta: {$toolName}.",
-                    'tool_id' => $tool->id,
-                    'loan_id' => $warehouseMovement->id,
+                    'message' => "Has registrado préstamo de: {$toolNames}.",
+                    'loan_id' => $createdMovements[0]->id ?? null,
                     'created_at' => now()->format('d/m/Y H:i'),
                     'action_url' => route('infrastock.instructor.my-loans'),
                 ];
                 $notification->save();
             } catch (\Exception $notificationError) {
-                // Si falla la notificación, no afecta el préstamo
                 \Log::warning('No se pudo crear la notificación del préstamo: ' . $notificationError->getMessage());
             }
 
-            return redirect()->route('infrastock.instructor.my-loans')
-                ->with('success', 'Préstamo de herramienta registrado exitosamente. El préstamo ha sido registrado en el módulo de Préstamos y Devoluciones.');
+            $count = count($createdMovements);
+            $msg = $count === 1
+                ? 'Préstamo registrado exitosamente.'
+                : "{$count} préstamos registrados exitosamente.";
+
+            return redirect()->route('infrastock.instructor.my-loans')->with('success', $msg);
 
         } catch (\Exception $e) {
             \Log::error('Error al registrar préstamo: ' . $e->getMessage());
@@ -308,6 +319,7 @@ class InstructorController extends Controller
             'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
             'purpose' => 'required|string|max:1000',
             'required_date' => 'required|date|after_or_equal:today',
+            'return_date' => 'nullable|date|after_or_equal:required_date',
             'amount' => 'nullable|integer|min:1',
             'delivery_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ], [
@@ -318,6 +330,8 @@ class InstructorController extends Controller
             'required_date.required' => 'La fecha requerida es obligatoria.',
             'required_date.date' => 'La fecha requerida debe ser una fecha válida.',
             'required_date.after_or_equal' => 'La fecha requerida debe ser hoy o una fecha futura.',
+            'return_date.date' => 'La fecha de devolución debe ser una fecha válida.',
+            'return_date.after_or_equal' => 'La fecha de devolución debe ser igual o posterior a la fecha requerida.',
             'amount.integer' => 'La cantidad debe ser un número entero.',
             'amount.min' => 'La cantidad debe ser al menos 1.',
             'delivery_image.image' => 'El archivo debe ser una imagen.',
@@ -348,6 +362,7 @@ class InstructorController extends Controller
                 'movement_id' => $request->tool_id,
                 'purpose' => $request->purpose,
                 'required_date' => $request->required_date,
+                'return_date' => $request->return_date,
             ];
             
             // Agregar cantidad si se proporciona
@@ -438,16 +453,17 @@ class InstructorController extends Controller
         $request->validate([
             'description' => 'required|string|max:1000',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
-            'return_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'return_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:10240',
         ], [
             'description.required' => 'La descripción de entrega es obligatoria.',
             'description.max' => 'La descripción no puede exceder 1000 caracteres.',
             'imagen.image' => 'El archivo debe ser una imagen.',
             'imagen.mimes' => 'La imagen debe ser de tipo: jpeg, png, jpg o gif.',
             'imagen.max' => 'La imagen no puede pesar más de 10MB.',
-            'return_image.image' => 'El archivo debe ser una imagen.',
-            'return_image.mimes' => 'La imagen debe ser de tipo: jpeg, png, jpg o gif.',
-            'return_image.max' => 'La imagen no puede pesar más de 10MB.',
+            'return_image.required' => 'La foto de devolución de la herramienta es obligatoria.',
+            'return_image.image' => 'La foto de devolución debe ser una imagen válida.',
+            'return_image.mimes' => 'La imagen de devolución debe ser de tipo: jpeg, png, jpg o gif.',
+            'return_image.max' => 'La imagen de devolución no puede pesar más de 10MB.',
         ]);
 
         $loan = WarehouseMovement::with('tool')
@@ -516,11 +532,13 @@ class InstructorController extends Controller
                 'item_type' => 'tool',
                 'user_id' => auth()->id(),
                 'role' => 'Devolución',
-                'status' => 'pending', // Pendiente de aprobación del administrador
+                'status' => 'pending',
+                'amount' => $loan->amount ?? 1,
                 'description' => $request->description,
+                'required_date' => $loan->required_date,
+                'return_date' => $loan->return_date,
             ];
             
-            // Manejar la carga de imagen (legacy, mantener compatibilidad)
             if ($request->hasFile('imagen')) {
                 $imagen = $request->file('imagen');
                 $imagenPath = $imagen->store('loan-returns', 'public');
@@ -588,13 +606,11 @@ class InstructorController extends Controller
             return response()->json(['error' => 'Notificación no encontrada'], 404);
         }
 
-        if (isset($notification->data['read_at'])) {
+        if ($notification->read_at !== null) {
             return response()->json(['message' => 'Notificación ya estaba marcada como leída']);
         }
 
-        $data = $notification->data;
-        $data['read_at'] = now()->format('d/m/Y H:i');
-        $notification->data = $data;
+        $notification->read_at = now();
         $notification->save();
 
         return response()->json(['success' => true, 'message' => 'Notificación marcada como leída']);

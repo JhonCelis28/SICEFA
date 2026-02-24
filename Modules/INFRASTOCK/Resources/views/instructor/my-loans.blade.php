@@ -49,21 +49,19 @@
         isReturnModalOpen: false,
         currentReturnLoan: null,
         currentEditLoan: null,
-        createForm: { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '' },
-        editForm: { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '', delivery_image: null, existing_delivery_image: null },
+        createForm: { tools: [{ tool_id: '', amount: '' }], productive_unit_warehouse_id: '', purpose: '', required_date: '', return_date: '' },
+        editForm: { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', return_date: '', amount: '' },
         returnForm: { description: '' },
         validationErrors: {},
-        selectedToolState: null,
-        selectedToolStock: 0,
+        editToolState: null,
+        editToolStock: 0,
         toolsData: {{ $toolsJson->toJson() }},
 
         init() {
-            // Asegurarse de que todos los modales estén cerrados al inicio
             this.isCreateModalOpen = false;
             this.isEditModalOpen = false;
             this.isReturnModalOpen = false;
             
-            // Solo manejar errores de validación aquí (NO mensajes de sesión)
             this.$nextTick(() => {
                 const hasFormErrors = window.formErrors && 
                                      typeof window.formErrors === 'object' && 
@@ -75,12 +73,10 @@
                     this.validationErrors = window.formErrors;
                     
                     if (formType === 'return') {
-                        // Si los errores son del formulario de devolución, abrir modal de devolución
                         this.isReturnModalOpen = true;
                         this.currentReturnLoan = oldData._return_loan_id || null;
                         this.returnForm.description = oldData.description || '';
                     } else if (formType === 'edit') {
-                        // Si los errores son del formulario de edición, abrir modal de edición
                         this.isEditModalOpen = true;
                         this.currentEditLoan = oldData._edit_loan_id || null;
                         this.editForm.tool_id = oldData.tool_id || '';
@@ -89,16 +85,17 @@
                         this.editForm.required_date = oldData.required_date || '';
                         this.editForm.amount = oldData.amount || '';
                     } else {
-                        // Por defecto, abrir modal de creación
                         this.isCreateModalOpen = true;
-                        this.createForm.tool_id = oldData.tool_id || '';
+                        if (oldData.tools && Array.isArray(oldData.tools)) {
+                            this.createForm.tools = oldData.tools.map(t => ({
+                                tool_id: t.tool_id || '',
+                                amount: t.amount || ''
+                            }));
+                        }
                         this.createForm.productive_unit_warehouse_id = oldData.productive_unit_warehouse_id || '';
                         this.createForm.purpose = oldData.purpose || '';
                         this.createForm.required_date = oldData.required_date || '';
-                        this.createForm.amount = oldData.amount || '';
-                        if (this.createForm.tool_id) {
-                            this.updateToolState();
-                        }
+                        this.createForm.return_date = oldData.return_date || '';
                     }
                 }
             });
@@ -117,15 +114,11 @@
                 productive_unit_warehouse_id: loan.productive_unit_warehouse_id ? String(loan.productive_unit_warehouse_id) : '',
                 purpose: loan.purpose || '',
                 required_date: loan.required_date || '',
-                amount: loan.amount ? String(loan.amount) : '',
-                delivery_image: null,
-                existing_delivery_image: loan.delivery_image || null
+                return_date: loan.return_date || '',
+                amount: loan.amount ? String(loan.amount) : ''
             };
             this.validationErrors = {};
-            // Actualizar el estado de la herramienta después de un pequeño delay para que Alpine actualice el select
-            this.$nextTick(() => {
-                this.updateToolState();
-            });
+            this.$nextTick(() => { this.updateEditToolState(); });
         },
 
         openReturnModal(loanId) {
@@ -144,38 +137,76 @@
         },
 
         resetCreateForm() {
-            this.createForm = { tool_id: '', productive_unit_warehouse_id: '', purpose: '', required_date: '', amount: '' };
+            this.createForm = { tools: [{ tool_id: '', amount: '' }], productive_unit_warehouse_id: '', purpose: '', required_date: '', return_date: '' };
             this.validationErrors = {};
-            this.selectedToolState = null;
-            this.selectedToolStock = 0;
         },
 
-        updateToolState() {
-            const toolId = parseInt(this.createForm.tool_id || this.editForm.tool_id);
-            const tool = this.toolsData.find(t => t.id === toolId);
-            if (tool) {
-                this.selectedToolState = tool.estado;
-                this.selectedToolStock = tool.disponible;
-                // Ajustar cantidad si excede disponible
-                const currentAmount = parseInt(this.createForm.amount) || 0;
-                if (currentAmount > tool.disponible) {
-                    this.createForm.amount = tool.disponible > 0 ? tool.disponible : '';
-                }
-            } else {
-                this.selectedToolState = null;
-                this.selectedToolStock = 0;
+        getToolInfo(toolId) {
+            return this.toolsData.find(t => t.id === parseInt(toolId)) || null;
+        },
+
+        addToolRow() {
+            this.createForm.tools.push({ tool_id: '', amount: '' });
+        },
+
+        removeToolRow(index) {
+            if (this.createForm.tools.length > 1) {
+                this.createForm.tools.splice(index, 1);
             }
         },
 
-        clampAmount(formName) {
-            const form = formName === 'edit' ? this.editForm : this.createForm;
-            let val = parseInt(form.amount);
-            if (isNaN(val) || val < 1) {
-                form.amount = '';
+        clampToolAmount(index) {
+            const item = this.createForm.tools[index];
+            const tool = this.getToolInfo(item.tool_id);
+            if (!tool) {
+                item.amount = '';
                 return;
             }
-            if (this.selectedToolStock > 0 && val > this.selectedToolStock) {
-                form.amount = this.selectedToolStock;
+            let val = parseInt(item.amount);
+            if (isNaN(val) || val < 1) {
+                item.amount = '';
+                return;
+            }
+            if (tool.disponible > 0 && val > tool.disponible) {
+                item.amount = tool.disponible;
+            }
+        },
+
+        canSubmitCreate() {
+            return this.createForm.tools.length > 0 &&
+                   this.createForm.tools.every(t => {
+                       const info = this.getToolInfo(t.tool_id);
+                       const amount = parseInt(t.amount);
+                       return t.tool_id &&
+                              info &&
+                              info.disponible > 0 &&
+                              !isNaN(amount) &&
+                              amount >= 1 &&
+                              amount <= info.disponible;
+                   });
+        },
+
+        updateEditToolState() {
+            const toolId = parseInt(this.editForm.tool_id);
+            const tool = this.toolsData.find(t => t.id === toolId);
+            if (tool) {
+                this.editToolState = tool.estado;
+                this.editToolStock = tool.disponible;
+                const currentAmount = parseInt(this.editForm.amount) || 0;
+                if (currentAmount > tool.disponible) {
+                    this.editForm.amount = tool.disponible > 0 ? tool.disponible : '';
+                }
+            } else {
+                this.editToolState = null;
+                this.editToolStock = 0;
+            }
+        },
+
+        clampEditAmount() {
+            let val = parseInt(this.editForm.amount);
+            if (isNaN(val) || val < 1) { this.editForm.amount = ''; return; }
+            if (this.editToolStock > 0 && val > this.editToolStock) {
+                this.editForm.amount = this.editToolStock;
             }
         },
 
@@ -226,12 +257,12 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Herramienta</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finalidad</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Requerida</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Devolución</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Área/Bodega</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
@@ -243,7 +274,6 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($loans as $loan)
                                     <tr class="hover:bg-gray-100 transition-colors duration-150">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $loan->id }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $loan->tool->nombre ?? 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $loan->tool->placa ?? 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -262,6 +292,15 @@
                                             @if($loan->required_date)
                                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                                                     {{ \Carbon\Carbon::parse($loan->required_date)->format('d/m/Y') }}
+                                                </span>
+                                            @else
+                                                <span class="text-gray-400">-</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            @if($loan->return_date)
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                                                    {{ \Carbon\Carbon::parse($loan->return_date)->format('d/m/Y') }}
                                                 </span>
                                             @else
                                                 <span class="text-gray-400">-</span>
@@ -339,6 +378,7 @@
                                                             productive_unit_warehouse_id: {{ $loan->productive_unit_warehouse_id ?? 'null' }},
                                                             purpose: @js($loan->purpose ?? ''),
                                                             required_date: '{{ $loan->required_date ? \Carbon\Carbon::parse($loan->required_date)->format('Y-m-d') : '' }}',
+                                                            return_date: '{{ $loan->return_date ? \Carbon\Carbon::parse($loan->return_date)->format('Y-m-d') : '' }}',
                                                             amount: {{ $loan->amount ?? 'null' }},
                                                             delivery_image: @js($loan->delivery_image ?? '')
                                                         })" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar Préstamo">
@@ -396,51 +436,66 @@
                     <form method="POST" action="{{ route('infrastock.instructor.store-loan') }}" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="_form_type" value="create">
+
                         <div class="mb-4">
-                            <label for="tool_id" class="block text-gray-700 text-sm font-bold mb-2">Herramienta: <span class="text-red-500">*</span></label>
-                            <select name="tool_id" id="tool_id" x-model="createForm.tool_id" @change="updateToolState()" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('tool_id') border-red-500 @enderror" required>
-                                <option value="">Seleccione una herramienta</option>
-                                <template x-for="tool in toolsData" :key="tool.id">
-                                    <option
-                                        :value="tool.id"
-                                        :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
-                                        :class="(tool.estado === 'mantenimiento' || tool.disponible <= 0) ? 'text-gray-400' : ''"
-                                        x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (En mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
-                                    </option>
-                                </template>
-                            </select>
-                            @error('tool_id')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                            <!-- Mostrar estado y stock de la herramienta seleccionada -->
-                            <template x-if="selectedToolState">
-                                <div class="mt-2 p-3 rounded-md" :class="{
-                                    'bg-green-100 border border-green-300': selectedToolState === 'disponible' && selectedToolStock > 0,
-                                    'bg-yellow-100 border border-yellow-300': selectedToolState === 'en_prestamo',
-                                    'bg-orange-100 border border-orange-300': selectedToolState === 'mantenimiento',
-                                    'bg-red-100 border border-red-300': selectedToolState === 'no_disponible' || selectedToolStock <= 0
-                                }">
-                                    <p class="text-sm font-semibold" :class="{
-                                        'text-green-800': selectedToolState === 'disponible' && selectedToolStock > 0,
-                                        'text-yellow-800': selectedToolState === 'en_prestamo',
-                                        'text-orange-800': selectedToolState === 'mantenimiento',
-                                        'text-red-800': selectedToolState === 'no_disponible' || selectedToolStock <= 0
-                                    }">
-                                        <i class="fas fa-info-circle mr-2"></i>
-                                        Estado: <span x-text="getEstadoLabel(selectedToolState)"></span>
-                                        <span class="ml-2">|</span>
-                                        <i class="fas fa-boxes ml-2 mr-1"></i>
-                                        Disponible: <span x-text="selectedToolStock"></span> unidad(es)
-                                    </p>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-wrench mr-1 text-orange-500"></i> Herramientas: <span class="text-red-500">*</span>
+                            </label>
+                            <template x-for="(item, index) in createForm.tools" :key="index">
+                                <div class="flex items-start space-x-2 mb-3 p-3 bg-gray-50 rounded-lg border">
+                                    <div class="flex-1">
+                                        <select :name="'tools[' + index + '][tool_id]'" x-model="item.tool_id" @change="clampToolAmount(index)"
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline" required>
+                                            <option value="">Seleccione herramienta</option>
+                                            <template x-for="tool in toolsData" :key="tool.id">
+                                                <option :value="tool.id"
+                                                    :disabled="tool.estado === 'mantenimiento' || tool.disponible <= 0"
+                                                    x-text="tool.nombre + (tool.placa ? ' [' + tool.placa + ']' : '') + ' — Stock: ' + tool.disponible + '/' + tool.total + (tool.estado === 'mantenimiento' ? ' (Mantenimiento)' : (tool.disponible <= 0 ? ' (Sin stock)' : ''))">
+                                                </option>
+                                            </template>
+                                        </select>
+                                        <template x-if="item.tool_id && getToolInfo(item.tool_id)">
+                                            <p class="text-xs mt-1" :class="getToolInfo(item.tool_id).disponible > 0 ? 'text-green-600' : 'text-red-500'">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Estado: <span x-text="getEstadoLabel(getToolInfo(item.tool_id).estado)"></span> |
+                                                Disponible: <span x-text="getToolInfo(item.tool_id).disponible"></span> unidad(es)
+                                            </p>
+                                        </template>
+                                    </div>
+                                    <div class="w-24">
+                                        <input type="number"
+                                               :name="'tools[' + index + '][amount]'"
+                                               x-model="item.amount"
+                                               @input="clampToolAmount(index)"
+                                               min="1"
+                                               :max="getToolInfo(item.tool_id)?.disponible || 1"
+                                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
+                                               placeholder="Cant."
+                                               required>
+                                    </div>
+                                    <button type="button" x-show="createForm.tools.length > 1" @click="removeToolRow(index)"
+                                            class="text-red-500 hover:text-red-700 p-2 mt-1 flex-shrink-0" title="Quitar herramienta">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
                                 </div>
                             </template>
+                            <button type="button" @click="addToolRow()" class="text-sm text-blue-600 hover:text-blue-800 font-semibold mt-1">
+                                <i class="fas fa-plus-circle mr-1"></i> Agregar otra herramienta
+                            </button>
+                            @error('tools')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                            @error('tools.*.tool_id')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
+
                         <div class="mb-4">
                             <label for="productive_unit_warehouse_id" class="block text-gray-700 text-sm font-bold mb-2">Unidad Productiva/Bodega: <span class="text-red-500">*</span></label>
-                            <select name="productive_unit_warehouse_id" id="productive_unit_warehouse_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('productive_unit_warehouse_id') border-red-500 @enderror" required>
+                            <select name="productive_unit_warehouse_id" id="productive_unit_warehouse_id" x-model="createForm.productive_unit_warehouse_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('productive_unit_warehouse_id') border-red-500 @enderror" required>
                                 <option value="">Seleccione una unidad productiva</option>
                                 @foreach($productiveUnitWarehouses as $puw)
-                                    <option value="{{ $puw->id }}" {{ old('productive_unit_warehouse_id') == $puw->id ? 'selected' : '' }}>
+                                    <option value="{{ $puw->id }}">
                                         {{ $puw->productiveUnit->name ?? 'N/A' }} - {{ $puw->warehouse->name ?? 'N/A' }}
                                     </option>
                                 @endforeach
@@ -449,40 +504,35 @@
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        <div class="mb-4">
-                            <label for="amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad: <span class="text-gray-500 text-xs">(Opcional)</span></label>
-                            <input type="number" name="amount" id="amount"
-                                   x-model="createForm.amount"
-                                   @input="clampAmount('create')"
-                                   min="1"
-                                   :max="selectedToolStock > 0 ? selectedToolStock : 1"
-                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" placeholder="Ej: 1">
-                            <p class="text-xs mt-1" :class="selectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="createForm.tool_id">
-                                <i class="fas fa-boxes mr-1"></i> Máximo disponible: <span x-text="selectedToolStock"></span> unidad(es)
-                            </p>
-                            @error('amount')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
+
                         <div class="mb-4">
                             <label for="purpose" class="block text-gray-700 text-sm font-bold mb-2">Finalidad: <span class="text-red-500">*</span></label>
-                            <textarea name="purpose" id="purpose" rows="3" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('purpose') border-red-500 @enderror" placeholder="Describe para qué necesitas la herramienta...">{{ old('purpose') }}</textarea>
+                            <textarea name="purpose" id="purpose" rows="3" x-model="createForm.purpose" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('purpose') border-red-500 @enderror" placeholder="Describe para qué necesitas la herramienta..."></textarea>
                             @error('purpose')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
+
                         <div class="mb-4">
                             <label for="required_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha Requerida: <span class="text-red-500">*</span></label>
-                            <input type="date" name="required_date" id="required_date" value="{{ old('required_date') }}" min="{{ date('Y-m-d') }}" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('required_date') border-red-500 @enderror">
+                            <input type="date" name="required_date" id="required_date" x-model="createForm.required_date" min="{{ date('Y-m-d') }}" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('required_date') border-red-500 @enderror">
                             @error('required_date')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
+                        <div class="mb-4">
+                            <label for="return_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha Estimada de Devolución:</label>
+                            <input type="date" name="return_date" id="return_date" x-model="createForm.return_date" :min="createForm.required_date || '{{ date('Y-m-d') }}'" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('return_date') border-red-500 @enderror">
+                            @error('return_date')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isCreateModalOpen = false; resetCreateForm();" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
                             <button type="submit"
-                                    :disabled="!createForm.tool_id || selectedToolStock <= 0"
-                                    :class="(!createForm.tool_id || selectedToolStock <= 0) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                                    :disabled="!canSubmitCreate()"
+                                    :class="!canSubmitCreate() ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
                                     class="text-white font-bold py-2 px-4 rounded transition-colors duration-200">
                                 Registrar Préstamo
                             </button>
@@ -505,7 +555,7 @@
                         <input type="hidden" name="_edit_loan_id" :value="currentEditLoan">
                         <div class="mb-4">
                             <label for="edit_tool_id" class="block text-gray-700 text-sm font-bold mb-2">Herramienta: <span class="text-red-500">*</span></label>
-                            <select name="tool_id" id="edit_tool_id" x-model="editForm.tool_id" @change="updateToolState()" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('tool_id') border-red-500 @enderror" required>
+                            <select name="tool_id" id="edit_tool_id" x-model="editForm.tool_id" @change="updateEditToolState()" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('tool_id') border-red-500 @enderror" required>
                                 <option value="">Seleccione una herramienta</option>
                                 <template x-for="tool in toolsData" :key="tool.id">
                                     <option
@@ -520,24 +570,24 @@
                             @error('tool_id')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
-                            <template x-if="selectedToolState">
+                            <template x-if="editToolState">
                                 <div class="mt-2 p-3 rounded-md" :class="{
-                                    'bg-green-100 border border-green-300': selectedToolState === 'disponible' && selectedToolStock > 0,
-                                    'bg-yellow-100 border border-yellow-300': selectedToolState === 'en_prestamo',
-                                    'bg-orange-100 border border-orange-300': selectedToolState === 'mantenimiento',
-                                    'bg-red-100 border border-red-300': selectedToolState === 'no_disponible' || selectedToolStock <= 0
+                                    'bg-green-100 border border-green-300': editToolState === 'disponible' && editToolStock > 0,
+                                    'bg-yellow-100 border border-yellow-300': editToolState === 'en_prestamo',
+                                    'bg-orange-100 border border-orange-300': editToolState === 'mantenimiento',
+                                    'bg-red-100 border border-red-300': editToolState === 'no_disponible' || editToolStock <= 0
                                 }">
                                     <p class="text-sm font-semibold" :class="{
-                                        'text-green-800': selectedToolState === 'disponible' && selectedToolStock > 0,
-                                        'text-yellow-800': selectedToolState === 'en_prestamo',
-                                        'text-orange-800': selectedToolState === 'mantenimiento',
-                                        'text-red-800': selectedToolState === 'no_disponible' || selectedToolStock <= 0
+                                        'text-green-800': editToolState === 'disponible' && editToolStock > 0,
+                                        'text-yellow-800': editToolState === 'en_prestamo',
+                                        'text-orange-800': editToolState === 'mantenimiento',
+                                        'text-red-800': editToolState === 'no_disponible' || editToolStock <= 0
                                     }">
                                         <i class="fas fa-info-circle mr-2"></i>
-                                        Estado: <span x-text="getEstadoLabel(selectedToolState)"></span>
+                                        Estado: <span x-text="getEstadoLabel(editToolState)"></span>
                                         <span class="ml-2">|</span>
                                         <i class="fas fa-boxes ml-2 mr-1"></i>
-                                        Disponible: <span x-text="selectedToolStock"></span> unidad(es)
+                                        Disponible: <span x-text="editToolStock"></span> unidad(es)
                                     </p>
                                 </div>
                             </template>
@@ -560,12 +610,12 @@
                             <label for="edit_amount" class="block text-gray-700 text-sm font-bold mb-2">Cantidad: <span class="text-gray-500 text-xs">(Opcional)</span></label>
                             <input type="number" name="amount" id="edit_amount"
                                    x-model="editForm.amount"
-                                   @input="clampAmount('edit')"
+                                   @input="clampEditAmount()"
                                    min="1"
-                                   :max="selectedToolStock > 0 ? selectedToolStock : 1"
+                                   :max="editToolStock > 0 ? editToolStock : 1"
                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('amount') border-red-500 @enderror" placeholder="Ej: 1">
-                            <p class="text-xs mt-1" :class="selectedToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="editForm.tool_id">
-                                <i class="fas fa-boxes mr-1"></i> Máximo disponible: <span x-text="selectedToolStock"></span> unidad(es)
+                            <p class="text-xs mt-1" :class="editToolStock > 0 ? 'text-green-600' : 'text-red-500'" x-show="editForm.tool_id">
+                                <i class="fas fa-boxes mr-1"></i> Máximo disponible: <span x-text="editToolStock"></span> unidad(es)
                             </p>
                             @error('amount')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -586,23 +636,11 @@
                             @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="edit_delivery_image" class="block text-gray-700 text-sm font-bold mb-2">Foto de Entrega: <span class="text-gray-500 text-xs">(Opcional)</span></label>
-                            <input type="file" name="delivery_image" id="edit_delivery_image" accept="image/*" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('delivery_image') border-red-500 @enderror">
-                            <p class="text-gray-500 text-xs mt-1">Foto que muestre cómo se entrega la herramienta</p>
-                            <template x-if="editForm.existing_delivery_image">
-                                <div class="mt-2">
-                                    <p class="text-xs text-gray-600 mb-1">Imagen actual:</p>
-                                    <img :src="`{{ asset('storage/') }}/${editForm.existing_delivery_image}`" alt="Imagen actual" class="max-w-full h-32 object-cover rounded-md border border-gray-300">
-                                </div>
-                            </template>
-                            @error('delivery_image')
+                            <label for="edit_return_date" class="block text-gray-700 text-sm font-bold mb-2">Fecha Estimada de Devolución:</label>
+                            <input type="date" name="return_date" id="edit_return_date" x-model="editForm.return_date" :min="editForm.required_date || '{{ date('Y-m-d') }}'" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('return_date') border-red-500 @enderror">
+                            @error('return_date')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
-                            <!-- Vista previa de la nueva imagen seleccionada -->
-                            <div id="editDeliveryImagePreview" class="mt-2 hidden">
-                                <p class="text-xs text-gray-600 mb-1">Nueva imagen:</p>
-                                <img id="previewEditDeliveryImg" src="" alt="Vista previa" class="max-w-full h-32 object-cover rounded-md border border-gray-300">
-                            </div>
                         </div>
                         <div class="flex justify-end space-x-4">
                             <button type="button" @click="isEditModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors duration-200">Cancelar</button>
@@ -652,13 +690,14 @@
                         <!-- Foto de Devolución -->
                         <div class="mb-6">
                             <label for="return_image" class="block text-gray-700 text-sm font-bold mb-2">
-                                <i class="fas fa-camera text-green-500 mr-1"></i>Foto de Devolución: <span class="text-gray-500 text-xs font-normal">(Opcional pero recomendado)</span>
+                                <i class="fas fa-camera text-green-500 mr-1"></i>Foto de Devolución: <span class="text-red-500">*</span>
                             </label>
                             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-green-400 transition-colors">
                                 <input type="file" name="return_image" id="return_image" accept="image/*" 
-                                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 @error('return_image') border-red-500 @enderror">
+                                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 @error('return_image') border-red-500 @enderror"
+                                       required>
                                 <p class="text-xs text-gray-500 mt-2 text-center">
-                                    <i class="fas fa-info-circle mr-1"></i>Foto que muestre claramente cómo se devuelve la herramienta
+                                    <i class="fas fa-info-circle mr-1"></i>Sube una foto clara de cómo se devuelve la herramienta (obligatoria)
                                 </p>
                             </div>
                             @error('return_image')
@@ -813,27 +852,6 @@ function confirmDeleteLoan(loanId, toolName) {
 // Vista previa de imágenes en los modales
 document.addEventListener('DOMContentLoaded', function() {
     setupAutoFilter();
-    
-    // Vista previa para imagen de entrega (modal de edición)
-    const editDeliveryImageInput = document.getElementById('edit_delivery_image');
-    const editDeliveryImagePreview = document.getElementById('editDeliveryImagePreview');
-    const previewEditDeliveryImg = document.getElementById('previewEditDeliveryImg');
-    
-    if (editDeliveryImageInput) {
-        editDeliveryImageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewEditDeliveryImg.src = e.target.result;
-                    editDeliveryImagePreview.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            } else {
-                editDeliveryImagePreview.classList.add('hidden');
-            }
-        });
-    }
     
     // Vista previa para imagen de devolución (modal de devolución)
     const returnImageInput = document.getElementById('return_image');

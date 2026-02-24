@@ -27,6 +27,7 @@
             <th>Herramienta</th>
             <th>Usuario / Prestatario</th>
             <th>Cantidad</th>
+            <th>Área / Bodega</th>
             <th>Movimiento</th>
             <th>Estado</th>
             <th>Fecha</th>
@@ -43,6 +44,12 @@
             <td>{{ $loan->tool->nombre ?? 'N/A' }} {{ $loan->tool->placa ? '['.$loan->tool->placa.']' : '' }}</td>
             <td>{{ $loan->user->person->first_name ?? 'N/A' }} {{ $loan->user->person->first_last_name ?? '' }}</td>
             <td>{{ $loan->amount ?? 'N/A' }}</td>
+            <td>
+                {{ $loan->productiveUnitWarehouse->productiveUnit->name ?? 'N/A' }}
+                @if($loan->productiveUnitWarehouse && $loan->productiveUnitWarehouse->warehouse)
+                    ({{ $loan->productiveUnitWarehouse->warehouse->name }})
+                @endif
+            </td>
             <td>{{ $loan->role }}</td>
             <td>{{ $statusLabels[$loan->status] ?? 'N/A' }}</td>
             <td>{{ $loan->created_at->format('d/m/Y') }}</td>

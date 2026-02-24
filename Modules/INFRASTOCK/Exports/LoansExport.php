@@ -71,10 +71,11 @@ class LoansExport implements FromView, WithStyles, WithColumnWidths, WithTitle, 
             'B' => 24,
             'C' => 22,
             'D' => 12,
-            'E' => 14,
+            'E' => 22,
             'F' => 14,
-            'G' => 18,
-            'H' => 40,
+            'G' => 14,
+            'H' => 18,
+            'I' => 40,
         ];
     }
 
@@ -83,12 +84,12 @@ class LoansExport implements FromView, WithStyles, WithColumnWidths, WithTitle, 
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->mergeCells('A2:G2');
-                $sheet->mergeCells('A3:G3');
-                $sheet->mergeCells('A4:G4');
-                $sheet->mergeCells('A5:G5');
-                $sheet->mergeCells('A7:H7');
-                $sheet->mergeCells('A8:H8');
+                $sheet->mergeCells('A2:H2');
+                $sheet->mergeCells('A3:H3');
+                $sheet->mergeCells('A4:H4');
+                $sheet->mergeCells('A5:H5');
+                $sheet->mergeCells('A7:I7');
+                $sheet->mergeCells('A8:I8');
                 // Stats
                 $sheet->mergeCells('A10:B10');
                 $sheet->mergeCells('C10:D10');
@@ -109,38 +110,38 @@ class LoansExport implements FromView, WithStyles, WithColumnWidths, WithTitle, 
 
         $sheet->getRowDimension(1)->setRowHeight(35);
 
-        $sheet->getStyle('A2:H2')->applyFromArray([
+        $sheet->getStyle('A2:I2')->applyFromArray([
             'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => '1565C0']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(2)->setRowHeight(22);
 
-        $sheet->getStyle('A3:H3')->applyFromArray([
+        $sheet->getStyle('A3:I3')->applyFromArray([
             'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => '333333']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
         ]);
         $sheet->getRowDimension(3)->setRowHeight(18);
 
-        $sheet->getStyle('A4:H4')->applyFromArray([
+        $sheet->getStyle('A4:I4')->applyFromArray([
             'font' => ['size' => 10, 'color' => ['rgb' => '555555']],
         ]);
         $sheet->getRowDimension(4)->setRowHeight(16);
 
-        $sheet->getStyle('A5:H5')->applyFromArray([
+        $sheet->getStyle('A5:I5')->applyFromArray([
             'font' => ['size' => 10, 'color' => ['rgb' => '555555']],
         ]);
         $sheet->getRowDimension(5)->setRowHeight(16);
 
         $sheet->getRowDimension(6)->setRowHeight(10);
 
-        $sheet->getStyle('A7:H7')->applyFromArray([
+        $sheet->getStyle('A7:I7')->applyFromArray([
             'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1565C0']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(7)->setRowHeight(28);
 
-        $sheet->getStyle('A8:H8')->applyFromArray([
+        $sheet->getStyle('A8:I8')->applyFromArray([
             'font' => ['size' => 9, 'color' => ['rgb' => '666666']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
@@ -169,7 +170,7 @@ class LoansExport implements FromView, WithStyles, WithColumnWidths, WithTitle, 
 
         $sheet->getRowDimension(12)->setRowHeight(8);
 
-        $sheet->getStyle('A13:H13')->applyFromArray([
+        $sheet->getStyle('A13:I13')->applyFromArray([
             'font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1565C0']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
@@ -178,18 +179,18 @@ class LoansExport implements FromView, WithStyles, WithColumnWidths, WithTitle, 
         $sheet->getRowDimension(13)->setRowHeight(28);
 
         if ($lastRow >= $dataStartRow) {
-            $sheet->getStyle('A' . $dataStartRow . ':H' . $lastRow)->applyFromArray([
+            $sheet->getStyle('A' . $dataStartRow . ':I' . $lastRow)->applyFromArray([
                 'font' => ['size' => 9],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'DDDDDD']]],
             ]);
 
             $sheet->getStyle('A' . $dataStartRow . ':A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle('D' . $dataStartRow . ':F' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('D' . $dataStartRow . ':G' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             for ($i = $dataStartRow; $i <= $lastRow; $i++) {
                 if (($i - $dataStartRow) % 2 == 1) {
-                    $sheet->getStyle('A' . $i . ':H' . $i)->applyFromArray([
+                    $sheet->getStyle('A' . $i . ':I' . $i)->applyFromArray([
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F5F5F5']],
                     ]);
                 }
