@@ -261,6 +261,5 @@
 @section('script')
 <script>
     // Script específico para la vista de reporte de sobrantes
-    console.log('Vista de Reporte de Sobrantes cargada correctamente');
 </script>
 @endsection

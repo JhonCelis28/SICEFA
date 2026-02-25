@@ -216,7 +216,6 @@
 
 @section('script')
 <script>
-    console.log('Dashboard del Vigilancia cargado correctamente');
 </script>
 @endsection
 

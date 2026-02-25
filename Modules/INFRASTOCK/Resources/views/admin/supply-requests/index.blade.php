@@ -213,50 +213,89 @@
             @endif
         </div>
 
-        <!-- Resumen de estados -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+        <!-- Tarjetas de Resumen -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Pendientes</p>
-                        <p class="text-2xl font-bold text-gray-800">{{ $supplyRequests->where('status', 'pending')->count() }}</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $pendingCount }}</p>
                     </div>
                     <div class="bg-yellow-100 rounded-full p-3">
                         <i class="fas fa-clock text-yellow-600 text-xl"></i>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Aprobadas</p>
-                        <p class="text-2xl font-bold text-gray-800">{{ $supplyRequests->where('status', 'approved')->count() }}</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $approvedCount }}</p>
                     </div>
                     <div class="bg-green-100 rounded-full p-3">
-                        <i class="fas fa-check text-green-600 text-xl"></i>
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Rechazadas</p>
-                        <p class="text-2xl font-bold text-gray-800">{{ $supplyRequests->where('status', 'rejected')->count() }}</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $rejectedCount }}</p>
                     </div>
                     <div class="bg-red-100 rounded-full p-3">
-                        <i class="fas fa-times text-red-600 text-xl"></i>
+                        <i class="fas fa-times-circle text-red-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $totalCount }}</p>
+                    </div>
+                    <div class="bg-blue-100 rounded-full p-3">
+                        <i class="fas fa-list text-blue-600 text-xl"></i>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Filtros -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-gray-700">Filtrar por estado:</span>
+                <a href="{{ route('infrastock.admin.supply-requests.index', ['status' => 'all']) }}" 
+                   class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors {{ !request('status') || request('status') === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                    Todas
+                </a>
+                <a href="{{ route('infrastock.admin.supply-requests.index', ['status' => 'pending']) }}" 
+                   class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors {{ request('status') === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                    Pendientes
+                </a>
+                <a href="{{ route('infrastock.admin.supply-requests.index', ['status' => 'approved']) }}" 
+                   class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors {{ request('status') === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                    Aprobadas
+                </a>
+                <a href="{{ route('infrastock.admin.supply-requests.index', ['status' => 'rejected']) }}" 
+                   class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors {{ request('status') === 'rejected' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                    Rechazadas
+                </a>
+            </div>
+        </div>
+
         <!-- Tabla de Solicitudes de Insumos -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-700 flex items-center">
                     <i class="fas fa-clipboard-list mr-2 text-green-600"></i>
                     Lista de Solicitudes
                 </h3>
+                @if($supplyRequests->total() > 0)
+                    <span class="text-sm text-gray-500">
+                        Mostrando {{ $supplyRequests->firstItem() ?? 0 }} - {{ $supplyRequests->lastItem() ?? 0 }} de {{ $supplyRequests->total() }} solicitudes
+                    </span>
+                @endif
             </div>
                 
                 @if($supplyRequests->count() > 0)
@@ -418,7 +457,13 @@
                 <div class="text-center py-12">
                     <i class="fas fa-clipboard-list text-gray-400 text-6xl mb-4"></i>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">No hay solicitudes</h3>
-                    <p class="text-gray-500">No se han encontrado solicitudes de insumos.</p>
+                    <p class="text-gray-500">
+                        @if(request('status') && request('status') !== 'all')
+                            No se han encontrado solicitudes con estado "{{ request('status') }}".
+                        @else
+                            No se han encontrado solicitudes de insumos.
+                        @endif
+                    </p>
                 </div>
             @endif
         </div>

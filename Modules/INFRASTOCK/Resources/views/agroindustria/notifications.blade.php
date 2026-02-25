@@ -320,7 +320,6 @@
 
 @section('script')
 <script>
-    console.log('Vista de Notificaciones cargada correctamente');
 </script>
 @endsection
 

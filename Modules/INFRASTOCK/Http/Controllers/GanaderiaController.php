@@ -2,10 +2,8 @@
 
 namespace Modules\INFRASTOCK\Http\Controllers;
 
-use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Modules\INFRASTOCK\Entities\WarehouseMovement;
 use Modules\INFRASTOCK\Entities\Equipment;
 use Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse;
 use Modules\INFRASTOCK\Entities\Notification;
@@ -13,8 +11,6 @@ use Modules\INFRASTOCK\Entities\Surplus;
 use Modules\INFRASTOCK\Entities\InfrastockCategory;
 use Modules\INFRASTOCK\Entities\Request as InfrastockRequest;
 use App\Models\User;
-use Modules\SICA\Entities\Person;
-use Modules\SICA\Entities\Role;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;

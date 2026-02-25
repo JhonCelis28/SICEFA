@@ -201,6 +201,5 @@
 @section('script')
 <script>
     // Script específico para la vista de notificaciones
-    console.log('Vista de Notificaciones cargada correctamente');
 </script>
 @endsection

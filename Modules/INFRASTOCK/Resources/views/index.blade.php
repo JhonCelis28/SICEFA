@@ -64,6 +64,7 @@
                     <a href="#stats" class="hover:text-green-200 transition-colors duration-300">Estadísticas</a>
                     <a href="{{ route('cefa.infrastock.developers') }}" class="hover:text-green-200 transition-colors duration-300">Desarrolladores</a>
                 </nav>
+
                 <!-- Botón condicional: "Inicia sesión" para usuarios no autenticados o dashboard específico para autenticados -->
                 <div>
                     @guest
@@ -492,17 +493,6 @@
                     <p class="text-green-100 mb-4">
                         Sistema de Gestión de Infraestructura y Stock del Centro de Formación Agroindustrial "La Angostura".
                     </p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="text-green-200 hover:text-white transition-colors">
-                            <i class="fab fa-facebook text-2xl"></i>
-                        </a>
-                        <a href="#" class="text-green-200 hover:text-white transition-colors">
-                            <i class="fab fa-twitter text-2xl"></i>
-                        </a>
-                        <a href="#" class="text-green-200 hover:text-white transition-colors">
-                            <i class="fab fa-instagram text-2xl"></i>
-                        </a>
-                    </div>
                 </div>
                 <div>
                     <h3 class="text-xl font-bold mb-4">Enlaces Rápidos</h3>
@@ -542,11 +532,31 @@
         </div>
     </footer>
 
+    <!-- CONTENEDOR FIJO -->
+    <div class="fixed bottom-6 right-6 z-50">
+        
+        <!-- OPCIONES (posición absoluta encima del botón) -->
+        <div id="manual-options" class="absolute bottom-16 right-0 hidden space-y-2">
+            <a href="{{ asset('modules/infrastock/manuales/Manual_Administrador.pdf') }}" target="_blank" class="block bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-300 text-sm whitespace-nowrap">Manual Administrador</a>
+            <a href="{{ asset('modules/infrastock/manuales/Manual_Area_Solicitante.pdf') }}" target="_blank" class="block bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-300 text-sm whitespace-nowrap">Manual Área Solicitante</a>
+            <a href="{{ asset('modules/infrastock/manuales/Manual_Instructor.pdf') }}" target="_blank" class="block bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-300 text-sm whitespace-nowrap">Manual Instructor</a>
+        </div>
+
+        <!-- BOTÓN PRINCIPAL (ya no se mueve) -->
+        <button onclick="toggleManuals()" title="Manuales" class="bg-green-700 hover:bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition duration-300">
+            <img src="{{ asset('assets/img/soporte.png') }}" alt="Manuales" class="w-6 h-6">
+        </button>
+    </div>
+
     <!-- Script JavaScript para la funcionalidad del menú móvil -->
     <script>
         document.getElementById('mobile-menu-button').onclick = function() {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         };
+
+        function toggleManuals() {
+            document.getElementById('manual-options').classList.toggle('hidden');
+        }
 
         // Smooth scroll para los enlaces de navegación
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

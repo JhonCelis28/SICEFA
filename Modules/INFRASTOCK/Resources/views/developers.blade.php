@@ -174,16 +174,13 @@
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Desarrollador 1</h3>
-                        <p class="text-blue-600 font-semibold mb-4">Full Stack Developer</p>
-                        <p class="text-gray-600 text-sm mb-4">
-                            Especializado en desarrollo backend y arquitectura de sistemas.
-                        </p>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-1">Desarrollador 1</h3>
+                        <p class="text-sm text-blue-600 italic mb-4" style="font-family: 'Plus Jakarta Sans', sans-serif;">Jhon Fredy Celis Quintero</p>
                         <div class="flex justify-center space-x-4">
-                            <a href="#" class="text-blue-600 hover:text-blue-800 transition-colors">
+                            <a href="https://github.com/JhonCelis28" class="text-blue-600 hover:text-blue-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
-                            <a href="#" class="text-blue-600 hover:text-blue-800 transition-colors">
+                            <a href="https://www.linkedin.com/in/devsilec/" class="text-blue-600 hover:text-blue-800 transition-colors">
                                 <i class="fab fa-linkedin text-2xl"></i>
                             </a>
                         </div>
@@ -199,15 +196,12 @@
                                  class="w-full h-full"
                                  style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador2.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-blue-500" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-green-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Desarrollador 2</h3>
-                        <p class="text-green-600 font-semibold mb-4">Frontend Developer</p>
-                        <p class="text-gray-600 text-sm mb-4">
-                            Experto en diseño de interfaces y experiencia de usuario.
-                        </p>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-1">Desarrollador 2</h3>
+                        <p class="text-sm text-green-600 italic mb-4" style="font-family: 'Plus Jakarta Sans', sans-serif;">Paula Dayana Cerquera Tovar</p>
                         <div class="flex justify-center space-x-4">
                             <a href="https://github.com/PaulaDayana" class="text-green-600 hover:text-green-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
@@ -228,15 +222,12 @@
                                  class="w-full h-full"
                                  style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador3.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-purple-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Desarrollador 3</h3>
-                        <p class="text-purple-600 font-semibold mb-4">Backend Developer</p>
-                        <p class="text-gray-600 text-sm mb-4">
-                            Especialista en bases de datos y lógica de negocio.
-                        </p>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-1">Desarrollador 3</h3>
+                        <p class="text-sm text-purple-600 italic mb-4" style="font-family: 'Plus Jakarta Sans', sans-serif;">Johan Stick Calderon Horta</p>
                         <div class="flex justify-center space-x-4">
                             <a href="https://github.com/johanprogam" class="text-purple-600 hover:text-purple-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
@@ -257,15 +248,12 @@
                                  class="w-full h-full"
                                  style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador4.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-orange-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Desarrollador 4</h3>
-                        <p class="text-orange-600 font-semibold mb-4">Full Stack Developer</p>
-                        <p class="text-gray-600 text-sm mb-4">
-                            Desarrollador versátil con experiencia en múltiples tecnologías.
-                        </p>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-1">Desarrollador 4</h3>
+                        <p class="text-sm text-orange-600 italic mb-4" style="font-family: 'Plus Jakarta Sans', sans-serif;">Sharon Natalia Londoño Oliveros</p>
                         <div class="flex justify-center space-x-4">
                             <a href="https://github.com/sharonlondono07" class="text-orange-600 hover:text-orange-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
@@ -508,17 +496,6 @@
                     <p class="text-green-100 mb-4">
                         Sistema de Gestión de Infraestructura y Stock del Centro de Formación Agroindustrial "La Angostura".
                     </p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="text-green-200 hover:text-white transition-colors">
-                            <i class="fab fa-facebook text-2xl"></i>
-                        </a>
-                        <a href="#" class="text-green-200 hover:text-white transition-colors">
-                            <i class="fab fa-twitter text-2xl"></i>
-                        </a>
-                        <a href="#" class="text-green-200 hover:text-white transition-colors">
-                            <i class="fab fa-instagram text-2xl"></i>
-                        </a>
-                    </div>
                 </div>
                 <div>
                     <h3 class="text-xl font-bold mb-4">Enlaces Rápidos</h3>
@@ -558,11 +535,32 @@
         </div>
     </footer>
 
+    <!-- CONTENEDOR FIJO -->
+    <div class="fixed bottom-6 right-6 z-50">
+        
+        <!-- OPCIONES (posición absoluta encima del botón) -->
+        <div id="manual-options" class="absolute bottom-16 right-0 hidden space-y-2">
+            <a href="{{ asset('modules/infrastock/manuales/Manual_Administrador.pdf') }}" target="_blank" class="block bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-300 text-sm whitespace-nowrap">Manual Administrador</a>
+            <a href="{{ asset('modules/infrastock/manuales/Manual_Area_Solicitante.pdf') }}" target="_blank" class="block bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-300 text-sm whitespace-nowrap">Manual Área Solicitante</a>
+            <a href="{{ asset('modules/infrastock/manuales/Manual_Instructor.pdf') }}" target="_blank" class="block bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-300 text-sm whitespace-nowrap">Manual Instructor</a>
+        </div>
+
+        <!-- BOTÓN PRINCIPAL (ya no se mueve) -->
+        <button onclick="toggleManuals()" title="Manuales" class="bg-green-700 hover:bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition duration-300">
+            <img src="{{ asset('assets/img/soporte.png') }}" alt="Manuales" class="w-6 h-6">
+        </button>
+    </div>
+
+
     <!-- Script JavaScript para la funcionalidad del menú móvil -->
     <script>
         document.getElementById('mobile-menu-button').onclick = function() {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         };
+
+        function toggleManuals() {
+            document.getElementById('manual-options').classList.toggle('hidden');
+        }
     </script>
 
 </body>

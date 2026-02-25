@@ -292,6 +292,5 @@
 @section('script')
 <script>
     // Script específico para la vista de historial de insumos
-    console.log('Vista de Historial de Insumos cargada correctamente');
 </script>
 @endsection

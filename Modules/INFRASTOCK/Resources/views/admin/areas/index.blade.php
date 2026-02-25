@@ -11,16 +11,13 @@
         currentArea: { id: null, name: '', description: '' },
         
         init() {
-            console.log('Alpine.js inicializado correctamente');
         },
         
         openCreateModal() {
-            console.log('Abriendo modal de creación');
             this.isCreateModalOpen = true;
         },
         
         openEditModal(id, name, description) {
-            console.log('Abriendo modal de edición:', { id, name, description });
             this.isEditModalOpen = true;
             this.currentArea = { id: id, name: name, description: description };
         },
@@ -183,8 +180,6 @@
 
 @section('script')
 <script>
-console.log('Script cargado correctamente');
-
 // Verificar si hay errores de validación y abrir modal automáticamente
 @if($errors->hasAny(['name', 'description']) && old('_token'))
     document.addEventListener('DOMContentLoaded', function() {

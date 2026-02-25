@@ -90,7 +90,7 @@
             x-transition:leave-start="opacity-100 transform translate-y-0"
             x-transition:leave-end="opacity-0 transform -translate-y-2"
             class="ml-4 mt-3 mb-2 space-y-2">
-            <li><a href="{{ route('infrastock.admin.supplies.index') }}" class="sidebar-submenu-item @if(Request::routeIs(['infrastock.admin.supplies.index', 'infrastock.admin.supplies.create', 'infrastock.admin.supplies.edit'])) active @endif"><i></i> Gestionar Insumos</a></li>
+            <li><a href="{{ route('infrastock.admin.supplies.index') }}" class="sidebar-submenu-item @if(Request::routeIs(['infrastock.admin.supplies.index', 'infrastock.admin.supplies.create', 'infrastock.admin.supplies.edit'])) active @endif"><i></i>Inventario</a></li>
             <li>
                 <a href="{{ route('infrastock.admin.supply-requests.index') }}" class="sidebar-submenu-item @if(Request::routeIs('infrastock.admin.supply-requests.index')) active @endif">
                     <i></i> Solicitudes

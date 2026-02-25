@@ -225,6 +225,5 @@
 <!-- Script para funcionalidades adicionales si es necesario -->
 <script>
     // Aquí se pueden agregar scripts específicos para el personal de aseo
-    console.log('Dashboard del Personal de Aseo cargado correctamente');
 </script>
 @endsection

@@ -367,12 +367,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Mostrar errores de validación si existen
     @if($errors->any())
-        console.log('Errores de validación:', @json($errors->all()));
     @endif
     
     // Verificar si hay mensajes de sesión
     @if(session('error'))
-        console.log('Error de sesión:', '{{ session('error') }}');
     @endif
 });
 </script>

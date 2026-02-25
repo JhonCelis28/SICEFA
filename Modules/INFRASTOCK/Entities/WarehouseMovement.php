@@ -82,16 +82,6 @@ class WarehouseMovement extends Model
     }
 
     /**
-     * Define la relación de pertenencia a un equipo/insumo (método legacy).
-     * Este método solo se aplica si `item_type` es 'equipment'.
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function equipmentLegacy()
-    {
-        return $this->belongsTo(Equipment::class, 'movement_id');
-    }
-
-    /**
      * Define la relación de pertenencia a una herramienta.
      * Este método solo se aplica si `item_type` es 'tool'.
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

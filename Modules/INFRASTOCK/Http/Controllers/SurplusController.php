@@ -2,11 +2,9 @@
 
 namespace Modules\INFRASTOCK\Http\Controllers;
 
-use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Modules\INFRASTOCK\Entities\Surplus;
-use Modules\INFRASTOCK\Entities\Equipment;
 use Carbon\Carbon;
 
 class SurplusController extends Controller

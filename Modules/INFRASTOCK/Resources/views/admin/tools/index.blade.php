@@ -216,7 +216,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div class="flex items-center justify-end space-x-2">
                                                 <!-- Botón para editar -->
-                                                <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ?? '' }}', '{{ $tool->proximo_mantenimiento ?? '' }}', '{{ $tool->fecha_adquisicion ?? '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}')" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
+                                                <button @click="openEditModal({{ $tool->id }}, '{{ addslashes($tool->nombre ?? '') }}', '{{ addslashes($tool->imagen ?? '') }}', '{{ addslashes($tool->placa ?? '') }}', '{{ addslashes($tool->descripcion ?? '') }}', '{{ addslashes($tool->marca ?? '') }}', '{{ addslashes($tool->modelo ?? '') }}', {{ $tool->categoria_id ?? $tool->category_id ?? 'null' }}, {{ $tool->category_id ?? 'null' }}, '{{ $tool->estado ?? 'disponible' }}', {{ $tool->cantidad_total ?? 'null' }}, {{ $tool->cantidad_disponible ?? 'null' }}, '{{ $tool->fecha_mantenimiento ? \Carbon\Carbon::parse($tool->fecha_mantenimiento)->format('Y-m-d') : '' }}', '{{ $tool->proximo_mantenimiento ? \Carbon\Carbon::parse($tool->proximo_mantenimiento)->format('Y-m-d') : '' }}', '{{ $tool->fecha_adquisicion ? \Carbon\Carbon::parse($tool->fecha_adquisicion)->format('Y-m-d') : '' }}', '{{ addslashes($tool->descripcion_mantenimiento ?? '') }}')" class="text-yellow-600 hover:text-yellow-900 p-2 rounded hover:bg-yellow-50 transition-colors" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <!-- Botón para eliminar -->
@@ -548,8 +548,6 @@
 <script>
 // Función para enviar el formulario directamente (sin evento submit)
 async function submitToolForm() {
-    console.log('submitToolForm llamado directamente');
-    
     const form = document.getElementById('createToolForm');
     if (!form) {
         console.error('Formulario no encontrado');
@@ -595,8 +593,6 @@ async function submitToolForm() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="_token"]')?.value;
         
-        console.log('Enviando petición AJAX a:', actionUrl);
-        
         const response = await fetch(actionUrl, {
             method: 'POST',
             body: formData,
@@ -607,8 +603,6 @@ async function submitToolForm() {
             },
             credentials: 'same-origin'
         });
-        
-        console.log('Respuesta recibida:', response.status, response.statusText);
         
         // Verificar si la respuesta es JSON
         const contentType = response.headers.get('content-type');
@@ -737,15 +731,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     @endif
     
-    const createForm = document.getElementById('createToolForm');
-    if (createForm) {
-        createForm.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+    // Usar MutationObserver para detectar cuando el formulario se agrega al DOM
+    const observer = new MutationObserver(function(mutations) {
+        const createForm = document.getElementById('createToolForm');
+        if (createForm && !createForm.hasAttribute('data-listener-added')) {
+            createForm.setAttribute('data-listener-added', 'true');
+            
+            // Interceptar el submit en la fase de captura
+            createForm.addEventListener('submit', function(e) {
+                console.log('Submit interceptado por MutationObserver');
                 e.preventDefault();
-            }
-        });
-    }
-
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                handleFormSubmit(e);
+                return false;
+            }, true);
+            
+            // Prevenir envío por Enter
+            createForm.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+                    e.preventDefault();
+                    console.log('Enter presionado - previniendo submit automático');
+                }
+            });
+        }
+    });
+    
+    // Observar cambios en el DOM
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    // Configurar filtro automático
     setupAutoFilter();
 });
 

@@ -33,16 +33,13 @@
         currentCategory: { id: null, name: '', type: '' },
         
         init() {
-            console.log('Alpine.js inicializado correctamente');
         },
         
         openCreateModal() {
-            console.log('Abriendo modal de creación');
             this.isCreateModalOpen = true;
         },
         
         openEditModal(id, name, type) {
-            console.log('Abriendo modal de edición:', { id, name, type });
             this.isEditModalOpen = true;
             this.currentCategory = { id: id, name: name, type: type };
         },

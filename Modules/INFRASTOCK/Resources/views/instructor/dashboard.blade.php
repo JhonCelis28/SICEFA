@@ -205,6 +205,5 @@
 @section('script')
 <!-- Script para funcionalidades adicionales si es necesario -->
 <script>
-    console.log('Dashboard del Instructor cargado correctamente');
 </script>
 @endsection

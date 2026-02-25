@@ -59,38 +59,6 @@ class Surplus extends Model
     }
 
     /**
-     * Scope para filtrar por fecha
-     */
-    public function scopeByDateRange($query, $startDate, $endDate)
-    {
-        return $query->whereBetween('surplus_date', [$startDate, $endDate]);
-    }
-
-    /**
-     * Scope para filtrar por usuario
-     */
-    public function scopeByUser($query, $userId)
-    {
-        return $query->where('user_id', $userId);
-    }
-
-    /**
-     * Scope para filtrar por equipo
-     */
-    public function scopeByEquipment($query, $equipmentId)
-    {
-        return $query->where('equipment_id', $equipmentId);
-    }
-
-    /**
-     * Scope para filtrar por estado
-     */
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    /**
      * Verificar si el sobrante está pendiente
      */
     public function isPending(): bool

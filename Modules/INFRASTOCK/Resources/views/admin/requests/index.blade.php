@@ -14,9 +14,6 @@
                 <i class="fas fa-clock mr-1"></i>
                 {{ $requests->where('status', 'pending')->count() }} Pendientes
             </span>
-            <a href="{{ route('infrastock.test.notification') }}" class="btn btn-info btn-sm ml-2">
-                <i class="fas fa-bell mr-1"></i> Probar Notificación
-            </a>
         </div>
     </div>
 

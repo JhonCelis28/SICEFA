@@ -216,6 +216,5 @@
 
 @section('script')
 <script>
-    console.log('Dashboard del Operario cargado correctamente');
 </script>
 @endsection

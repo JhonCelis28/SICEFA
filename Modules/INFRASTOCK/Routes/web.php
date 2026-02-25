@@ -13,14 +13,8 @@
 | prefijadas con '/infrastock' y generalmente protegidas por el middleware 'auth'.
 */
 
-// Ruta principal del módulo INFRASTOCK, que redirige a la página de inicio del módulo.
 Route::get('/infrastock', 'INFRASTOCKController@index')->name('cefa.infrastock.index');
-
-// Ruta para la página de desarrolladores
 Route::get('/infrastock/developers', 'INFRASTOCKController@developers')->name('cefa.infrastock.developers');
-
-// Ruta para manejar la redirección después del login desde SICA
-// Solo redirige, no hace nada más (igual que el admin)
 Route::get('/infrastock/post-login', 'INFRASTOCKController@postlogin')->name('infrastock.post-login')->middleware('auth');
 
 /**
@@ -28,19 +22,12 @@ Route::get('/infrastock/post-login', 'INFRASTOCKController@postlogin')->name('in
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra todas las áreas productivas.
     Route::get('/infrastock/admin/areas', 'AreaController@index')->name('infrastock.admin.areas.index');
-    // Muestra el formulario para crear una nueva área (gestionado vía modal).
     Route::get('/infrastock/admin/areas/create', 'AreaController@create')->name('infrastock.admin.areas.create');
-    // Almacena una nueva área productiva.
     Route::post('/infrastock/admin/areas', 'AreaController@store')->name('infrastock.admin.areas.store');
-    // Muestra los detalles de un área específica (gestionado vía modal).
     Route::get('/infrastock/admin/areas/{area}', 'AreaController@show')->name('infrastock.admin.areas.show');
-    // Muestra el formulario para editar un área específica (gestionado vía modal).
     Route::get('/infrastock/admin/areas/{area}/edit', 'AreaController@edit')->name('infrastock.admin.areas.edit');
-    // Actualiza un área productiva existente.
     Route::put('/infrastock/admin/areas/{area}', 'AreaController@update')->name('infrastock.admin.areas.update');
-    // Elimina un área productiva.
     Route::delete('/infrastock/admin/areas/{area}', 'AreaController@destroy')->name('infrastock.admin.areas.destroy');
 });
 
@@ -49,19 +36,12 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra todas las categorías.
     Route::get('/infrastock/admin/categories', 'CategoryController@index')->name('infrastock.admin.categories.index');
-    // Muestra el formulario para crear una nueva categoría (gestionado vía modal).
     Route::get('/infrastock/admin/categories/create', 'CategoryController@create')->name('infrastock.admin.categories.create');
-    // Almacena una nueva categoría.
     Route::post('/infrastock/admin/categories', 'CategoryController@store')->name('infrastock.admin.categories.store');
-    // Muestra los detalles de una categoría específica (gestionado vía modal).
     Route::get('/infrastock/admin/categories/{category}', 'CategoryController@show')->name('infrastock.admin.categories.show');
-    // Muestra el formulario para editar una categoría específica (gestionado vía modal).
     Route::get('/infrastock/admin/categories/{category}/edit', 'CategoryController@edit')->name('infrastock.admin.categories.edit');
-    // Actualiza una categoría existente.
     Route::put('/infrastock/admin/categories/{category}', 'CategoryController@update')->name('infrastock.admin.categories.update');
-    // Elimina una categoría.
     Route::delete('/infrastock/admin/categories/{category}', 'CategoryController@destroy')->name('infrastock.admin.categories.destroy');
 });
 
@@ -70,29 +50,17 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra todos los insumos.
     Route::get('/infrastock/admin/supplies', 'SupplyController@index')->name('infrastock.admin.supplies.index');
-    // Muestra el formulario para crear un nuevo insumo (gestionado vía modal).
     Route::get('/infrastock/admin/supplies/create', 'SupplyController@create')->name('infrastock.admin.supplies.create');
-    // Almacena un nuevo insumo.
     Route::post('/infrastock/admin/supplies', 'SupplyController@store')->name('infrastock.admin.supplies.store');
-    // Almacena un nuevo préstamo de insumo desde el perfil del admin.
     Route::post('/infrastock/admin/supplies/loan', 'SupplyController@storeLoan')->name('infrastock.admin.supplies.store-loan');
-    // Muestra todos los préstamos de insumos registrados por el admin (debe ir ANTES de la ruta con parámetro).
     Route::get('/infrastock/admin/supplies/loans', 'SupplyController@indexLoans')->name('infrastock.admin.supplies.loans.index');
-    // Procesa la devolución de un préstamo de insumo.
     Route::post('/infrastock/admin/supplies/loans/{id}/return', 'SupplyController@returnLoan')->name('infrastock.admin.supplies.loans.return');
-    // Exportar insumos a PDF.
     Route::get('/infrastock/admin/supplies/export/pdf', 'SupplyController@exportPdf')->name('infrastock.admin.supplies.export.pdf');
-    // Exportar insumos a Excel.
     Route::get('/infrastock/admin/supplies/export/excel', 'SupplyController@exportExcel')->name('infrastock.admin.supplies.export.excel');
-    // Muestra los detalles de un insumo específico.
     Route::get('/infrastock/admin/supplies/{supply}', 'SupplyController@show')->name('infrastock.admin.supplies.show');
-    // Muestra el formulario para editar un insumo específico (gestionado vía modal).
     Route::get('/infrastock/admin/supplies/{supply}/edit', 'SupplyController@edit')->name('infrastock.admin.supplies.edit');
-    // Actualiza un insumo existente.
     Route::put('/infrastock/admin/supplies/{supply}', 'SupplyController@update')->name('infrastock.admin.supplies.update');
-    // Elimina un insumo.
     Route::delete('/infrastock/admin/supplies/{supply}', 'SupplyController@destroy')->name('infrastock.admin.supplies.destroy');
 });
 
@@ -101,23 +69,14 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra todas las herramientas.
     Route::get('/infrastock/admin/tools', 'ToolController@index')->name('infrastock.admin.tools.index');
-    // Muestra el formulario para crear una nueva herramienta (gestionado vía modal).
     Route::get('/infrastock/admin/tools/create', 'ToolController@create')->name('infrastock.admin.tools.create');
-    // Almacena una nueva herramienta.
     Route::post('/infrastock/admin/tools', 'ToolController@store')->name('infrastock.admin.tools.store');
-    // Exportar herramientas a PDF.
     Route::get('/infrastock/admin/tools/export/pdf', 'ToolController@exportPdf')->name('infrastock.admin.tools.export.pdf');
-    // Exportar herramientas a Excel.
     Route::get('/infrastock/admin/tools/export/excel', 'ToolController@exportExcel')->name('infrastock.admin.tools.export.excel');
-    // Muestra los detalles de una herramienta específica.
     Route::get('/infrastock/admin/tools/{tool}', 'ToolController@show')->name('infrastock.admin.tools.show');
-    // Muestra el formulario para editar una herramienta específica (gestionado vía modal).
     Route::get('/infrastock/admin/tools/{tool}/edit', 'ToolController@edit')->name('infrastock.admin.tools.edit');
-    // Actualiza una herramienta existente.
     Route::put('/infrastock/admin/tools/{tool}', 'ToolController@update')->name('infrastock.admin.tools.update');
-    // Elimina una herramienta.
     Route::delete('/infrastock/admin/tools/{tool}', 'ToolController@destroy')->name('infrastock.admin.tools.destroy');
 });
 
@@ -126,33 +85,19 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
  * Todas estas rutas requieren que el usuario esté autenticado.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra todos los préstamos y devoluciones.
     Route::get('/infrastock/admin/loans', 'LoanController@index')->name('infrastock.admin.loans.index');
-    // Muestra el formulario para registrar un nuevo movimiento (gestionado vía modal).
     Route::get('/infrastock/admin/loans/create', 'LoanController@create')->name('infrastock.admin.loans.create');
-    // Almacena un nuevo movimiento de préstamo o devolución.
     Route::post('/infrastock/admin/loans', 'LoanController@store')->name('infrastock.admin.loans.store');
-    // Exportar préstamos a PDF (DEBE ir ANTES de las rutas con parámetro {loan}).
     Route::get('/infrastock/admin/loans/export/pdf', 'LoanController@exportPdf')->name('infrastock.admin.loans.export.pdf');
-    // Exportar préstamos a Excel (DEBE ir ANTES de las rutas con parámetro {loan}).
     Route::get('/infrastock/admin/loans/export/excel', 'LoanController@exportExcel')->name('infrastock.admin.loans.export.excel');
-    // Muestra los detalles de un movimiento específico (gestionado vía modal).
     Route::get('/infrastock/admin/loans/{loan}', 'LoanController@show')->name('infrastock.admin.loans.show');
-    // Muestra el formulario para editar un movimiento específico (gestionado vía modal).
     Route::get('/infrastock/admin/loans/{loan}/edit', 'LoanController@edit')->name('infrastock.admin.loans.edit');
-    // Actualiza un movimiento existente.
     Route::put('/infrastock/admin/loans/{loan}', 'LoanController@update')->name('infrastock.admin.loans.update');
-    // Elimina un movimiento.
     Route::delete('/infrastock/admin/loans/{loan}', 'LoanController@destroy')->name('infrastock.admin.loans.destroy');
-    // Registra la devolución de un préstamo (cambia a Devolución, restaura stock, bloquea registro).
     Route::post('/infrastock/admin/loans/{id}/return', 'LoanController@returnLoan')->name('infrastock.admin.loans.return');
-    // Aprueba una devolución de insumos.
     Route::post('/infrastock/admin/loans/{id}/approve-return', 'LoanController@approveReturn')->name('infrastock.admin.loans.approve-return');
-    // Rechaza una devolución de insumos.
     Route::post('/infrastock/admin/loans/{id}/reject-return', 'LoanController@rejectReturn')->name('infrastock.admin.loans.reject-return');
-    // Aprueba un préstamo de herramienta.
     Route::post('/infrastock/admin/loans/{id}/approve-loan', 'LoanController@approveLoan')->name('infrastock.admin.loans.approve-loan');
-    // Rechaza un préstamo de herramienta.
     Route::post('/infrastock/admin/loans/{id}/reject-loan', 'LoanController@rejectLoan')->name('infrastock.admin.loans.reject-loan');
 });
 
@@ -161,23 +106,14 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
  * Todas estas rutas requieren que el usuario esté autenticado y comparten notificaciones.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra todas las solicitudes de insumos.
     Route::get('/infrastock/admin/supply-requests', 'SupplyRequestController@index')->name('infrastock.admin.supply-requests.index');
-    // Muestra el formulario para crear una nueva solicitud (gestionado vía modal).
     Route::get('/infrastock/admin/supply-requests/create', 'SupplyRequestController@create')->name('infrastock.admin.supply-requests.create');
-    // Almacena una nueva solicitud de insumo.
     Route::post('/infrastock/admin/supply-requests', 'SupplyRequestController@store')->name('infrastock.admin.supply-requests.store');
-    // Exportar consumos a PDF.
     Route::get('/infrastock/admin/supply-requests/export/pdf', 'SupplyRequestController@exportPdf')->name('infrastock.admin.supply-requests.export.pdf');
-    // Exportar consumos a Excel.
     Route::get('/infrastock/admin/supply-requests/export/excel', 'SupplyRequestController@exportExcel')->name('infrastock.admin.supply-requests.export.excel');
-    // Muestra los detalles de una solicitud específica (gestionado vía modal).
     Route::get('/infrastock/admin/supply-requests/{supply_request}', 'SupplyRequestController@show')->name('infrastock.admin.supply-requests.show');
-    // Muestra el formulario para editar una solicitud específica (gestionado vía modal).
     Route::get('/infrastock/admin/supply-requests/{supply_request}/edit', 'SupplyRequestController@edit')->name('infrastock.admin.supply-requests.edit');
-    // Actualiza una solicitud de insumo existente.
     Route::put('/infrastock/admin/supply-requests/{supply_request}', 'SupplyRequestController@update')->name('infrastock.admin.supply-requests.update');
-    // Elimina una solicitud de insumo.
     Route::delete('/infrastock/admin/supply-requests/{supply_request}', 'SupplyRequestController@destroy')->name('infrastock.admin.supply-requests.destroy');
     
     // Devoluciones de insumos
@@ -191,19 +127,15 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
  * Requieren que el usuario esté autenticado.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
-    // Muestra el formulario para editar el perfil del usuario autenticado.
     Route::get('/infrastock/admin/profile/edit', 'UserProfileController@edit')->name('cefa.infrastock.admin.profile.edit');
-    // Actualiza el perfil del usuario autenticado.
     Route::put('/infrastock/admin/profile', 'UserProfileController@update')->name('cefa.infrastock.admin.profile.update');
 });
 
-// Ruta para acceder al logo del módulo (si se requiere directamente).
 Route::get('/logo', function() {
     $path = public_path('assets/img/logo.png');
     return response()->file($path);
 });
 
-// Ruta para la lógica posterior al inicio de sesión del módulo.
 Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.postlogin');
 
 /**
@@ -211,16 +143,13 @@ Route::get('/postlogin','INFRASTOCKController@postlogin')->name('INFRASTOCK.post
  * Estas rutas requieren autenticación y permisos de administrador.
  */
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotifications::class, \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->prefix('infrastock/admin')->group(function () {
-    // Dashboard del administrador
     Route::get('/dashboard','INFRASTOCKController@dashboard')->name('cefa.infrastock.admin.dashboard');
     
-    // Reportes
     Route::get('/reports/consumption-by-area', 'ReportController@consumptionByArea')->name('infrastock.admin.reports.consumption-by-area');
     Route::get('/reports/consumption-by-area/pdf', 'ReportController@consumptionByAreaPdf')->name('infrastock.admin.reports.consumption-by-area.pdf');
     Route::get('/reports/tools-by-instructor', 'ReportController@toolsByInstructor')->name('infrastock.admin.reports.tools-by-instructor');
     Route::get('/reports/tools-by-instructor/pdf', 'ReportController@toolsByInstructorPdf')->name('infrastock.admin.reports.tools-by-instructor.pdf');
     
-    // Gestión de usuarios
     Route::resource('users', 'UserManagementController')->names([
         'index' => 'infrastock.admin.users.index',
         'create' => 'infrastock.admin.users.create',
@@ -231,11 +160,8 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
         'destroy' => 'infrastock.admin.users.destroy',
     ]);
     
-            // Cambiar estado de usuario (AJAX)
-            Route::post('users/{id}/toggle-status', 'UserManagementController@toggleStatus')->name('infrastock.admin.users.toggle-status');
-            
-            // Verificar solicitudes pendientes de usuario (AJAX)
-            Route::get('users/{id}/check-requests', 'UserManagementController@checkRequests')->name('infrastock.admin.users.check-requests');
+    Route::post('users/{id}/toggle-status', 'UserManagementController@toggleStatus')->name('infrastock.admin.users.toggle-status');
+    Route::get('users/{id}/check-requests', 'UserManagementController@checkRequests')->name('infrastock.admin.users.check-requests');
 });
 
 /**
@@ -279,44 +205,6 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/admin/requests/{id}/approve', 'AdminRequestController@approve')->name('infrastock.admin.requests.approve');
     Route::post('/infrastock/admin/requests/{id}/reject', 'AdminRequestController@reject')->name('infrastock.admin.requests.reject');
     
-    // Ruta de prueba para crear notificaciones
-    Route::get('/infrastock/test-notification', function() {
-        // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
-        $admins = \App\Models\User::whereHas('roles', function($query) {
-            $query->where('slug', 'infrastock.admin')
-                  ->orWhere('slug', 'superadmin')
-                  ->orWhere('name', 'Administrador')
-                  ->orWhere('name', 'Super Administrador');
-        })->get();
-
-        // Si aún no hay administradores, usar el usuario actual como fallback
-        if ($admins->isEmpty()) {
-            $admins = collect([auth()->user()]);
-        }
-
-        $notificationCount = 0;
-        foreach ($admins as $admin) {
-            $notification = \Modules\INFRASTOCK\Entities\Notification::create([
-                'type' => 'request_created',
-                'notifiable_type' => 'App\Models\User',
-                'notifiable_id' => $admin->id,
-                'data' => [
-                    'title' => 'Notificación de Prueba',
-                    'message' => 'Esta es una notificación de prueba para verificar que el sistema funciona correctamente.',
-                    'request_id' => 999,
-                    'total_items' => 1,
-                    'equipment_list' => 'Prueba',
-                    'user_name' => 'Usuario de Prueba',
-                    'action_url' => route('infrastock.admin.supply-requests.index'),
-                    'created_at' => now()->format('d/m/Y H:i'),
-                ],
-            ]);
-            $notificationCount++;
-        }
-        
-        return redirect()->route('infrastock.admin.supply-requests.index')
-            ->with('success', "Notificaciones de prueba creadas para {$notificationCount} administradores");
-    })->name('infrastock.test.notification');
 });
 
 /**

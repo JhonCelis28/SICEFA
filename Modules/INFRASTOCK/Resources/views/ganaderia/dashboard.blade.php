@@ -216,7 +216,6 @@
 
 @section('script')
 <script>
-    console.log('Dashboard del Ganadería cargado correctamente');
 </script>
 @endsection
 

@@ -225,6 +225,5 @@
 @section('script')
 <!-- Script para funcionalidades adicionales si es necesario -->
 <script>
-    console.log('Dashboard de PSICOLA cargado correctamente');
 </script>
 @endsection

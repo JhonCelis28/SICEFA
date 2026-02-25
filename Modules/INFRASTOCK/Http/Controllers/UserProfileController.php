@@ -2,7 +2,6 @@
 
 namespace Modules\INFRASTOCK\Http\Controllers;
 
-use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
@@ -79,12 +78,10 @@ class UserProfileController extends Controller
         $user = auth()->user();
         
         $request->validate([
-            'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'nickname' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
         ], [
-            'name.required' => 'El nombre es obligatorio.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'El correo electrónico debe ser válido.',
             'email.unique' => 'Este correo electrónico ya está en uso.',
@@ -94,7 +91,6 @@ class UserProfileController extends Controller
 
         try {
             $data = [
-                'name' => $request->name,
                 'email' => $request->email,
                 'nickname' => $request->nickname,
             ];

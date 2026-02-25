@@ -216,7 +216,6 @@
 
 @section('script')
 <script>
-    console.log('Dashboard del Agroindustria cargado correctamente');
 </script>
 @endsection
 

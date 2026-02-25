@@ -2,7 +2,6 @@
 
 namespace Modules\INFRASTOCK\Http\Controllers;
 
-use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Modules\INFRASTOCK\Entities\WarehouseMovement;
@@ -33,22 +32,29 @@ class SupplyRequestController extends Controller
      * para poblar los selectores en los modales de gestión.
      * @return Renderable
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Obtiene las solicitudes del nuevo sistema con estado 'pending' y sus relaciones.
-        $supplyRequests = \Modules\INFRASTOCK\Entities\Request::with([
+        $query = \Modules\INFRASTOCK\Entities\Request::with([
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
             'productiveUnitWarehouse.warehouse',
-            'user' => function($query) {
-                $query->with('roles');
+            'user' => function($q) {
+                $q->with('roles');
             }
         ])
-        ->whereIn('status', ['pending', 'approved', 'rejected'])
-        ->orderBy('created_at', 'desc')
-        ->paginate(10);
+        ->whereIn('status', ['pending', 'approved', 'rejected']);
 
-        // Cargar notificaciones para el usuario actual
+        if ($request->has('status') && $request->status !== 'all' && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
+        $supplyRequests = $query->orderBy('created_at', 'desc')->paginate(10)->appends($request->query());
+
+        $pendingCount = \Modules\INFRASTOCK\Entities\Request::where('status', 'pending')->count();
+        $approvedCount = \Modules\INFRASTOCK\Entities\Request::where('status', 'approved')->count();
+        $rejectedCount = \Modules\INFRASTOCK\Entities\Request::where('status', 'rejected')->count();
+        $totalCount = \Modules\INFRASTOCK\Entities\Request::whereIn('status', ['pending', 'approved', 'rejected'])->count();
+
         $notifications = \Modules\INFRASTOCK\Entities\Notification::where('notifiable_type', 'App\Models\User')
             ->where('notifiable_id', auth()->id())
             ->whereIn('type', ['request_created', 'request_approved', 'request_rejected'])
@@ -58,16 +64,17 @@ class SupplyRequestController extends Controller
 
         $notificationCount = $notifications->where('read_at', null)->count();
 
-        // Datos adicionales para los selectores en los modales (si se usaran para crear/editar en el mismo modal).
         $equipments = Equipment::all();
         $users = User::all();
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
 
-        // Obtener períodos disponibles para exportación
         $availablePeriods = $this->getAvailablePeriods();
 
-        // Retorna la vista index de solicitudes con todos los datos necesarios.
-        return view('infrastock::admin.supply-requests.index', compact('supplyRequests', 'equipments', 'users', 'productiveUnitWarehouses', 'notifications', 'notificationCount', 'availablePeriods'));
+        return view('infrastock::admin.supply-requests.index', compact(
+            'supplyRequests', 'equipments', 'users', 'productiveUnitWarehouses',
+            'notifications', 'notificationCount', 'availablePeriods',
+            'pendingCount', 'approvedCount', 'rejectedCount', 'totalCount'
+        ));
     }
 
     /**

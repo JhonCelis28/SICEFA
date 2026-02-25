@@ -266,7 +266,7 @@
         :class="{ 
             '-translate-x-full': !sidebarOpen && !isDesktop, 
             'md:w-20': !isSidebarExpanded && isDesktop, 
-            'md:w-64': isSidebarExpanded && isDesktop
+            'md:w-80': isSidebarExpanded && isDesktop
         }"
         class="fixed md:relative inset-y-0 left-0 z-40 bg-gradient-to-b from-green-800 to-green-900 shadow-2xl transform transition-all duration-300 ease-in-out border-r border-green-700 h-screen md:h-full flex flex-col md:w-20">
         
@@ -343,7 +343,6 @@
                 <!-- Menú desplegable de usuario autenticado -->
                 <div x-data="{ dropdownOpen: false }" class="relative">
                     <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-800 hover:text-gray-900 focus:outline-none focus:text-gray-900 p-2 rounded-md hover:bg-gray-100 transition-colors duration-200">
-                        <img src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" class="h-8 w-8 rounded-full object-cover" alt="User Image">
                         <div>
                             <span class="font-semibold text-base block text-left">{{ Auth::user()->nickname ?? Auth::user()->name }}</span>
                             <span class="text-xs text-gray-500 block text-left">@yield('user-role', 'Usuario')</span>
@@ -404,8 +403,6 @@
     <script>
         // Función global para marcar notificación como leída
         window.markNotificationAsRead = function(notificationId) {
-            console.log('Marcando notificación como leída:', notificationId);
-            
             const csrfToken = document.querySelector('meta[name="csrf-token"]');
             if (!csrfToken) {
                 console.error('CSRF token no encontrado');
@@ -422,14 +419,12 @@
                 credentials: 'same-origin'
             })
             .then(response => {
-                console.log('Respuesta recibida:', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('Datos recibidos:', data);
                 if (data.success) {
                     // Marcar como leída visualmente
                     let notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
@@ -452,12 +447,10 @@
                     
                     // Si hay una URL de redirección, redirigir
                     if (data.redirect_url) {
-                        console.log('Redirigiendo a:', data.redirect_url);
                         setTimeout(function() {
                             window.location.href = data.redirect_url;
                         }, 300);
                     } else {
-                        console.log('No hay URL de redirección');
                     }
                 } else {
                     console.error('Error al marcar notificación:', data.message);

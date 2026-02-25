@@ -86,10 +86,10 @@
         }
     }">
         <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-start mb-6">
                 <div></div>
-                <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
-                    Registrar Usuario
+                <button @click="openCreateModal()" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600  transition-colors duration-200 flex items-center">
+                    <i class="fa-solid fa-user mr-2"></i> Registrar Usuario
                 </button>
             </div>
 
@@ -173,16 +173,29 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->created_at ? $user->created_at->format('Y-m-d') : 'N/A' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button @click="openEditModal({{ $user->id }}, '{{ addslashes($user->person->first_name ?? '') }}', '{{ addslashes($user->person->first_last_name ?? '') }}', '{{ addslashes($user->person->second_last_name ?? '') }}', '{{ $user->person->document_type ?? '' }}', '{{ $user->person->document_number ?? '' }}', '{{ $user->person->telephone1 ?? '' }}', '{{ $user->email }}', '{{ addslashes($user->person->address ?? '') }}', {{ $user->roles->first()->id ?? 0 }}, '{{ $user->trashed() ? '0' : '1' }}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </button>
-                                            <form method="POST" action="{{ route('infrastock.admin.users.destroy', $user->id) }}" style="display: inline;" id="delete-form-{{ $user->id }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="button" onclick="confirmDeleteUser({{ $user->id }}, '{{ addslashes($user->nickname ?? $user->name ?? 'Usuario') }}')" class="text-red-600 hover:text-red-900">
-                                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                            <div class="flex justify-end items-center space-x-2">
+                                                <button @click="openEditModal({{ $user->id }}, '{{ addslashes($user->person->first_name ?? '') }}', '{{ addslashes($user->person->first_last_name ?? '') }}', '{{ addslashes($user->person->second_last_name ?? '') }}', '{{ $user->person->document_type ?? '' }}', '{{ $user->person->document_number ?? '' }}', '{{ $user->person->telephone1 ?? '' }}', '{{ $user->email }}', '{{ addslashes($user->person->address ?? '') }}', {{ $user->roles->first()->id ?? 0 }}, '{{ $user->trashed() ? '0' : '1' }}')" 
+                                                        class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-yellow-500 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors" 
+                                                        title="Editar">
+                                                    <i class="fas fa-edit"></i>
                                                 </button>
-                                            </form>
+                                                <button type="button" 
+                                                        onclick="toggleUserStatus({{ $user->id }}, '{{ addslashes($user->nickname ?? $user->name ?? 'Usuario') }}', {{ $user->trashed() ? 'true' : 'false' }})" 
+                                                        class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded-md text-white {{ $user->trashed() ? 'bg-red-500 hover:bg-red-600 focus:ring-red-500' : 'bg-green-500 hover:bg-green-600 focus:ring-green-500' }} focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors" 
+                                                        title="{{ $user->trashed() ? 'Activar' : 'Inactivar' }}">
+                                                    <i class="fas {{ $user->trashed() ? 'fa-toggle-off' : 'fa-toggle-on' }}"></i>
+                                                </button>
+                                                <form method="POST" action="{{ route('infrastock.admin.users.destroy', $user->id) }}" style="display: inline;" id="delete-form-{{ $user->id }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="button" 
+                                                            onclick="confirmDeleteUser({{ $user->id }}, '{{ addslashes($user->nickname ?? $user->name ?? 'Usuario') }}')" 
+                                                            class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors" 
+                                                            title="Eliminar">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -510,6 +523,74 @@
 
 @section('script')
 <script>
+// Función para activar/inactivar usuario
+function toggleUserStatus(userId, userName, isCurrentlyInactive) {
+    const action = isCurrentlyInactive ? 'activar' : 'inactivar';
+    const icon = isCurrentlyInactive ? 'question' : 'warning';
+    const confirmColor = isCurrentlyInactive ? '#10B981' : '#F97316';
+    const confirmText = isCurrentlyInactive ? 'Sí, activar' : 'Sí, inactivar';
+
+    Swal.fire({
+        title: `¿${isCurrentlyInactive ? 'Activar' : 'Inactivar'} usuario?`,
+        text: `¿Estás seguro de que deseas ${action} al usuario "${userName}"?`,
+        icon: icon,
+        showCancelButton: true,
+        confirmButtonColor: confirmColor,
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: confirmText,
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Por favor espera',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch(`/infrastock/admin/users/${userId}/toggle-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Listo!',
+                        text: data.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudo cambiar el estado del usuario.',
+                        confirmButtonText: 'Entendido'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error de conexión. Por favor intenta nuevamente.',
+                    confirmButtonText: 'Entendido'
+                });
+            });
+        }
+    });
+}
+
 // Función para confirmar eliminación con SweetAlert2
 function confirmDeleteUser(userId, userName) {
     Swal.fire({

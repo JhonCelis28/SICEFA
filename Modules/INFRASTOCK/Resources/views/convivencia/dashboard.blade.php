@@ -216,7 +216,6 @@
 
 @section('script')
 <script>
-    console.log('Dashboard del Centro de Convivencia cargado correctamente');
 </script>
 @endsection
 
