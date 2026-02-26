@@ -192,11 +192,11 @@ class SupplyController extends Controller
     {
         // Valida los datos de entrada de la solicitud.
         $request->validate([
-            'name' => 'required|string|max:255', // Nombre del insumo es obligatorio y máximo 255 caracteres.
+            'name' => 'required|string|max:255|unique:equipments,name', // Nombre del insumo es obligatorio y máximo 255 caracteres.
             'category_id' => 'required|exists:infrastock_categories,id', // ID de categoría es obligatorio y debe existir.
             'characteristics' => 'nullable|string', // Características es opcional.
             'initial_amount' => 'required|integer|min:0', // Cantidad inicial es obligatoria, entera y mínimo 0.
-            'minimum_stock' => 'nullable|integer|min:0', // Valor mínimo permitido es opcional, entero y mínimo 0.
+            'minimum_stock' => 'required|integer|min:0', // Valor mínimo permitido es opcional, entero y mínimo 0.
             'unit_measure' => 'nullable|string|max:50', // Unidad de medida es opcional.
             'observations' => 'nullable|string', // Observaciones es opcional.
             // Campos opcionales para INFRASTOCK (otros sistemas pueden requerirlos)
@@ -266,7 +266,7 @@ class SupplyController extends Controller
         }
 
         // Redirige a la vista index con un mensaje de éxito.
-        return redirect()->route('infrastock.admin.supplies.index')->with('success', 'Insumo registrado exitosamente.');
+        return redirect()->route('infrastock.admin.supplies.index')->with('created', true);
     }
 
     /**

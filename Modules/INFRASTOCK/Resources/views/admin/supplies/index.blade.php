@@ -36,13 +36,13 @@
         $isFiltered = !empty($filteredEquipmentId) || $filterExpiring;
     @endphp
     <div x-data="{
-        isCreateModalOpen: false,
+        isCreateModalOpen: {{ $errors->any() ? 'true' : 'false' }},
         isEditModalOpen: false,
         isLoanModalOpen: false,
         currentSupply: { id: null, name: '', category_id: '', characteristics: '', initial_amount: '', minimum_stock: '', unit_measure: '', unit_measure_other: '', observations: '', expiration_date: '' },
         currentLoan: { equipment_id: null, equipment_name: '', borrower_name: '', amount: '', loan_location: '', loan_date: '' },
-        createUnitMeasure: '',
-        createUnitMeasureOther: '',
+        createUnitMeasure: '{{ old('unit_measure') }}',
+        createUnitMeasureOther: '{{ old('unit_measure_other') }}',
         isFiltered: {{ $isFiltered ? 'true' : 'false' }},
         filteredEquipmentId: {{ $filteredEquipmentId ?? 'null' }},
         
@@ -641,6 +641,17 @@ function confirmDeleteSync(supplyId, supplyName) {
 
 // Verificar si hay mensajes de sesión
 document.addEventListener('DOMContentLoaded', function() {
+
+     @if ($errors->has('name'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Insumo duplicado',
+            text: 'El insumo ya está registrado en el sistema.',
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Entendido'
+        });
+    @endif
+    
     @if(session('success') === 'deleted')
         Swal.fire({
             icon: 'success',
@@ -660,14 +671,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     @endif
     
-    @if(session('success') && session('success') !== 'deleted')
-        Swal.fire({
-            icon: 'success',
-            title: '¡Éxito!',
-            text: '{{ session('success') }}',
-            showConfirmButton: false,
-            timer: 2000
-        });
+    @if(session('created'))
+    Swal.fire({
+    icon: 'success',
+    title: '¡Registrado!',
+    text: 'El insumo fue registrado correctamente.',
+    confirmButtonText: 'Cerrar',
+    timer: 5000,
+    timerProgressBar: true
+    });
     @endif
     
     // Configurar filtro automático

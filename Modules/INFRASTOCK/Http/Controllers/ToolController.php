@@ -75,9 +75,9 @@ class ToolController extends Controller
     {
         try {
             $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre' => 'required|string|max:255|unique:tools,nombre',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
-            'placa' => 'nullable|string|max:255',
+            'placa' => 'required|string|max:255|unique:tools,placa',
             'descripcion' => 'nullable|string',
             'descripcion_actual' => 'nullable|string',
             'marca' => 'nullable|string|max:255',
