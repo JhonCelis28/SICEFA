@@ -28,63 +28,7 @@
 
 @section('content')
     <!-- Contenedor principal de la vista de gestión de usuarios -->
-    <div x-data="{
-        isCreateModalOpen: false,
-        isEditModalOpen: false,
-        currentUser: { id: null, first_name: '', first_last_name: '', second_last_name: '', document_type: '', document_number: '', phone: '', email: '', address: '', role_id: '', is_active: '1', password: '', password_confirmation: '' },
-        validationErrors: {},
-        createForm: { first_name: '', first_last_name: '', second_last_name: '', document_type: '', document_number: '', phone: '', email: '', address: '', role_id: '', is_active: '1', password: '', password_confirmation: '' },
-
-        init() {
-            @if($errors->any() || session('error'))
-                document.addEventListener('DOMContentLoaded', () => {
-                    this.isCreateModalOpen = true;
-                    this.validationErrors = @json($errors->messages());
-                    const oldData = @json(old());
-                    this.createForm.first_name = oldData.first_name || '';
-                    this.createForm.first_last_name = oldData.first_last_name || '';
-                    this.createForm.second_last_name = oldData.second_last_name || '';
-                    this.createForm.document_type = oldData.document_type || '';
-                    this.createForm.document_number = oldData.document_number || '';
-                    this.createForm.phone = oldData.phone || '';
-                    this.createForm.email = oldData.email || '';
-                    this.createForm.address = oldData.address || '';
-                    this.createForm.role_id = oldData.role_id || '';
-                    this.createForm.is_active = oldData.is_active || '1';
-                    if ('{{ session('error') }}') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: '{{ session('error') }}',
-                            confirmButtonText: 'Entendido'
-                        });
-                    }
-                });
-            @endif
-        },
-
-        openCreateModal() {
-            this.isCreateModalOpen = true;
-            this.resetCreateForm();
-        },
-
-        openEditModal(id, first_name, first_last_name, second_last_name, document_type, document_number, phone, email, address, role_id, is_active) {
-            this.isEditModalOpen = true;
-            this.currentUser = { id: id, first_name: first_name, first_last_name: first_last_name, second_last_name: second_last_name, document_type: document_type, document_number: document_number, phone: phone, email: email, address: address, role_id: role_id, is_active: is_active, password: '', password_confirmation: '' };
-            this.validationErrors = {};
-        },
-
-        closeModals() {
-            this.isCreateModalOpen = false;
-            this.isEditModalOpen = false;
-            this.validationErrors = {};
-        },
-
-        resetCreateForm() {
-            this.createForm = { first_name: '', first_last_name: '', second_last_name: '', document_type: '', document_number: '', phone: '', email: '', address: '', role_id: '', is_active: '1', password: '', password_confirmation: '' };
-            this.validationErrors = {};
-        }
-    }">
+    <div x-data="userManagement()">
         <div class="container mx-auto px-4 py-6">
             <div class="flex justify-start mb-6">
                 <div></div>
@@ -221,7 +165,7 @@
 
             <!-- Modal de Creación de Usuario -->
             <div x-show="isCreateModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
-                <div @click.away="isCreateModalOpen = false; resetCreateForm();" class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto p-6 max-h-screen overflow-y-auto">
+                <div @click.away="handleOutsideClick($event, 'create')" class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto p-6 max-h-screen overflow-y-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-bold text-gray-800">Registrar Usuario</h3>
                         <button @click="isCreateModalOpen = false; resetCreateForm();" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
@@ -237,63 +181,63 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="create_first_name" class="block text-gray-700 text-sm font-bold mb-2">Nombre *</label>
-                                    <input type="text" name="first_name" id="create_first_name" value="{{ old('first_name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_name') border-red-500 @enderror" required>
-                                    @error('first_name')
+                                    <input type="text" name="first_name" id="create_first_name" value="{{ old('first_name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_name', 'create') border-red-500 @enderror" required>
+                                    @error('first_name', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_first_last_name" class="block text-gray-700 text-sm font-bold mb-2">Primer Apellido *</label>
-                                    <input type="text" name="first_last_name" id="create_first_last_name" value="{{ old('first_last_name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_last_name') border-red-500 @enderror" required>
-                                    @error('first_last_name')
+                                    <input type="text" name="first_last_name" id="create_first_last_name" value="{{ old('first_last_name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_last_name', 'create') border-red-500 @enderror" required>
+                                    @error('first_last_name', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_second_last_name" class="block text-gray-700 text-sm font-bold mb-2">Segundo Apellido</label>
-                                    <input type="text" name="second_last_name" id="create_second_last_name" value="{{ old('second_last_name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('second_last_name') border-red-500 @enderror">
-                                    @error('second_last_name')
+                                    <input type="text" name="second_last_name" id="create_second_last_name" value="{{ old('second_last_name') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('second_last_name', 'create') border-red-500 @enderror">
+                                    @error('second_last_name', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_document_type" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Documento *</label>
-                                    <select name="document_type" id="create_document_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_type') border-red-500 @enderror" required>
+                                    <select name="document_type" id="create_document_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_type', 'create') border-red-500 @enderror" required>
                                         <option value="">Seleccione el tipo</option>
                                         <option value="1" {{ old('document_type') == '1' ? 'selected' : '' }}>Cédula de Ciudadanía</option>
                                         <option value="2" {{ old('document_type') == '2' ? 'selected' : '' }}>Tarjeta de Identidad</option>
                                         <option value="3" {{ old('document_type') == '3' ? 'selected' : '' }}>Cédula de Extranjería</option>
                                         <option value="4" {{ old('document_type') == '4' ? 'selected' : '' }}>Pasaporte</option>
                                     </select>
-                                    @error('document_type')
+                                    @error('document_type', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_document_number" class="block text-gray-700 text-sm font-bold mb-2">Número de Documento *</label>
-                                    <input type="text" name="document_number" id="create_document_number" value="{{ old('document_number') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_number') border-red-500 @enderror" required>
-                                    @error('document_number')
+                                    <input type="text" name="document_number" id="create_document_number" value="{{ old('document_number') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_number', 'create') border-red-500 @enderror" required>
+                                    @error('document_number', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_phone" class="block text-gray-700 text-sm font-bold mb-2">Teléfono</label>
-                                    <input type="text" name="phone" id="create_phone" value="{{ old('phone') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('phone') border-red-500 @enderror">
-                                    @error('phone')
+                                    <input type="text" name="phone" id="create_phone" value="{{ old('phone') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('phone', 'create') border-red-500 @enderror">
+                                    @error('phone', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_email" class="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico *</label>
-                                    <input type="email" name="email" id="create_email" value="{{ old('email') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('email') border-red-500 @enderror" required>
-                                    @error('email')
+                                    <input type="email" name="email" id="create_email" value="{{ old('email') }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('email', 'create') border-red-500 @enderror" required>
+                                    @error('email', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div class="md:col-span-2">
                                     <label for="create_address" class="block text-gray-700 text-sm font-bold mb-2">Dirección</label>
-                                    <textarea name="address" id="create_address" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('address') border-red-500 @enderror">{{ old('address') }}</textarea>
-                                    @error('address')
+                                    <textarea name="address" id="create_address" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('address', 'create') border-red-500 @enderror">{{ old('address') }}</textarea>
+                                    @error('address', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -308,23 +252,23 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="create_role_id" class="block text-gray-700 text-sm font-bold mb-2">Rol *</label>
-                                    <select name="role_id" id="create_role_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('role_id') border-red-500 @enderror" required>
+                                    <select name="role_id" id="create_role_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('role_id', 'create') border-red-500 @enderror" required>
                                         <option value="">Seleccione un rol</option>
                                         @foreach($roles as $role)
                                             <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>{{ $role->name }}</option>
                                         @endforeach
                                     </select>
-                                    @error('role_id')
+                                    @error('role_id', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_is_active" class="block text-gray-700 text-sm font-bold mb-2">Estado *</label>
-                                    <select name="is_active" id="create_is_active" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('is_active') border-red-500 @enderror" required>
+                                    <select name="is_active" id="create_is_active" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('is_active', 'create') border-red-500 @enderror" required>
                                         <option value="1" {{ old('is_active', '1') == '1' ? 'selected' : '' }}>Activo</option>
                                         <option value="0" {{ old('is_active') == '0' ? 'selected' : '' }}>Inactivo</option>
                                     </select>
-                                    @error('is_active')
+                                    @error('is_active', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -345,15 +289,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="create_password" class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
-                                    <input type="password" name="password" id="create_password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password') border-red-500 @enderror" placeholder="••••••••">
-                                    @error('password')
+                                    <input type="password" name="password" autocomplete="new-password" id="create_password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password', 'create') border-red-500 @enderror" placeholder="••••••••">
+                                    @error('password', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="create_password_confirmation" class="block text-gray-700 text-sm font-bold mb-2">Confirmar Contraseña</label>
-                                    <input type="password" name="password_confirmation" id="create_password_confirmation" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password_confirmation') border-red-500 @enderror" placeholder="••••••••">
-                                    @error('password_confirmation')
+                                    <input type="password" name="password_confirmation" autocomplete="new-password" id="create_password_confirmation" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password_confirmation', 'create') border-red-500 @enderror" placeholder="••••••••">
+                                    @error('password_confirmation', 'create')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -370,7 +314,7 @@
 
             <!-- Modal de Edición de Usuario -->
             <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
-                <div @click.away="isEditModalOpen = false" class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto p-6 max-h-screen overflow-y-auto">
+                <div @click.away="handleOutsideClick($event, 'edit')" class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto p-6 max-h-screen overflow-y-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-bold text-gray-800">Editar Usuario</h3>
                         <button @click="isEditModalOpen = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
@@ -378,6 +322,7 @@
                     <form method="POST" :action="`{{ route('infrastock.admin.users.update', '') }}/${currentUser.id}`">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="user_id" x-model="currentUser.id">
                         
                         <!-- Información Personal -->
                         <div class="mb-8">
@@ -387,63 +332,63 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="edit_first_name" class="block text-gray-700 text-sm font-bold mb-2">Nombre *</label>
-                                    <input type="text" name="first_name" id="edit_first_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_name') border-red-500 @enderror" x-model="currentUser.first_name" required>
-                                    @error('first_name')
+                                    <input type="text" name="first_name" id="edit_first_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_name', 'edit') border-red-500 @enderror" x-model="currentUser.first_name" required>
+                                    @error('first_name', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_first_last_name" class="block text-gray-700 text-sm font-bold mb-2">Primer Apellido *</label>
-                                    <input type="text" name="first_last_name" id="edit_first_last_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_last_name') border-red-500 @enderror" x-model="currentUser.first_last_name" required>
-                                    @error('first_last_name')
+                                    <input type="text" name="first_last_name" id="edit_first_last_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('first_last_name', 'edit') border-red-500 @enderror" x-model="currentUser.first_last_name" required>
+                                    @error('first_last_name', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_second_last_name" class="block text-gray-700 text-sm font-bold mb-2">Segundo Apellido</label>
-                                    <input type="text" name="second_last_name" id="edit_second_last_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('second_last_name') border-red-500 @enderror" x-model="currentUser.second_last_name">
-                                    @error('second_last_name')
+                                    <input type="text" name="second_last_name" id="edit_second_last_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('second_last_name', 'edit') border-red-500 @enderror" x-model="currentUser.second_last_name">
+                                    @error('second_last_name', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_document_type" class="block text-gray-700 text-sm font-bold mb-2">Tipo de Documento *</label>
-                                    <select name="document_type" id="edit_document_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_type') border-red-500 @enderror" x-model="currentUser.document_type" required>
+                                    <select name="document_type" id="edit_document_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_type', 'edit') border-red-500 @enderror" x-model="currentUser.document_type" required>
                                         <option value="">Seleccione el tipo</option>
                                         <option value="1">Cédula de Ciudadanía</option>
                                         <option value="2">Tarjeta de Identidad</option>
                                         <option value="3">Cédula de Extranjería</option>
                                         <option value="4">Pasaporte</option>
                                     </select>
-                                    @error('document_type')
+                                    @error('document_type', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_document_number" class="block text-gray-700 text-sm font-bold mb-2">Número de Documento *</label>
-                                    <input type="text" name="document_number" id="edit_document_number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_number') border-red-500 @enderror" x-model="currentUser.document_number" required>
-                                    @error('document_number')
+                                    <input type="text" name="document_number" id="edit_document_number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('document_number', 'edit') border-red-500 @enderror" x-model="currentUser.document_number" required>
+                                    @error('document_number', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_phone" class="block text-gray-700 text-sm font-bold mb-2">Teléfono</label>
-                                    <input type="text" name="phone" id="edit_phone" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('phone') border-red-500 @enderror" x-model="currentUser.phone">
-                                    @error('phone')
+                                    <input type="text" name="phone" id="edit_phone" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('phone', 'edit') border-red-500 @enderror" x-model="currentUser.phone">
+                                    @error('phone', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_email" class="block text-gray-700 text-sm font-bold mb-2">Correo Electrónico *</label>
-                                    <input type="email" name="email" id="edit_email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('email') border-red-500 @enderror" x-model="currentUser.email" required>
-                                    @error('email')
+                                    <input type="email" name="email" id="edit_email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('email', 'edit') border-red-500 @enderror" x-model="currentUser.email" required>
+                                    @error('email', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div class="md:col-span-2">
                                     <label for="edit_address" class="block text-gray-700 text-sm font-bold mb-2">Dirección</label>
-                                    <textarea name="address" id="edit_address" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('address') border-red-500 @enderror" x-model="currentUser.address"></textarea>
-                                    @error('address')
+                                    <textarea name="address" id="edit_address" rows="2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('address', 'edit') border-red-500 @enderror" x-model="currentUser.address"></textarea>
+                                    @error('address', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -458,23 +403,23 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="edit_role_id" class="block text-gray-700 text-sm font-bold mb-2">Rol *</label>
-                                    <select name="role_id" id="edit_role_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('role_id') border-red-500 @enderror" x-model="currentUser.role_id" required>
+                                    <select name="role_id" id="edit_role_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('role_id', 'edit') border-red-500 @enderror" x-model="currentUser.role_id" required>
                                         <option value="">Seleccione un rol</option>
                                         @foreach($roles as $role)
                                             <option value="{{ $role->id }}">{{ $role->name }}</option>
                                         @endforeach
                                     </select>
-                                    @error('role_id')
+                                    @error('role_id', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_is_active" class="block text-gray-700 text-sm font-bold mb-2">Estado *</label>
-                                    <select name="is_active" id="edit_is_active" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('is_active') border-red-500 @enderror" x-model="currentUser.is_active" required>
+                                    <select name="is_active" id="edit_is_active" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('is_active', 'edit') border-red-500 @enderror" x-model="currentUser.is_active" required>
                                         <option value="1">Activo</option>
                                         <option value="0">Inactivo</option>
                                     </select>
-                                    @error('is_active')
+                                    @error('is_active', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -495,15 +440,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="edit_password" class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
-                                    <input type="password" name="password" id="edit_password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password') border-red-500 @enderror" placeholder="••••••••">
-                                    @error('password')
+                                    <input type="password" name="password" autocomplete="new-password" id="edit_password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password', 'edit') border-red-500 @enderror" placeholder="••••••••">
+                                    @error('password', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label for="edit_password_confirmation" class="block text-gray-700 text-sm font-bold mb-2">Confirmar Contraseña</label>
-                                    <input type="password" name="password_confirmation" id="edit_password_confirmation" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password_confirmation') border-red-500 @enderror" placeholder="••••••••">
-                                    @error('password_confirmation')
+                                    <input type="password" name="password_confirmation" autocomplete="new-password" id="edit_password_confirmation" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('password_confirmation', 'edit') border-red-500 @enderror" placeholder="••••••••">
+                                    @error('password_confirmation', 'edit')
                                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -523,6 +468,97 @@
 
 @section('script')
 <script>
+document.addEventListener('alpine:init', () => {
+    const oldData = @json(old());
+    const hasCreateErrors = {{ $errors->hasBag('create') ? 'true' : 'false' }};
+    const hasEditErrors = {{ $errors->hasBag('edit') ? 'true' : 'false' }};
+    const hasSessionError = {{ session('error') ? 'true' : 'false' }};
+    
+    // Si falló por base de datos (Ej: duplicado) no hay validacion de form, pero viejo input existe
+    const isEditFail = hasEditErrors || (hasSessionError && oldData && oldData._method === 'PUT');
+    const isCreateFail = hasCreateErrors || (hasSessionError && (!oldData || oldData._method !== 'PUT'));
+
+    Alpine.data('userManagement', () => ({
+        isCreateModalOpen: isCreateFail,
+        isEditModalOpen: isEditFail,
+        currentUser: { 
+            id: isEditFail ? (oldData.user_id || null) : null, 
+            first_name: isEditFail ? (oldData.first_name || '') : '', 
+            first_last_name: isEditFail ? (oldData.first_last_name || '') : '', 
+            second_last_name: isEditFail ? (oldData.second_last_name || '') : '', 
+            document_type: isEditFail ? (oldData.document_type || '') : '', 
+            document_number: isEditFail ? (oldData.document_number || '') : '', 
+            phone: isEditFail ? (oldData.phone || '') : '', 
+            email: isEditFail ? (oldData.email || '') : '', 
+            address: isEditFail ? (oldData.address || '') : '', 
+            role_id: isEditFail ? (oldData.role_id || '') : '', 
+            is_active: isEditFail ? (oldData.is_active || '1') : '1', 
+            password: '', 
+            password_confirmation: '' 
+        },
+        validationErrors: {},
+        createForm: { 
+            first_name: '', 
+            first_last_name: '', 
+            second_last_name: '', 
+            document_type: '', 
+            document_number: '', 
+            phone: '', 
+            email: '', 
+            address: '', 
+            role_id: '', 
+            is_active: '1', 
+            password: '', 
+            password_confirmation: '' 
+        },
+
+        init() {
+            @if(session('error'))
+                setTimeout(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Aviso',
+                        text: '{!! addslashes(session('error')) !!}',
+                        confirmButtonText: 'Entendido'
+                    });
+                }, 100);
+            @endif
+        },
+
+        openCreateModal() {
+            this.isCreateModalOpen = true;
+            this.resetCreateForm();
+        },
+
+        openEditModal(id, first_name, first_last_name, second_last_name, document_type, document_number, phone, email, address, role_id, is_active) {
+            this.isEditModalOpen = true;
+            this.currentUser = { id: id, first_name: first_name, first_last_name: first_last_name, second_last_name: second_last_name, document_type: document_type, document_number: document_number, phone: phone, email: email, address: address, role_id: role_id, is_active: is_active, password: '', password_confirmation: '' };
+        },
+
+        handleOutsideClick(event, type) {
+            // No cerrar si el clic fue en un elemento de SweetAlert2 o si un SweetAlert2 está abierto
+            if (event.target.closest('.swal2-container') || document.body.classList.contains('swal2-shown')) {
+                return;
+            }
+            if (type === 'create') {
+                this.isCreateModalOpen = false;
+                this.resetCreateForm();
+            } else if (type === 'edit') {
+                this.isEditModalOpen = false;
+            }
+        },
+
+        closeModals() {
+            this.isCreateModalOpen = false;
+            this.isEditModalOpen = false;
+        },
+
+        resetCreateForm() {
+            this.createForm = { first_name: '', first_last_name: '', second_last_name: '', document_type: '', document_number: '', phone: '', email: '', address: '', role_id: '', is_active: '1', password: '', password_confirmation: '' };
+        }
+    }));
+});
+
 // Función para activar/inactivar usuario
 function toggleUserStatus(userId, userName, isCurrentlyInactive) {
     const action = isCurrentlyInactive ? 'activar' : 'inactivar';

@@ -25,15 +25,16 @@
     <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('assets/img/logo.png') }}">
     <meta name="msapplication-TileImage" content="{{ asset('assets/img/logo.png') }}">
 
-    <!-- Tailwind CSS CDN para la estilización global de la interfaz -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (Local Build para mejor rendimiento) -->
+    <link rel="stylesheet" href="{{ asset('modules/infrastock/css/app.css') }}">
 
     <!-- Google Fonts: "Plus Jakarta Sans" para texto general y "Dancing Script" para eslóganes -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
 
     <!-- Font Awesome para íconos vectoriales -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" /></noscript>
 
     <!-- SweetAlert2 CSS para alertas y notificaciones estéticas -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -518,10 +519,10 @@
     </script>
 
     <!-- jQuery (requerido para DataTables) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script defer src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     
     <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script defer src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 
     {{-- Sección para scripts adicionales específicos de cada vista hija --}}
     @yield('script')

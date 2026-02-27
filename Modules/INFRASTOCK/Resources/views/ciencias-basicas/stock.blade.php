@@ -145,7 +145,6 @@
                                     </div>
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900">{{ $equipment->name }}</div>
-                                        <div class="text-sm text-gray-500">ID: {{ $equipment->id }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -156,9 +155,6 @@
                                 <div class="text-sm font-medium text-gray-900">
                                     {{ $equipment->stock }} {{ $equipment->unit ?? 'unidades' }}
                                 </div>
-                                @if($equipment->initial_amount)
-                                    <div class="text-xs text-gray-500">Inicial: {{ $equipment->initial_amount }}</div>
-                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($equipment->stock == 0)

@@ -59,14 +59,14 @@
         } else {
             console.error('No se encontró el modal request-modal');
             // Fallback: redirigir a la página de creación
-            window.location.href = '{{ route("infrastock.cleaning-staff.requests.create") }}';
+            window.location.href = '{{ route("infrastock.cleaning-staff.requests.index", ["open_modal" => 1]) }}';
         }
     };
 </script>
 <!-- Breadcrumb -->
 @section('breadcrumb-items')
 <li class="flex items-center">
-    <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="text-green-600 hover:text-green-800">Nueva Solicitud</a>
+    <a href="javascript:void(0)" onclick="openRequestModal()" class="text-green-600 hover:text-green-800">Nueva Solicitud</a>
     <svg class="h-4 w-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
 </li>
 <li class="text-gray-700">Mis Solicitudes</li>
@@ -289,7 +289,7 @@
                     <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">No hay solicitudes</h3>
                     <p class="text-gray-500 mb-6">Aún no has realizado ninguna solicitud de insumos.</p>
-                    <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
+                    <a href="javascript:void(0)" onclick="openRequestModal()" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
                         <i class="fas fa-plus mr-2"></i>
                         Crear primera solicitud
                     </a>
@@ -655,6 +655,25 @@
 <script>
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Check for open_modal query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('open_modal') === '1') {
+                if (typeof window.openRequestModal === 'function') {
+                    window.openRequestModal();
+                    
+                    // Si trae equipmentId, intentar pre-seleccionarlo
+                    const equipmentId = urlParams.get('equipment');
+                    if (equipmentId) {
+                        setTimeout(() => {
+                            const equipmentCard = document.querySelector(`.equipment-card[data-equipment-id="${equipmentId}"]`);
+                            if (equipmentCard) {
+                                equipmentCard.click();
+                            }
+                        }, 500); // Pequeño retraso para asegurar que los elementos estén listos
+                    }
+                }
+            }
+
             const searchInput = document.getElementById('search');
             const statusFilter = document.getElementById('status-filter');
             const dateFilter = document.getElementById('date-filter');

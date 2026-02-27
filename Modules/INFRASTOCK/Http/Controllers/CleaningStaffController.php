@@ -262,16 +262,22 @@ class CleaningStaffController extends Controller
      * Muestra el formulario para crear una nueva solicitud de insumo.
      * @return Renderable
      */
-    public function createRequest()
+    public function createRequest(Request $request)
     {
-        $equipments = Equipment::with('category')
-            ->orderBy('name')
-            ->get();
+        // Si es una petición AJAX, devolver los datos necesarios para el modal
+        if ($request->ajax()) {
+            $equipments = Equipment::with('category')->orderBy('name')->get();
+            $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
+            
+            return response()->json([
+                'equipments' => $equipments,
+                'productiveUnitWarehouses' => $productiveUnitWarehouses
+            ]);
+        }
 
-        $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')
-            ->get();
-
-        return view('infrastock::cleaning-staff.create-request', compact('equipments', 'productiveUnitWarehouses'));
+        // Si no es AJAX, redirigir a la página de solicitudes donde está el modal, conservando parámetros
+        $queryParams = array_merge($request->query(), ['open_modal' => 1]);
+        return redirect()->route('infrastock.cleaning-staff.requests.index', $queryParams);
     }
 
     /**
@@ -431,8 +437,6 @@ class CleaningStaffController extends Controller
      */
     public function showRequest($id)
     {
-
-
         $request = \Modules\INFRASTOCK\Entities\Request::with([
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
@@ -921,5 +925,28 @@ class CleaningStaffController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error al registrar la devolución: ' . $e->getMessage());
         }
+    }
+    /**
+     * Muestra el historial de insumos (Stock disponible).
+     */
+    public function supplyHistory()
+    {
+        $this->verifyRole();
+        $inventory = \Modules\INFRASTOCK\Entities\Equipment::with(['category', 'warehouseMovements'])
+            ->orderBy('name')
+            ->get();
+            
+        $totalSupplies = $inventory->count();
+        $availableSupplies = $inventory->where('stock', '>', 5)->count();
+        $lowStockSupplies = $inventory->where('stock', '>', 0)->where('stock', '<=', 5)->count();
+        $outOfStockSupplies = $inventory->where('stock', '<=', 0)->count();
+
+        return view('infrastock::cleaning-staff.supply-history', [
+            'supplies' => $inventory,
+            'totalSupplies' => $totalSupplies,
+            'availableSupplies' => $availableSupplies,
+            'lowStockSupplies' => $lowStockSupplies,
+            'outOfStockSupplies' => $outOfStockSupplies
+        ]);
     }
 }

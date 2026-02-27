@@ -277,4 +277,11 @@ class Equipment extends Model
             default => 'Desconocido',
         };
     }
+    /**
+     * Define la relación con los movimientos de almacén.
+     */
+    public function warehouseMovements()
+    {
+        return $this->hasMany(WarehouseMovement::class, 'equipment_id');
+    }
 }

@@ -166,12 +166,13 @@ class VigilanciaController extends Controller
             ->get();
 
         // Estadísticas generales
-        $totalEquipment = Equipment::count();
-        $totalStock = Equipment::get()->sum('stock');
-        $lowStockCount = Equipment::get()->filter(function($equipment) {
+        $allEquipmentsForStats = Equipment::all();
+        $totalEquipment = $allEquipmentsForStats->count();
+        $totalStock = $allEquipmentsForStats->sum('stock');
+        $lowStockCount = $allEquipmentsForStats->filter(function($equipment) {
             return $equipment->stock <= 10 && $equipment->stock > 0;
         })->count();
-        $outOfStockCount = Equipment::get()->filter(function($equipment) {
+        $outOfStockCount = $allEquipmentsForStats->filter(function($equipment) {
             return $equipment->stock == 0;
         })->count();
 
@@ -292,8 +293,9 @@ class VigilanciaController extends Controller
             ]);
         }
 
-        // Si no es AJAX, redirigir a la página de solicitudes donde está el modal
-        return redirect()->route('infrastock.Vigilancia.requests.index');
+        // Si no es AJAX, redirigir a la página de solicitudes donde está el modal, conservando parámetros (ej. equipment)
+        $queryParams = array_merge($request->query(), ['open_modal' => 1]);
+        return redirect()->route('infrastock.vigilancia.requests.index', $queryParams);
     }
 
     /**
@@ -503,7 +505,8 @@ class VigilanciaController extends Controller
         }
 
 
-$acceptHeader = request()->header('Accept', '');
+        $acceptHeader = request()->header('Accept', '');
+        // Si es una petición AJAX o espera JSON, retornar JSON
         if (request()->ajax() || request()->wantsJson() || request()->expectsJson() || strpos($acceptHeader, 'application/json') !== false) {
             return response()->json([
                 'id' => $request->id,
@@ -528,7 +531,6 @@ $acceptHeader = request()->header('Accept', '');
                 })
             ]);
         }
-
 
         return view('infrastock::Vigilancia.show-request', compact('request'));
     }

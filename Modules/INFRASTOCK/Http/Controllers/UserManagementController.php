@@ -116,9 +116,6 @@ class UserManagementController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::error('Errores de validación:', $validator->errors()->toArray());
-            \Log::error('Datos recibidos:', $request->all());
-            
             // Construir mensaje de error más específico
             $errorMessages = [];
             foreach ($validator->errors()->all() as $error) {
@@ -127,7 +124,7 @@ class UserManagementController extends Controller
             $errorMessage = 'Por favor, corrige los siguientes errores: ' . implode(' ', $errorMessages);
             
             return redirect()->back()
-                ->withErrors($validator)
+                ->withErrors($validator, 'create')
                 ->withInput($request->except('password', 'password_confirmation'))
                 ->with('error', $errorMessage);
         }
@@ -180,11 +177,13 @@ class UserManagementController extends Controller
             if (empty($password)) {
                 $first_name = \Illuminate\Support\Str::ascii($request->first_name);
                 $first_last_name = \Illuminate\Support\Str::ascii($request->first_last_name);
-                $password = ucfirst(strtolower(
-                    substr($first_name, 0, 2) .
-                    substr($first_last_name, 0, 2) .
-                    substr($request->document_number, -4)
-                ));
+                
+                // Asegurar que cada parte tenga la longitud mínima para que la suma sea al menos 8 caracteres
+                $part1 = str_pad(substr($first_name, 0, 2), 2, 'a');
+                $part2 = str_pad(substr($first_last_name, 0, 2), 2, 'a');
+                $part3 = str_pad(substr($request->document_number, -4), 4, '0');
+                
+                $password = ucfirst(strtolower($part1 . $part2 . $part3));
             }
 
             // Crear el usuario
@@ -471,7 +470,7 @@ class UserManagementController extends Controller
 
         if ($validator->fails()) {
             return redirect()->back()
-                ->withErrors($validator)
+                ->withErrors($validator, 'edit')
                 ->withInput($request->except('password', 'password_confirmation'));
         }
 

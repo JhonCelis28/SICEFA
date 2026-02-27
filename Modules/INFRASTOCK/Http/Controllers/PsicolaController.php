@@ -165,12 +165,13 @@ class PsicolaController extends Controller
             ->get();
 
         // Estadísticas generales
-        $totalEquipment = Equipment::count();
-        $totalStock = Equipment::get()->sum('stock');
-        $lowStockCount = Equipment::get()->filter(function($equipment) {
+        $allEquipmentsForStats = Equipment::all();
+        $totalEquipment = $allEquipmentsForStats->count();
+        $totalStock = $allEquipmentsForStats->sum('stock');
+        $lowStockCount = $allEquipmentsForStats->filter(function($equipment) {
             return $equipment->stock <= 10 && $equipment->stock > 0;
         })->count();
-        $outOfStockCount = Equipment::get()->filter(function($equipment) {
+        $outOfStockCount = $allEquipmentsForStats->filter(function($equipment) {
             return $equipment->stock == 0;
         })->count();
 
@@ -291,8 +292,9 @@ class PsicolaController extends Controller
             ]);
         }
 
-        // Si no es AJAX, redirigir a la página de solicitudes donde está el modal
-        return redirect()->route('infrastock.psicola.requests.index');
+        // Si no es AJAX, redirigir a la página de solicitudes donde está el modal, conservando parámetros
+        $queryParams = array_merge($request->query(), ['open_modal' => 1]);
+        return redirect()->route('infrastock.psicola.requests.index', $queryParams);
     }
 
     /**
@@ -502,6 +504,7 @@ class PsicolaController extends Controller
         }
 
         $acceptHeader = request()->header('Accept', '');
+        // Si es una petición AJAX o espera JSON, retornar JSON
         if (request()->ajax() || request()->wantsJson() || request()->expectsJson() || strpos($acceptHeader, 'application/json') !== false) {
             return response()->json([
                 'id' => $request->id,

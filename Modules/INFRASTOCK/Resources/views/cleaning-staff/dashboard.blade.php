@@ -83,7 +83,7 @@
             <div class="bg-white rounded-xl shadow-md p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-gray-800">Insumo Más Solicitado</h3>
-                    <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="px-4 py-2 bg-green-500 text-white rounded-md text-base font-medium hover:bg-green-600 transition-colors duration-200">Nueva Solicitud</a>
+                    <a href="{{ route('infrastock.cleaning-staff.requests.index', ['open_modal' => 1]) }}" class="px-4 py-2 bg-green-500 text-white rounded-md text-base font-medium hover:bg-green-600 transition-colors duration-200">Nueva Solicitud</a>
                 </div>
                 <div class="relative">
                     @if($mostRequestedSupplyData)
@@ -166,7 +166,7 @@
                             <i class="fas fa-chart-bar text-gray-400 text-4xl mb-4"></i>
                             <h4 class="text-lg font-medium text-gray-900 mb-2">No hay datos suficientes</h4>
                             <p class="text-gray-500 mb-4">Aún no se han registrado suficientes solicitudes para determinar el insumo más solicitado.</p>
-                            <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
+                            <a href="{{ route('infrastock.cleaning-staff.requests.index', ['open_modal' => 1]) }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
                                 <i class="fas fa-plus mr-2"></i>
                                 Crear primera solicitud
                             </a>

@@ -14,3 +14,8 @@ const mix = require('laravel-mix');
 mix.js('resources/js/app.js', 'public/js')
     .react()
     .sass('resources/sass/app.scss', 'public/css');
+
+// Compilación de Tailwind para el módulo INFRASTOCK
+mix.postCss('Modules/INFRASTOCK/Resources/assets/css/app.css', 'public/modules/infrastock/css', [
+    require('tailwindcss')('Modules/INFRASTOCK/tailwind.config.js'),
+]);
