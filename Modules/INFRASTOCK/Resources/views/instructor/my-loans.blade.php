@@ -366,7 +366,7 @@
                                                             ->where('item_type', 'tool')
                                                             ->where('role', 'Devolución')
                                                             ->whereIn('status', ['approved', 'pending'])
-                                                            ->where('created_at', '>=', $loan->created_at)
+                                                            ->where('description', 'like', '%Devolución de préstamo #' . $loan->id . '%')
                                                             ->exists();
                                                         
                                                         $loanStatus = trim(strtolower($loan->status ?? ''));
