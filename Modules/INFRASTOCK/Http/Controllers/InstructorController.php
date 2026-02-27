@@ -450,6 +450,7 @@ class InstructorController extends Controller
         $this->verifyRole();
         
         $request->validate([
+            'amount' => 'required|integer|min:1',
             'description' => 'required|string|max:1000',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'return_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:10240',
@@ -637,6 +638,7 @@ class InstructorController extends Controller
         $user = auth()->user();
         
         $request->validate([
+            'amount' => 'required|integer|min:1',
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'nickname' => 'nullable|string|max:255',

@@ -78,7 +78,7 @@
 
     <!-- Stock Disponible (solo si el rol tiene esta ruta) -->
     @php
-        $hasStockRoute = in_array($routePrefix, ['operator', 'psicola', 'vigilancia', 'ganaderia', 'convivencia', 'ciencias-basicas', 'agroindustria']);
+        $hasStockRoute = in_array($routePrefix, ['operator', 'psicola', 'vigilancia', 'ganaderia', 'convivencia', 'ciencias-basicas', 'agroindustria', 'cleaning-staff']);
     @endphp
     @if($hasStockRoute)
     <li>
@@ -114,14 +114,8 @@
     </li>
 
     <!-- Reporte de Sobrantes -->
-    @php
-        // cleaning-staff usa surplus.index, los demás usan surplus-report
-        $surplusRoute = ($routePrefix === 'cleaning-staff') 
-            ? 'infrastock.' . $routePrefix . '.surplus.index' 
-            : 'infrastock.' . $routePrefix . '.surplus-report';
-    @endphp
     <li>
-        <a href="{{ route($surplusRoute) }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.surplus-report') || Request::routeIs('infrastock.' . $routePrefix . '.surplus.*')) active @endif">
+        <a href="{{ route('infrastock.' . $routePrefix . '.surplus-report') }}" class="sidebar-menu-item font-bold @if(Request::routeIs('infrastock.' . $routePrefix . '.surplus-report') || Request::routeIs('infrastock.' . $routePrefix . '.surplus.*')) active @endif">
             <i class="fas fa-file-alt w-6 text-xl text-white opacity-90 hover:opacity-100 hover:text-green-200 flex-shrink-0 transition-all duration-300 drop-shadow-sm" :class="{'mr-0': !isSidebarExpanded && isDesktop, 'mr-3': isSidebarExpanded || !isDesktop}"></i>
             <span x-show="isSidebarExpanded || !isDesktop" 
                   x-cloak

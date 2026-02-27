@@ -1,265 +1,407 @@
-<!--
-    * @file surplus-report.blade.php
-    * @brief Vista para generar reportes de sobrantes del Personal de Aseo.
-    *
-    * Esta vista permite al personal de aseo visualizar los insumos entregados
-    * que podrían tener sobrantes, con filtros de búsqueda y análisis de uso.
-    * NO incluye funcionalidad de exportación (PDF/Excel) según los requerimientos.
-    * Utiliza Tailwind CSS para un diseño responsive y moderno.
-    *
-    * @param Collection $deliveredSupplies Insumos entregados al usuario.
-    * @param int $totalDelivered Total de insumos entregados.
-    * @param int $uniqueSupplies Cantidad de tipos únicos de insumos entregados.
-    * @author [Tu Nombre/Equipo]
-    * @date [Fecha de Creación/Última Modificación]
--->
 @extends('infrastock::layouts.usuarios-master')
 
-@section('title', 'Reporte de Sobrantes - Personal de Aseo INFRASTOCK')
+@section('title', 'Registro de Sobrantes')
+
+@section('breadcrumb-items')
+<li class="flex items-center">
+    <span class="text-gray-500">Sobrantes</span>
+</li>
+@endsection
 
 @section('content')
-<!-- Breadcrumb -->
-@section('breadcrumb-items')
-<li class="text-gray-700">Reporte de Sobrantes</li>
-@endsection
-        
-        <!-- Header -->
-        <div class="mb-8">
-            <h2 class="text-3xl font-bold text-gray-900">Reporte de Sobrantes</h2>
-            <p class="text-gray-600 mt-2">Analiza los insumos entregados para identificar posibles sobrantes y optimizar el uso de recursos.</p>
+<div class="container-fluid">
+    <!-- Mensajes de Éxito/Error -->
+    @if(session('success'))
+        <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center">
+            <i class="fas fa-check-circle mr-3"></i>
+            {{ session('success') }}
         </div>
+    @endif
 
-        <!-- Estadísticas Generales -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-boxes text-blue-600"></i>
-                        </div>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium text-gray-500">Total Entregado</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{ $totalDelivered }}</p>
-                    </div>
-                </div>
+    @if(session('error'))
+        <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center">
+            <i class="fas fa-exclamation-circle mr-3"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <!-- Header de la página -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Registro de Sobrantes</h1>
+                <p class="text-gray-600">Registra los insumos que han sobrado y especifica la causa</p>
             </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-list text-green-600"></i>
-                        </div>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium text-gray-500">Tipos de Insumos</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{ $uniqueSupplies }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-chart-line text-orange-600"></i>
-                        </div>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium text-gray-500">Promedio por Tipo</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{ $uniqueSupplies > 0 ? round($totalDelivered / $uniqueSupplies, 1) : 0 }}</p>
-                    </div>
-                </div>
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-boxes text-green-500 text-2xl"></i>
+                <span class="text-sm text-gray-500">Control de inventario</span>
             </div>
         </div>
+    </div>
 
-        <!-- Filtros -->
-        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Filtros de Búsqueda</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Formulario de Registro de Sobrantes -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center mb-6">
+                <div class="bg-green-100 p-3 rounded-full mr-4">
+                    <i class="fas fa-plus text-green-600 text-xl"></i>
+                </div>
                 <div>
-                    <label for="search-supply" class="block text-sm font-medium text-gray-700 mb-2">Buscar Insumo</label>
-                    <input type="text" id="search-supply" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Nombre del insumo...">
+                    <h3 class="text-xl font-bold text-gray-800">Registrar Sobrante</h3>
+                    <p class="text-gray-600">Completa el formulario para registrar un insumo sobrante</p>
                 </div>
+            </div>
+
+            <form action="{{ route('infrastock.cleaning-staff.surplus.store') }}" method="POST" class="space-y-6" id="surplusForm">
+                @csrf
                 
+                <!-- Selección de Solicitud Entregada -->
                 <div>
-                    <label for="date-range" class="block text-sm font-medium text-gray-700 mb-2">Rango de Fechas</label>
-                    <select id="date-range" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                        <option value="">Todas las fechas</option>
-                        <option value="week">Última semana</option>
-                        <option value="month">Último mes</option>
-                        <option value="quarter">Último trimestre</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="sort-by" class="block text-sm font-medium text-gray-700 mb-2">Ordenar por</label>
-                    <select id="sort-by" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                        <option value="date">Fecha de entrega</option>
-                        <option value="name">Nombre del insumo</option>
-                        <option value="amount">Cantidad</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabla de Insumos Entregados -->
-        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Insumos Entregados</h3>
-                <p class="text-sm text-gray-500 mt-1">Total: {{ $deliveredSupplies->count() }} entregas</p>
-            </div>
-            
-            @if($deliveredSupplies->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200" id="supplies-table">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad Entregada</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Entrega</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado de Uso</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($deliveredSupplies as $supply)
-                                <tr class="supply-row" 
-                                    data-equipment="{{ strtolower($supply->equipment->name ?? '') }}"
-                                    data-date="{{ $supply->created_at->format('Y-m-d') }}">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10">
-                                                <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                                                    <i class="fas fa-box text-green-600"></i>
-                                                </div>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ $supply->equipment->name ?? 'N/A' }}</div>
-                                                <div class="text-sm text-gray-500">{{ $supply->equipment->category->name ?? 'Sin categoría' }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $supply->amount }} {{ $supply->equipment->unit ?? 'unidades' }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $supply->created_at->format('d/m/Y H:i') }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            <i class="fas fa-check mr-1"></i>
-                                            Entregado
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <button onclick="addObservation({{ $supply->id }})" class="text-blue-600 hover:text-blue-900">
-                                            <i class="fas fa-plus-circle"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                    <label for="request_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-clipboard-list mr-2 text-green-500"></i>
+                        Solicitud Entregada *
+                    </label>
+                    <select name="request_id" id="request_id" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('request_id') border-red-500 @enderror">
+                        <option value="">-- Selecciona una solicitud entregada --</option>
+                        @if(isset($deliveredRequests) && $deliveredRequests->count() > 0)
+                            @foreach($deliveredRequests as $deliveredRequest)
+                                <option value="{{ $deliveredRequest->id }}" {{ old('request_id') == $deliveredRequest->id ? 'selected' : '' }}>
+                                    Solicitud #{{ $deliveredRequest->id }} - {{ $deliveredRequest->created_at->format('d/m/Y') }}
+                                </option>
                             @endforeach
-                        </tbody>
-                    </table>
+                        @endif
+                    </select>
+                    @error('request_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
+
+                <!-- Selección de Insumo -->
+                <div>
+                    <label for="request_item_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-box mr-2 text-green-500"></i>
+                        Seleccionar Insumo *
+                    </label>
+                    <select name="request_item_id" id="request_item_id" required disabled
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 bg-gray-100 @error('request_item_id') border-red-500 @enderror">
+                        <option value="">-- Primero selecciona una solicitud --</option>
+                    </select>
+                    @error('request_item_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Cantidad Sobrante -->
+                <div>
+                    <label for="surplus_amount" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-hashtag mr-2 text-green-500"></i>
+                        Cantidad que Sobró * <span id="max_amount_info" class="text-xs text-gray-500 ml-2 font-normal"></span>
+                    </label>
+                    <div class="relative">
+                        <input type="number" name="surplus_amount" id="surplus_amount" required min="1"
+                               value="{{ old('surplus_amount') }}"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('surplus_amount') border-red-500 @enderror"
+                               placeholder="Ingresa la cantidad que sobró">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                            <span class="text-gray-500 text-sm" id="unit-display">unidades</span>
+                        </div>
+                    </div>
+                    @error('surplus_amount')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Fecha del Sobrante -->
+                <div>
+                    <label for="surplus_date" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar mr-2 text-green-500"></i>
+                        Fecha del Sobrante *
+                    </label>
+                    <input type="date" name="surplus_date" id="surplus_date" required
+                           value="{{ old('surplus_date', date('Y-m-d')) }}"
+                           max="{{ date('Y-m-d') }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('surplus_date') border-red-500 @enderror">
+                    @error('surplus_date')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Causa del Sobrante -->
+                <div>
+                    <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-comment-alt mr-2 text-green-500"></i>
+                        Causa del Sobrante *
+                    </label>
+                    <textarea name="reason" id="reason" required rows="4"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('reason') border-red-500 @enderror"
+                              placeholder="Describe la causa por la cual sobró este insumo...">{{ old('reason') }}</textarea>
+                    <div class="flex justify-between items-center mt-1">
+                        <p class="text-xs text-gray-500">Máximo 500 caracteres</p>
+                        <span class="text-xs text-gray-400" id="char-count">0/500</span>
+                    </div>
+                    @error('reason')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="reset" class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                        <i class="fas fa-undo mr-2"></i>
+                        Limpiar
+                    </button>
+                    <button type="submit" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200">
+                        <i class="fas fa-save mr-2"></i>
+                        Registrar Sobrante
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Historial de Sobrantes -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 p-3 rounded-full mr-4">
+                        <i class="fas fa-history text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">Historial de Sobrantes</h3>
+                        <p class="text-gray-600">Últimos registros de sobrantes</p>
+                    </div>
+                </div>
+                <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                    {{ $surpluses->total() }} registros
+                </span>
+            </div>
+
+
+            @if($surpluses->count() > 0)
+                <div class="space-y-4 max-h-96 overflow-y-auto">
+                    @foreach($surpluses as $surplus)
+                        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3 mb-2">
+                                        <div class="bg-orange-100 p-2 rounded-full">
+                                            <i class="fas fa-box text-orange-600 text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-900">{{ $surplus->equipment->name }}</h4>
+                                            <p class="text-sm text-gray-500">{{ $surplus->equipment->category->name ?? 'Sin categoría' }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-4 mb-3">
+                                        <div>
+                                            <span class="text-sm font-medium text-gray-700">Cantidad:</span>
+                                            <span class="ml-2 bg-orange-100 text-orange-800 text-sm px-2 py-1 rounded-full">
+                                                {{ $surplus->surplus_amount }} {{ $surplus->equipment->unit ?? 'unidades' }}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium text-gray-700">Fecha:</span>
+                                            <span class="ml-2 text-sm text-gray-600">{{ $surplus->surplus_date->format('d/m/Y') }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <span class="text-sm font-medium text-gray-700">Causa:</span>
+                                        <p class="text-sm text-gray-600 mt-1">{{ $surplus->reason }}</p>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-400">
+                                            Registrado el {{ $surplus->created_at->format('d/m/Y H:i') }}
+                                        </span>
+                                        <div class="flex space-x-2">
+                                            <button onclick="showSurplusDetails({{ $surplus->id }})" 
+                                                    class="text-blue-600 hover:text-blue-800 text-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button onclick="deleteSurplus({{ $surplus->id }})" 
+                                                    class="text-red-600 hover:text-red-800 text-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <!-- Paginación -->
+                @if($surpluses->hasPages())
+                    <div class="mt-6 flex justify-center">
+                        {{ $surpluses->links() }}
+                    </div>
+                @endif
             @else
-                <div class="text-center py-12">
-                    <i class="fas fa-chart-bar text-gray-400 text-4xl mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">No hay entregas registradas</h3>
-                    <p class="text-gray-500 mb-6">Aún no tienes insumos entregados para analizar.</p>
-                    <a href="{{ route('infrastock.cleaning-staff.requests.create') }}" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
-                        <i class="fas fa-plus mr-2"></i>
-                        Crear nueva solicitud
-                    </a>
+                <div class="text-center py-8">
+                    <i class="fas fa-boxes text-gray-400 text-4xl mb-4"></i>
+                    <h4 class="text-lg font-medium text-gray-900 mb-2">No hay sobrantes registrados</h4>
+                    <p class="text-gray-500">Comienza registrando tu primer sobrante usando el formulario.</p>
                 </div>
             @endif
         </div>
+    </div>
+</div>
 
-        <!-- Nota sobre Exportación -->
-        <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-info-circle text-yellow-400"></i>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-sm font-medium text-yellow-800">Información sobre Exportación</h3>
-                    <div class="mt-2 text-sm text-yellow-700">
-                        <p>Esta vista está diseñada para análisis y filtrado únicamente. La funcionalidad de exportación a PDF o Excel no está disponible para el rol de Personal de Aseo.</p>
-                    </div>
-                </div>
+<!-- Modal para ver detalles del sobrante -->
+<div id="surplusDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Detalles del Sobrante</h3>
+                <button onclick="closeSurplusDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="surplusDetailsContent">
+                <!-- Contenido se carga dinámicamente -->
             </div>
         </div>
-
-    </main>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('search-supply');
-            const dateRangeSelect = document.getElementById('date-range');
-            const sortBySelect = document.getElementById('sort-by');
-            const tableRows = document.querySelectorAll('.supply-row');
-
-            // Función para filtrar la tabla
-            function filterTable() {
-                const searchTerm = searchInput.value.toLowerCase();
-                const dateRange = dateRangeSelect.value;
-                const today = new Date();
-                
-                tableRows.forEach(row => {
-                    const equipmentName = row.dataset.equipment;
-                    const supplyDate = new Date(row.dataset.date);
-                    
-                    let showRow = true;
-                    
-                    // Filtro por búsqueda
-                    if (searchTerm && !equipmentName.includes(searchTerm)) {
-                        showRow = false;
-                    }
-                    
-                    // Filtro por rango de fechas
-                    if (dateRange) {
-                        switch(dateRange) {
-                            case 'week':
-                                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-                                if (supplyDate < weekAgo) {
-                                    showRow = false;
-                                }
-                                break;
-                            case 'month':
-                                const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-                                if (supplyDate < monthAgo) {
-                                    showRow = false;
-                                }
-                                break;
-                            case 'quarter':
-                                const quarterAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
-                                if (supplyDate < quarterAgo) {
-                                    showRow = false;
-                                }
-                                break;
-                        }
-                    }
-                    
-                    row.style.display = showRow ? '' : 'none';
-                });
-            }
-
-            // Event listeners para los filtros
-            searchInput.addEventListener('input', filterTable);
-            dateRangeSelect.addEventListener('change', filterTable);
-            sortBySelect.addEventListener('change', filterTable);
-        });
-
-        // Función para agregar observaciones
-        function addObservation(supplyId) {
-            alert('Funcionalidad de observaciones para el insumo #' + supplyId + ' - Por implementar');
-        }
-    </script>
-@endsection
+    </div>
+</div>
 
 @section('script')
 <script>
-    // Script específico para la vista de reporte de sobrantes
+    const requestsData = {!! isset($deliveredRequests) ? json_encode($deliveredRequests->mapWithKeys(function ($req) {
+        return [$req->id => $req->items->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'equipment_id' => $item->equipment_id,
+                'name' => $item->equipment->name ?? 'Insumo',
+                'category' => $item->equipment->category->name ?? 'Sin categoría',
+                'unit' => $item->equipment->unit ?? 'unidades',
+                'max_amount' => $item->remaining_amount ?? 0
+            ];
+        })];
+    })) : '{}' !!};
+    
+document.addEventListener('DOMContentLoaded', function() {
+    const requestSelect = document.getElementById('request_id');
+    const itemSelect = document.getElementById('request_item_id');
+    const surplusAmount = document.getElementById('surplus_amount');
+    const unitDisplay = document.getElementById('unit-display');
+    const maxAmountInfo = document.getElementById('max_amount_info');
+
+    if (requestSelect && itemSelect) {
+        requestSelect.addEventListener('change', function() {
+            const requestId = this.value;
+            itemSelect.innerHTML = '<option value="">-- Selecciona un insumo --</option>';
+            surplusAmount.max = '';
+            surplusAmount.value = '';
+            if (maxAmountInfo) maxAmountInfo.textContent = '';
+            
+            if (requestId && requestsData[requestId]) {
+                const items = requestsData[requestId];
+                itemSelect.disabled = false;
+                itemSelect.classList.remove('bg-gray-100');
+                
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.dataset.category = item.category;
+                    option.dataset.unit = item.unit;
+                    option.dataset.maxAmount = item.max_amount;
+                    option.textContent = `${item.name} - ${item.category} (Disponible: ${item.max_amount})`;
+                    itemSelect.appendChild(option);
+                });
+            } else {
+                itemSelect.disabled = true;
+                itemSelect.classList.add('bg-gray-100');
+                itemSelect.innerHTML = '<option value="">-- Primero selecciona una solicitud --</option>';
+            }
+        });
+        
+        itemSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const unit = selectedOption.dataset.unit || 'unidades';
+                const maxAmount = selectedOption.dataset.maxAmount;
+                
+                if (unitDisplay) unitDisplay.textContent = unit;
+                
+                if (maxAmount) {
+                    surplusAmount.max = maxAmount;
+                    if (maxAmountInfo) maxAmountInfo.textContent = `(Permitido: máx. ${maxAmount})`;
+                }
+            } else {
+                if (unitDisplay) unitDisplay.textContent = 'unidades';
+                surplusAmount.max = '';
+                if (maxAmountInfo) maxAmountInfo.textContent = '';
+            }
+        });
+    }
+
+    // Contador de caracteres para el textarea
+    const reasonTextarea = document.getElementById('reason');
+    if (reasonTextarea) {
+        const charCountDisplay = document.getElementById('char-count');
+        reasonTextarea.addEventListener('input', function() {
+            const charCount = this.value.length;
+            if (charCountDisplay) {
+                charCountDisplay.textContent = charCount + '/500';
+            }
+        });
+    }
+});
+
+// Mostrar detalles del sobrante
+function showSurplusDetails(surplusId) {
+    fetch(`{{ url('infrastock/cleaning-staff/surplus') }}/${surplusId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('surplusDetailsContent').innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <span class="font-medium text-gray-700">Insumo:</span>
+                        <p class="text-gray-900">${data.equipment_name}</p>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-700">Cantidad:</span>
+                        <p class="text-gray-900">${data.surplus_amount} ${data.unit}</p>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-700">Fecha:</span>
+                        <p class="text-gray-900">${data.surplus_date}</p>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-700">Causa:</span>
+                        <p class="text-gray-900">${data.reason}</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('surplusDetailsModal').classList.remove('hidden');
+        });
+}
+
+function closeSurplusDetailsModal() {
+    document.getElementById('surplusDetailsModal').classList.add('hidden');
+}
+
+function deleteSurplus(surplusId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este registro de sobrante?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('infrastock/cleaning-staff/surplus') }}/${surplusId}`;
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'DELETE';
+        const tokenField = document.createElement('input');
+        tokenField.type = 'hidden';
+        tokenField.name = '_token';
+        tokenField.value = '{{ csrf_token() }}';
+        form.appendChild(methodField);
+        form.appendChild(tokenField);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 </script>
+@endsection
 @endsection

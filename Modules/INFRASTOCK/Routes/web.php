@@ -218,14 +218,20 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     // Dashboard principal del personal de aseo
     Route::get('/infrastock/cleaning-staff/dashboard', 'CleaningStaffController@dashboard')->name('infrastock.cleaning-staff.dashboard');
     
+    // Stock disponible (Historial de insumos)
+    Route::get('/infrastock/cleaning-staff/stock', 'CleaningStaffController@supplyHistory')->name('infrastock.cleaning-staff.stock');
+    
     // Gestión de solicitudes de insumos
     Route::get('/infrastock/cleaning-staff/requests/create', 'CleaningStaffController@createRequest')->name('infrastock.cleaning-staff.requests.create');
     Route::post('/infrastock/cleaning-staff/requests', 'CleaningStaffController@storeRequest')->name('infrastock.cleaning-staff.requests.store');
     Route::get('/infrastock/cleaning-staff/requests', 'CleaningStaffController@myRequests')->name('infrastock.cleaning-staff.requests.index');
     
-    // Gestión de sobrantes
+    // Gestión de sobrantes (Nueva implementación estandarizada)
+    Route::get('/infrastock/cleaning-staff/surplus-report', 'CleaningStaffController@surplusReport')->name('infrastock.cleaning-staff.surplus-report');
+    Route::post('/infrastock/cleaning-staff/surplus', 'CleaningStaffController@storeSurplus')->name('infrastock.cleaning-staff.surplus.store');
+    
+    // Gestión de sobrantes (Historial y antiguas rutas - se mantienen por compatibilidad si es necesario)
     Route::get('/infrastock/cleaning-staff/surplus', 'SurplusController@index')->name('infrastock.cleaning-staff.surplus.index');
-    Route::post('/infrastock/cleaning-staff/surplus', 'SurplusController@store')->name('infrastock.cleaning-staff.surplus.store');
     Route::get('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@show')->name('infrastock.cleaning-staff.surplus.show');
     Route::put('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@update')->name('infrastock.cleaning-staff.surplus.update');
     Route::delete('/infrastock/cleaning-staff/surplus/{id}', 'SurplusController@destroy')->name('infrastock.cleaning-staff.surplus.destroy');

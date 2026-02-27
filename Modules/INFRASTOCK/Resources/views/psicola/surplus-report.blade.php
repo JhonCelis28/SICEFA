@@ -59,47 +59,39 @@
             <form action="{{ route('infrastock.psicola.surplus.store') }}" method="POST" class="space-y-6" id="surplusForm">
                 @csrf
                 
-                <!-- Selección de Solicitud Entregada (si aplica) -->
-                @if(isset($deliveredRequests) && $deliveredRequests->count() > 0)
+                <!-- Selección de Solicitud Entregada -->
                 <div>
                     <label for="request_id" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-clipboard-list mr-2 text-green-500"></i>
-                        Solicitud Entregada (Opcional)
+                        Solicitud Entregada *
                     </label>
-                    <select name="request_id" id="request_id"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200">
+                    <select name="request_id" id="request_id" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('request_id') border-red-500 @enderror">
                         <option value="">-- Selecciona una solicitud entregada --</option>
-                        @foreach($deliveredRequests as $deliveredRequest)
-                            <option value="{{ $deliveredRequest->id }}" {{ old('request_id') == $deliveredRequest->id ? 'selected' : '' }}>
-                                Solicitud #{{ $deliveredRequest->id }} - {{ $deliveredRequest->created_at->format('d/m/Y') }}
-                            </option>
-                        @endforeach
+                        @if(isset($deliveredRequests) && $deliveredRequests->count() > 0)
+                            @foreach($deliveredRequests as $deliveredRequest)
+                                <option value="{{ $deliveredRequest->id }}" {{ old('request_id') == $deliveredRequest->id ? 'selected' : '' }}>
+                                    Solicitud #{{ $deliveredRequest->id }} - {{ $deliveredRequest->created_at->format('d/m/Y') }}
+                                </option>
+                            @endforeach
+                        @endif
                     </select>
+                    @error('request_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
-                @endif
 
                 <!-- Selección de Insumo -->
                 <div>
-                    <label for="equipment_id" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="request_item_id" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-box mr-2 text-green-500"></i>
                         Seleccionar Insumo *
                     </label>
-                    <select name="equipment_id" id="equipment_id" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('equipment_id') border-red-500 @enderror">
-                        <option value="">-- Selecciona un insumo --</option>
-                        @foreach($equipments as $equipment)
-                            <option value="{{ $equipment->id }}" 
-                                    @if(old('equipment_id') == $equipment->id) selected @endif
-                                    data-category="{{ $equipment->category->name ?? 'Sin categoría' }}"
-                                    data-unit="{{ $equipment->unit ?? 'unidades' }}">
-                                {{ $equipment->name }} 
-                                @if($equipment->category)
-                                    - {{ $equipment->category->name }}
-                                @endif
-                            </option>
-                        @endforeach
+                    <select name="request_item_id" id="request_item_id" required disabled
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 bg-gray-100 @error('request_item_id') border-red-500 @enderror">
+                        <option value="">-- Primero selecciona una solicitud --</option>
                     </select>
-                    @error('equipment_id')
+                    @error('request_item_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
@@ -108,7 +100,7 @@
                 <div>
                     <label for="surplus_amount" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-hashtag mr-2 text-green-500"></i>
-                        Cantidad que Sobró *
+                        Cantidad que Sobró * <span id="max_amount_info" class="text-xs text-gray-500 ml-2 font-normal"></span>
                     </label>
                     <div class="relative">
                         <input type="number" name="surplus_amount" id="surplus_amount" required min="1"
@@ -278,18 +270,100 @@
 </div>
 
 <script>
+const requestsData = {
+    @if(isset($deliveredRequests))
+        @foreach($deliveredRequests as $req)
+            "{{ $req->id }}": [
+                @foreach($req->items as $item)
+                    @if($item->remaining_amount > 0 && 
+                        $item->equipment && 
+                        (!str_contains(strtolower($item->equipment->category->name ?? ''), 'aseo') && 
+                         !str_contains(strtolower($item->equipment->category->name ?? ''), 'limpieza')))
+                    {
+                        id: {{ $item->id }},
+                        equipment_id: {{ $item->equipment_id }},
+                        name: "{{ $item->equipment->name }}",
+                        category: "{{ $item->equipment->category->name ?? 'Sin categoría' }}",
+                        unit: "{{ $item->equipment->unit ?? 'unidades' }}",
+                        max_amount: {{ $item->remaining_amount }}
+                    },
+                    @endif
+                @endforeach
+            ],
+        @endforeach
+    @endif
+};
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Actualizar unidad cuando se selecciona un insumo
-    const equipmentSelect = document.getElementById('equipment_id');
-    if (equipmentSelect) {
-        equipmentSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const unit = selectedOption.getAttribute('data-unit') || 'unidades';
-            const unitDisplay = document.getElementById('unit-display');
-            if (unitDisplay) {
-                unitDisplay.textContent = unit;
+    const requestSelect = document.getElementById('request_id');
+    const itemSelect = document.getElementById('request_item_id');
+    const surplusAmount = document.getElementById('surplus_amount');
+    const unitDisplay = document.getElementById('unit-display');
+    const maxAmountInfo = document.getElementById('max_amount_info');
+
+    if (requestSelect && itemSelect) {
+        requestSelect.addEventListener('change', function() {
+            const requestId = this.value;
+            itemSelect.innerHTML = '<option value="">-- Selecciona un insumo --</option>';
+            surplusAmount.max = '';
+            surplusAmount.value = '';
+            if (maxAmountInfo) maxAmountInfo.textContent = '';
+            
+            if (requestId && requestsData[requestId]) {
+                const items = requestsData[requestId];
+                itemSelect.disabled = false;
+                itemSelect.classList.remove('bg-gray-100');
+                
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.dataset.category = item.category;
+                    option.dataset.unit = item.unit;
+                    option.dataset.maxAmount = item.max_amount;
+                    option.textContent = `${item.name} - ${item.category} (Disponible: ${item.max_amount})`;
+                    itemSelect.appendChild(option);
+                });
+            } else {
+                itemSelect.disabled = true;
+                itemSelect.classList.add('bg-gray-100');
+                itemSelect.innerHTML = '<option value="">-- Primero selecciona una solicitud --</option>';
             }
         });
+        
+        itemSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const unit = selectedOption.dataset.unit || 'unidades';
+                const maxAmount = selectedOption.dataset.maxAmount;
+                
+                if (unitDisplay) unitDisplay.textContent = unit;
+                
+                if (maxAmount) {
+                    surplusAmount.max = maxAmount;
+                    if (maxAmountInfo) maxAmountInfo.textContent = `(Permitido: máx. ${maxAmount})`;
+                }
+            } else {
+                if (unitDisplay) unitDisplay.textContent = 'unidades';
+                surplusAmount.max = '';
+                if (maxAmountInfo) maxAmountInfo.textContent = '';
+            }
+        });
+    }
+
+    // Si hay un valor seleccionado previamente (por error de validación), disparar los eventos
+    if (requestSelect && requestSelect.value) {
+        requestSelect.dispatchEvent(new Event('change'));
+        
+        // Si hay un insumo old, seleccionarlo después de un pequeño retraso
+        const oldItemId = "{{ old('request_item_id') }}";
+        if (oldItemId) {
+            setTimeout(() => {
+                if (itemSelect) {
+                    itemSelect.value = oldItemId;
+                    itemSelect.dispatchEvent(new Event('change'));
+                }
+            }, 100);
+        }
     }
 
     // Contador de caracteres para el textarea
@@ -320,12 +394,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const surplusForm = document.getElementById('surplusForm');
     if (surplusForm) {
         surplusForm.addEventListener('submit', function(e) {
-            const equipmentId = document.getElementById('equipment_id');
+            const requestItemId = document.getElementById('request_item_id');
             const surplusAmount = document.getElementById('surplus_amount');
             const reason = document.getElementById('reason');
             const surplusDate = document.getElementById('surplus_date');
+            const requestId = document.getElementById('request_id');
             
-            if (!equipmentId || !equipmentId.value) {
+            if (!requestId || !requestId.value) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debe seleccionar una solicitud.',
+                });
+                return false;
+            }
+
+            if (!requestItemId || !requestItemId.value) {
                 e.preventDefault();
                 Swal.fire({
                     icon: 'error',
@@ -341,6 +426,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     icon: 'error',
                     title: 'Error',
                     text: 'Debe especificar una cantidad válida mayor a 0.',
+                });
+                return false;
+            }
+
+            const maxAmount = surplusAmount.max ? parseInt(surplusAmount.max) : Infinity;
+            if (parseInt(surplusAmount.value) > maxAmount) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: `La cantidad no puede ser mayor a ${maxAmount}.`,
                 });
                 return false;
             }

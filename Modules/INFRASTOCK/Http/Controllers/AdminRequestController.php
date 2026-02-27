@@ -63,8 +63,14 @@ class AdminRequestController extends Controller
                 'approved_by' => auth()->id(),
             ]);
 
-            // Actualizar el estado de todos los items
-            $requestData->items()->update(['status' => 'approved']);
+            // Actualizar el estado de todos los items y automatizar cantidades
+            foreach ($requestData->items as $item) {
+                $item->update([
+                    'status' => 'approved',
+                    'approved_amount' => $item->requested_amount,
+                    'delivered_amount' => $item->requested_amount,
+                ]);
+            }
 
             // Crear registros en WarehouseMovement para cada item aprobado
             foreach ($requestData->items as $item) {
@@ -81,19 +87,6 @@ class AdminRequestController extends Controller
                         'amount' => $item->requested_amount,
                     ]);
 
-                    // Crear registro de sobrante para cada item aprobado
-                    // Inicialmente la cantidad sobrante es 0, el usuario la actualizará después
-                    \Modules\INFRASTOCK\Entities\Surplus::create([
-                        'equipment_id' => $item->equipment_id,
-                        'user_id' => $requestData->user_id,
-                        'request_id' => $requestData->id,
-                        'request_item_id' => $item->id,
-                        'surplus_amount' => 0, // Inicialmente 0, se actualizará cuando el usuario registre el sobrante
-                        'reason' => 'Sobrante de solicitud aprobada',
-                        'description' => null, // Se completará cuando el usuario edite el sobrante
-                        'surplus_date' => now(),
-                        'status' => 'pending',
-                    ]);
                 }
             }
 

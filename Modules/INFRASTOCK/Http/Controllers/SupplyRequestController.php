@@ -177,12 +177,18 @@ class SupplyRequestController extends Controller
         // Actualizar el estado de todos los items
         $supplyRequest->items()->update(['status' => $request->status]);
 
-        // Si se aprueba la solicitud, crear registros en WarehouseMovement para cada item
+        // Si se aprueba la solicitud, automatizar cantidades y crear registros en WarehouseMovement
         if ($request->status === 'approved') {
             // Cargar los items con sus relaciones
             $supplyRequest->load('items.equipment');
             
             foreach ($supplyRequest->items as $item) {
+                // Automatizar cantidades aprobadas y entregadas
+                $item->update([
+                    'approved_amount' => $item->requested_amount,
+                    'delivered_amount' => $item->requested_amount,
+                ]);
+
                 // Verificar que el equipo existe y tiene stock suficiente
                 $equipment = $item->equipment;
                 if ($equipment && $equipment->hasStockFor($item->requested_amount)) {
@@ -196,19 +202,6 @@ class SupplyRequestController extends Controller
                         'amount' => $item->requested_amount,
                     ]);
 
-                    // Crear registro de sobrante para cada item aprobado
-                    // Inicialmente la cantidad sobrante es 0, el usuario la actualizará después
-                    \Modules\INFRASTOCK\Entities\Surplus::create([
-                        'equipment_id' => $item->equipment_id,
-                        'user_id' => $supplyRequest->user_id,
-                        'request_id' => $supplyRequest->id,
-                        'request_item_id' => $item->id,
-                        'surplus_amount' => 0, // Inicialmente 0, se actualizará cuando el usuario registre el sobrante
-                        'reason' => 'Sobrante de solicitud aprobada',
-                        'description' => null, // Se completará cuando el usuario edite el sobrante
-                        'surplus_date' => now(),
-                        'status' => 'pending',
-                    ]);
                 }
             }
         }

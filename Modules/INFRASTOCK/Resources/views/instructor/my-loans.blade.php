@@ -121,10 +121,12 @@
             this.$nextTick(() => { this.updateEditToolState(); });
         },
 
-        openReturnModal(loanId) {
+        openReturnModal(loanId, maxAmount) {
             this.currentReturnLoan = loanId;
             this.isReturnModalOpen = true;
             this.returnForm.description = '';
+            this.returnForm.amount = maxAmount;
+            this.returnForm.maxAmount = maxAmount;
         },
 
         closeModals() {
@@ -134,6 +136,7 @@
             this.currentReturnLoan = null;
             this.currentEditLoan = null;
             this.validationErrors = {};
+            this.returnForm = { description: '', amount: '', maxAmount: '' };
         },
 
         resetCreateForm() {
@@ -390,10 +393,10 @@
                                                     @elseif($isApproved)
                                                         @if($hasReturn)
                                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
-                                                                <i class="fas fa-check-circle mr-1"></i> Ya devuelto
+                                                                <i class="fas fa-check-circle mr-1"></i> Devolución en proceso
                                                             </span>
                                                         @else
-                                                            <button type="button" @click="openReturnModal({{ $loan->id }})" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200 flex items-center" title="Registrar Devolución">
+                                                            <button type="button" @click="openReturnModal({{ $loan->id }}, {{ $loan->amount ?? 1 }})" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200 flex items-center" title="Registrar Devolución">
                                                                 <i class="fas fa-undo mr-2"></i> Devolver
                                                             </button>
                                                         @endif
@@ -668,6 +671,22 @@
                         <input type="hidden" name="_form_type" value="return">
                         <input type="hidden" name="_return_loan_id" :value="currentReturnLoan">
                         
+                        <!-- Cantidad -->
+                        <div class="mb-6">
+                            <label for="return_amount" class="block text-gray-700 text-sm font-bold mb-2">
+                                <i class="fas fa-hashtag text-green-500 mr-1"></i>Cantidad a Devolver: <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="amount" id="return_amount" x-model="returnForm.amount" required min="1" :max="returnForm.maxAmount"
+                                   class="shadow appearance-none border-2 border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent @error('amount') border-red-500 @enderror"
+                                   placeholder="Cantidad a devolver">
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>Puede realizar devoluciones parciales (Máximo disponible: <span x-text="returnForm.maxAmount"></span>)
+                            </p>
+                            @error('amount')
+                                <p class="text-red-500 text-xs mt-1"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <!-- Descripción -->
                         <div class="mb-6">
                             <label for="return_description" class="block text-gray-700 text-sm font-bold mb-2">

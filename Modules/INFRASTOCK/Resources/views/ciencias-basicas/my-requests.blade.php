@@ -572,7 +572,40 @@
 
     </main>
 
-    <script>
+    
+<!-- Modal para Ver Detalles de Solicitud -->
+<div id="showDetailsModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Header del Modal -->
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-green-50">
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900" id="details-modal-title">Detalles de la Solicitud</h3>
+                <p class="text-sm text-gray-600 mt-1">Información completa de la solicitud y sus insumos.</p>
+            </div>
+            <button onclick="closeDetailsModal()" class="text-gray-500 hover:text-gray-700 transition-colors duration-200">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <!-- Contenido del Modal -->
+        <div class="flex-1 overflow-y-auto p-6" id="details-modal-content">
+            <div class="flex justify-center py-8">
+                <i class="fas fa-spinner fa-spin text-4xl text-green-500"></i>
+            </div>
+        </div>
+
+        <!-- Footer del Modal -->
+        <div class="flex justify-end p-6 border-t border-gray-200 bg-gray-50">
+            <button onclick="closeDetailsModal()" 
+                    class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                <i class="fas fa-times mr-2"></i>
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('search');
             const statusFilter = document.getElementById('status-filter');

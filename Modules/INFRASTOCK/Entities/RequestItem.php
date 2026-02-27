@@ -74,4 +74,12 @@ class RequestItem extends Model
     {
         return $query->where('status', 'delivered');
     }
+
+    /**
+     * Get the surpluses for this request item.
+     */
+    public function surpluses()
+    {
+        return $this->hasMany(Surplus::class, 'request_item_id');
+    }
 }

@@ -88,9 +88,7 @@
                                 </span>
                             @endif
                             <div class="flex items-center space-x-2">
-                                <a href="{{ route('infrastock.ganaderia.requests.show', $request->id) }}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 p-2 rounded-full hover:bg-blue-50" title="Ver detalles">
-                                    <i class="fas fa-eye"></i>
-                                </a>
+                                <button onclick="showRequestDetails({{ $request->id }})" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 p-2 rounded-full hover:bg-blue-50" title="Ver detalles"><i class="fas fa-eye"></i></button>
                                 @if($request->status == 'pending')
                                     <button onclick="editRequest({{ $request->id }})" class="text-yellow-600 hover:text-yellow-900 transition-colors duration-200 p-2 rounded-full hover:bg-yellow-50" title="Editar solicitud">
                                         <i class="fas fa-edit"></i>
@@ -263,7 +261,7 @@
                     <div class="equipment-card border border-gray-200 rounded-lg p-4 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer" 
                          data-equipment-id="{{ $equipment->id }}"
                          data-equipment-name="{{ $equipment->name }}"
-                         data-equipment-stock="{{ $equipment->amount ?? $equipment->stock ?? 0 }}"
+                         data-equipment-stock="{{ $equipment->stock }}"
                          data-equipment-category="{{ $equipment->category->name ?? 'Sin categoría' }}"
                          data-equipment-description="{{ $equipment->description ?? $equipment->characteristics ?? '' }}"
                          data-equipment-unit="{{ $equipment->unit_measure ?? 'unidades' }}"
@@ -273,7 +271,7 @@
                             <h4 class="font-medium text-gray-900 text-sm">{{ $equipment->name }}</h4>
                             <div class="flex items-center space-x-2">
                                 @php
-                                    $stock = $equipment->amount ?? $equipment->stock ?? 0;
+                                    $stock = $equipment->stock;
                                 @endphp
                                 @if($stock <= 0)
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -311,7 +309,191 @@
     </div>
 </div>
 
+
+<!-- Modal para Ver Detalles de Solicitud -->
+<div id="showDetailsModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Header del Modal -->
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-green-50">
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900" id="details-modal-title">Detalles de la Solicitud</h3>
+                <p class="text-sm text-gray-600 mt-1">Información completa de la solicitud y sus insumos.</p>
+            </div>
+            <button onclick="closeDetailsModal()" class="text-gray-500 hover:text-gray-700 transition-colors duration-200">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <!-- Contenido del Modal -->
+        <div class="flex-1 overflow-y-auto p-6" id="details-modal-content">
+            <div class="flex justify-center py-8">
+                <i class="fas fa-spinner fa-spin text-4xl text-green-500"></i>
+            </div>
+        </div>
+
+        <!-- Footer del Modal -->
+        <div class="flex justify-end p-6 border-t border-gray-200 bg-gray-50">
+            <button onclick="closeDetailsModal()" 
+                    class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                <i class="fas fa-times mr-2"></i>
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+// Abrir modal de detalles
+async function showRequestDetails(requestId) {
+    const modal = document.getElementById('showDetailsModal');
+    const content = document.getElementById('details-modal-content');
+    const title = document.getElementById('details-modal-title');
+    
+    // Mostrar modal con spinner
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    content.innerHTML = '<div class="flex justify-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-green-500"></i></div>';
+    title.textContent = `Detalles de la Solicitud #${requestId}`;
+
+    try {
+        // Encontrar la URL base asumiendo formato /infrastock/rol/requests
+        let currentUrl = window.location.pathname;
+        if (!currentUrl.endsWith('/requests')) {
+            currentUrl = currentUrl.split('/requests')[0] + '/requests';
+        }
+        
+        const response = await fetch(`${currentUrl}/${requestId}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al cargar los detalles');
+        }
+
+        const data = await response.json();
+        
+        // Traducir estados
+        const statuses = {
+            'pending': '<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-clock mr-1"></i> Pendiente</span>',
+            'approved': '<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i> Aprobada</span>',
+            'delivered': '<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"><i class="fas fa-truck mr-1"></i> Entregada</span>',
+            'rejected': '<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800"><i class="fas fa-times mr-1"></i> Rechazada</span>'
+        };
+
+        const itemStatuses = {
+            'pending': '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-clock mr-1"></i> Pendiente</span>',
+            'approved': '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i> Aprobado</span>',
+            'delivered': '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"><i class="fas fa-truck mr-1"></i> Entregado</span>',
+            'rejected': '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fas fa-times mr-1"></i> Rechazado</span>'
+        };
+
+        let html = `
+            <div class="bg-gray-50 rounded-xl p-6 mb-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4">Información General</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Estado</label>
+                        <div class="mt-1">${statuses[data.status] || statuses['pending']}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Fecha de Solicitud</label>
+                        <p class="mt-1 text-gray-900">${data.created_at}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Unidad/Almacén</label>
+                        <p class="mt-1 text-gray-900">${data.productive_unit} - ${data.warehouse}</p>
+                    </div>
+                </div>
+                ${data.description ? `
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                    <p class="text-gray-900">${data.description}</p>
+                </div>` : ''}
+            </div>
+            
+            <h4 class="text-lg font-bold text-gray-900 mb-4">Insumos de la Solicitud</h4>
+        `;
+
+        if (data.items && data.items.length > 0) {
+            html += `<div class="space-y-4">`;
+            data.items.forEach(item => {
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-4 bg-white">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h5 class="font-medium text-gray-900">${item.equipment_name}</h5>
+                                <p class="text-sm text-gray-600">${item.equipment_category}</p>
+                            </div>
+                            <div>
+                                ${itemStatuses[item.status] || itemStatuses['pending']}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm mt-3">
+                            <div class="bg-gray-50 p-2 rounded">
+                                <label class="block text-xs font-medium text-gray-500">Solicitada</label>
+                                <p class="text-gray-900 font-medium">${item.requested_amount} ${item.unit}</p>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded">
+                                <label class="block text-xs font-medium text-gray-500">Aprobada</label>
+                                <p class="text-gray-900 font-medium">${item.approved_amount} ${item.unit}</p>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded">
+                                <label class="block text-xs font-medium text-gray-500">Entregada</label>
+                                <p class="text-gray-900 font-medium">${item.delivered_amount} ${item.unit}</p>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded">
+                                <label class="block text-xs font-medium text-gray-500">Devuelta</label>
+                                <p class="text-gray-900 font-medium">${item.returned_amount} ${item.unit}</p>
+                            </div>
+                        </div>
+                        ${item.notes ? `
+                        <div class="mt-3 p-2 bg-yellow-50 text-yellow-800 rounded text-xs border border-yellow-100">
+                            <strong>Notas:</strong> ${item.notes}
+                        </div>` : ''}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        } else {
+            html += `
+                <div class="text-center py-8">
+                    <i class="fas fa-box-open text-gray-400 text-4xl mb-4"></i>
+                    <p class="text-gray-500">No hay insumos en esta solicitud.</p>
+                </div>
+            `;
+        }
+
+        content.innerHTML = html;
+
+    } catch (error) {
+        content.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                <p class="text-gray-900 font-medium mb-2">Error al cargar los detalles</p>
+                <p class="text-gray-500">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function closeDetailsModal() {
+    const modal = document.getElementById('showDetailsModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+}
+
+document.getElementById('showDetailsModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDetailsModal();
+    }
+});
+
 let selectedEquipments = new Set();
 let equipmentsData = [];
 let productiveUnitWarehousesData = [];

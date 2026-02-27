@@ -353,6 +353,18 @@ class CleaningStaffController extends Controller
             $newRequest->load(['items.equipment', 'user']);
             $this->notifyAdminNewGroupedRequest($newRequest);
 
+            // Crear notificación para el personal de aseo
+            Notification::create([
+                'type' => 'request_created',
+                'notifiable_type' => 'App\Models\User',
+                'notifiable_id' => auth()->id(),
+                'data' => [
+                    'title' => 'Solicitud Registrada',
+                    'message' => "Tu solicitud #{$newRequest->id} ha sido registrada y está en proceso de revisión.",
+                    'request_id' => $newRequest->id,
+                ],
+            ]);
+
             $totalItems = count($validItems);
             $message = $totalItems === 1 
                 ? 'Solicitud de insumo creada exitosamente.'
@@ -419,6 +431,8 @@ class CleaningStaffController extends Controller
      */
     public function showRequest($id)
     {
+
+
         $request = \Modules\INFRASTOCK\Entities\Request::with([
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
@@ -439,8 +453,9 @@ class CleaningStaffController extends Controller
                 'equipment_name' => $item->equipment->name ?? 'N/A',
                 'equipment_category' => $item->equipment->category->name ?? 'Sin categoría',
                 'requested_amount' => $item->requested_amount,
-                'approved_amount' => $item->approved_amount,
-                'delivered_amount' => $item->delivered_amount,
+                'approved_amount' => $item->approved_amount ?? $item->requested_amount,
+                'delivered_amount' => $item->delivered_amount ?? $item->requested_amount,
+                'returned_amount' => \Modules\INFRASTOCK\Entities\Surplus::where('request_item_id', $item->id)->sum('surplus_amount'),
                 'unit' => $item->equipment->unit ?? 'unidades',
                 'status' => $item->status,
                 'notes' => $item->notes,
@@ -639,28 +654,9 @@ class CleaningStaffController extends Controller
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
-
-                // Enviar correo electrónico al administrador
-                if ($admin->email) {
-                    try {
-                        Mail::to($admin->email)->send(
-                            new \Modules\INFRASTOCK\Mail\NewSupplyRequestNotification(
-                                $request,
-                                $userName,
-                                $roleName,
-                                $totalItems,
-                                $equipmentList
-                            )
-                        );
-                    } catch (\Exception $emailException) {
-                        \Log::error('Error enviando correo al administrador ' . $admin->email . ': ' . $emailException->getMessage());
-                    }
-                }
             }
-            
-            \Log::info('Notificación y correo enviados a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+            \Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
         } catch (\Exception $e) {
-            // Log del error pero no interrumpir el flujo principal
             \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
         }
     }
@@ -806,61 +802,124 @@ class CleaningStaffController extends Controller
      * Genera reporte de sobrantes (solo filtros, sin exportación).
      * @return Renderable
      */
-    public function surplusReport()
+    public function surplusReport(Request $request)
     {
+        $this->verifyRole();
         $user = auth()->user();
-        
-        // Obtener insumos entregados al usuario que podrían tener sobrantes
-        $deliveredSupplies = WarehouseMovement::with('equipment')
+
+        // 1. Obtener solicitudes entregadas para el selector de solicitudes
+        // Solo solicitudes que tengan ítems con saldo pendiente de devolución
+        $deliveredRequests = \Modules\INFRASTOCK\Entities\Request::with(['items' => function($query) {
+                $query->with(['equipment.category', 'surpluses']);
+            }])
             ->where('user_id', $user->id)
-            ->where('role', 'delivered')
-            ->where('item_type', 'equipment')
+            ->whereIn('status', ['approved', 'delivered'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->filter(function($req) {
+                // Calcular el saldo restante para cada ítem en la solicitud
+                foreach($req->items as $item) {
+                    $returned = $item->surpluses->sum('surplus_amount');
+                    $base = $item->delivered_amount ?? $item->approved_amount ?? $item->requested_amount ?? 0;
+                    $item->remaining_amount = max(0, $base - $returned);
+                }
+                // Mantener la solicitud si al menos un ítem tiene saldo pendiente
+                return $req->items->contains(function($item) {
+                    return $item->remaining_amount > 0;
+                });
+            });
 
-        // Calcular estadísticas de uso
-        $totalDelivered = $deliveredSupplies->sum('amount');
-        $uniqueSupplies = $deliveredSupplies->groupBy('movement_id')->count();
+        // 2. Obtener historial de sobrantes con paginación
+        $query = \Modules\INFRASTOCK\Entities\Surplus::with('equipment.category')
+            ->where('user_id', $user->id);
 
-        return view('infrastock::cleaning-staff.surplus-report', compact(
-            'deliveredSupplies',
-            'totalDelivered',
-            'uniqueSupplies'
-        ));
+        // Filtro por búsqueda
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('equipment', function($eq) use ($search) {
+                    $eq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhere('reason', 'like', "%{$search}%");
+            });
+        }
+
+        $surpluses = $query->orderBy('surplus_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('infrastock::cleaning-staff.surplus-report', compact('deliveredRequests', 'surpluses'));
     }
 
     /**
-     * Muestra el historial de insumos con disponibilidad.
-     * @return Renderable
+     * Almacena un nuevo registro de sobrante para el personal de aseo.
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function supplyHistory()
+    public function storeSurplus(Request $request)
     {
-        // Obtener todos los insumos con su historial de movimientos
-        $supplies = Equipment::with(['category', 'warehouseMovements' => function($query) {
-            $query->where('user_id', auth()->id())
-                  ->orderBy('created_at', 'desc');
-        }])
-        ->orderBy('name')
-        ->get();
+        $request->validate([
+            'request_id' => 'required|exists:requests,id',
+            'request_item_id' => 'required|exists:request_items,id',
+            'surplus_amount' => 'required|integer|min:1',
+            'reason' => 'required|string|max:500',
+        ]);
 
-        // Obtener estadísticas de disponibilidad
-        $totalSupplies = $supplies->count();
-        $availableSupplies = $supplies->filter(function($supply) {
-            return $supply->stock > 0;
-        })->count();
-        $lowStockSupplies = $supplies->filter(function($supply) {
-            return $supply->stock <= 5 && $supply->stock > 0;
-        })->count();
-        $outOfStockSupplies = $supplies->filter(function($supply) {
-            return $supply->stock == 0;
-        })->count();
+        try {
+            $requestItem = \Modules\INFRASTOCK\Entities\RequestItem::findOrFail($request->request_item_id);
+            
+            // Validar que no exceda lo que falta por devolver
+            $delivered = $requestItem->delivered_amount ?? $requestItem->approved_amount ?? $requestItem->requested_amount;
+            $alreadyReturned = \Modules\INFRASTOCK\Entities\Surplus::where('request_item_id', $requestItem->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->sum('surplus_amount');
+            
+            $remaining = $delivered - $alreadyReturned;
 
-        return view('infrastock::cleaning-staff.supply-history', compact(
-            'supplies',
-            'totalSupplies',
-            'availableSupplies',
-            'lowStockSupplies',
-            'outOfStockSupplies'
-        ));
+            if ($request->surplus_amount > $remaining) {
+                return redirect()->back()->with('error', "La cantidad a devolver ({$request->surplus_amount}) excede el saldo pendiente ({$remaining}).");
+            }
+
+            // Crear el registro de sobrante
+            $surplus = \Modules\INFRASTOCK\Entities\Surplus::create([
+                'equipment_id' => $requestItem->equipment_id,
+                'user_id' => auth()->id(),
+                'request_id' => $request->request_id,
+                'request_item_id' => $request->request_item_id,
+                'surplus_amount' => $request->surplus_amount,
+                'reason' => $request->reason,
+                'surplus_date' => now(),
+                'status' => 'pending',
+            ]);
+
+            // Crear el movimiento de devolución en almacén
+            $productiveUnitWarehouseId = \Modules\INFRASTOCK\Entities\Request::find($request->request_id)->productive_unit_warehouse_id;
+            
+            if (!$productiveUnitWarehouseId) {
+                $productiveUnitWarehouse = \Modules\INFRASTOCK\Entities\ProductiveUnitWarehouse::first();
+                $productiveUnitWarehouseId = $productiveUnitWarehouse ? $productiveUnitWarehouse->id : null;
+            }
+
+            \Modules\INFRASTOCK\Entities\WarehouseMovement::create([
+                'productive_unit_warehouse_id' => $productiveUnitWarehouseId,
+                'equipment_id' => $requestItem->equipment_id,
+                'user_id' => auth()->id(),
+                'role' => 'Devolución',
+                'item_type' => 'equipment',
+                'amount' => $request->surplus_amount,
+                'status' => 'pending',
+                'surplus_id' => $surplus->id,
+                'description' => $request->reason,
+            ]);
+
+            // Notificación al administrador (opcional pero recomendado)
+            // notifyAdminSurplus($surplus); 
+
+            return redirect()->route('infrastock.cleaning-staff.surplus-report')
+                ->with('success', 'Devolución registrada exitosamente. Está pendiente de aprobación.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error al registrar la devolución: ' . $e->getMessage());
+        }
     }
 }

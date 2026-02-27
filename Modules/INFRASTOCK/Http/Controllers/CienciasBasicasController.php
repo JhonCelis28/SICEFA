@@ -63,7 +63,7 @@ class CienciasBasicasController extends Controller
             ->count();
 
         $deliveredRequests = InfrastockRequest::where('user_id', $user->id)
-            ->where('status', 'delivered')
+            ->whereIn('status', ['approved', 'delivered'])
             ->count();
 
         $rejectedRequests = InfrastockRequest::where('user_id', $user->id)
@@ -487,7 +487,7 @@ class CienciasBasicasController extends Controller
      */
     public function showRequest($id)
     {
-        $this->verifyRole();
+                $this->verifyRole();
         $request = InfrastockRequest::with([
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
@@ -500,6 +500,34 @@ class CienciasBasicasController extends Controller
         if (!$request) {
             abort(404, 'Solicitud no encontrada');
         }
+
+
+$acceptHeader = request()->header('Accept', '');
+        if (request()->ajax() || request()->wantsJson() || request()->expectsJson() || strpos($acceptHeader, 'application/json') !== false) {
+            return response()->json([
+                'id' => $request->id,
+                'status' => $request->status,
+                'created_at' => $request->created_at->format('d/m/Y H:i'),
+                'description' => $request->description ?? '',
+                'productive_unit' => $request->productiveUnitWarehouse->productiveUnit->name ?? 'N/A',
+                'warehouse' => $request->productiveUnitWarehouse->warehouse->name ?? 'N/A',
+                'user' => $request->user->nickname ?? $request->user->name ?? 'N/A',
+                'items' => $request->items->map(function($item) {
+                    return [
+                        'equipment_name' => $item->equipment->name ?? 'N/A',
+                        'equipment_category' => $item->equipment->category->name ?? 'N/A',
+                        'status' => $item->status,
+                        'requested_amount' => $item->requested_amount,
+                        'approved_amount' => $item->approved_amount ?? 0,
+                        'delivered_amount' => $item->delivered_amount ?? 0,
+                        'returned_amount' => \Modules\INFRASTOCK\Entities\Surplus::where('request_item_id', $item->id)->sum('surplus_amount'),
+                        'unit' => $item->equipment->unit_measure ?? $item->equipment->unit ?? 'unidades',
+                        'notes' => $item->notes ?? '',
+                    ];
+                })
+            ]);
+        }
+
 
         return view('infrastock::ciencias-basicas.show-request', compact('request'));
     }
@@ -646,12 +674,27 @@ class CienciasBasicasController extends Controller
         $this->verifyRole();
         $user = auth()->user();
 
-        // Obtener solicitudes entregadas del usuario para seleccionar en el formulario
-        $deliveredRequests = InfrastockRequest::with('items.equipment.category')
+        // 1. Obtener solicitudes entregadas para el selector de solicitudes
+        // Solo solicitudes que tengan ítems con saldo pendiente de devolución
+        $deliveredRequests = InfrastockRequest::with(['items' => function($query) {
+                $query->with(['equipment.category', 'surpluses']);
+            }])
             ->where('user_id', $user->id)
-            ->where('status', 'delivered')
+            ->whereIn('status', ['approved', 'delivered'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->filter(function($req) {
+                // Calcular el saldo restante para cada ítem en la solicitud
+                foreach($req->items as $item) {
+                    $returned = $item->surpluses->sum('surplus_amount');
+                    $base = $item->delivered_amount ?? $item->approved_amount ?? $item->requested_amount ?? 0;
+                    $item->remaining_amount = max(0, $base - $returned);
+                }
+                // Mantener la solicitud si al menos un ítem tiene saldo pendiente
+                return $req->items->contains(function($item) {
+                    return $item->remaining_amount > 0;
+                });
+            });
 
         // Obtener herramientas e insumos generales (excluir aseo)
         $query = Equipment::with('category')
@@ -698,13 +741,14 @@ class CienciasBasicasController extends Controller
     {
         $this->verifyRole();
         $request->validate([
-            'request_id' => 'nullable|exists:requests,id',
-            'equipment_id' => 'required|exists:equipments,id',
+            'request_id' => 'required|exists:requests,id',
+            'request_item_id' => 'required|exists:request_items,id',
             'surplus_amount' => 'required|integer|min:1',
             'reason' => 'required|string|max:500',
             'surplus_date' => 'required|date|before_or_equal:today',
         ], [
-            'equipment_id.required' => 'Debe seleccionar un insumo.',
+            'request_id.required' => 'Debe seleccionar una solicitud.',
+            'request_item_id.required' => 'Debe seleccionar un insumo de la solicitud.',
             'surplus_amount.required' => 'Debe especificar la cantidad que sobró.',
             'surplus_amount.min' => 'La cantidad debe ser mayor a 0.',
             'reason.required' => 'Debe especificar la causa del sobrante.',
@@ -712,55 +756,40 @@ class CienciasBasicasController extends Controller
             'surplus_date.before_or_equal' => 'La fecha no puede ser futura.',
         ]);
 
-        // Verificar que el equipo no sea de categoría de aseo
-        $equipment = Equipment::with('category')->find($request->equipment_id);
-        
-        if (!$equipment) {
-            return redirect()->back()->with('error', 'El insumo seleccionado no existe.');
-        }
+        // Obtener el item de la solicitud
+        $requestItem = \Modules\INFRASTOCK\Entities\RequestItem::with('equipment.category')
+            ->where('id', $request->request_item_id)
+            ->where('request_id', $request->request_id)
+            ->firstOrFail();
 
-        // Verificar que el equipo no sea de aseo
-        if ($equipment->category) {
-            $categoryName = strtolower($equipment->category->name);
+        // Validar que el equipo no sea de categoría de aseo
+        if ($requestItem->equipment && $requestItem->equipment->category) {
+            $categoryName = strtolower($requestItem->equipment->category->name);
             if (strpos($categoryName, 'aseo') !== false || 
                 strpos($categoryName, 'limpieza') !== false || 
                 strpos($categoryName, 'cleaning') !== false) {
-                return redirect()->back()->with('error', 'No puedes registrar sobrantes de insumos de aseo. Solo herramientas e insumos generales.');
+                return redirect()->back()->with('error', 'No puedes registrar sobrantes de insumos de aseo.');
             }
         }
 
-        // Si se proporcionó una solicitud, validarla
-        if ($request->filled('request_id')) {
-            $infrastockRequest = InfrastockRequest::where('id', $request->request_id)
-                ->where('user_id', auth()->id())
-                ->where('status', 'delivered')
-                ->first();
+        // Validar que no exceda lo que falta por devolver
+        $delivered = $requestItem->delivered_amount ?? $requestItem->approved_amount ?? $requestItem->requested_amount;
+        $alreadyReturned = Surplus::where('request_item_id', $requestItem->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->sum('surplus_amount');
+        
+        $remaining = $delivered - $alreadyReturned;
 
-            if (!$infrastockRequest) {
-                return redirect()->back()->with('error', 'La solicitud seleccionada no es válida o no ha sido entregada.');
-            }
-
-            // Verificar que el insumo esté en la solicitud
-            $requestItem = \Modules\INFRASTOCK\Entities\RequestItem::where('request_id', $infrastockRequest->id)
-                ->where('equipment_id', $request->equipment_id)
-                ->first();
-
-            if (!$requestItem) {
-                return redirect()->back()->with('error', 'El insumo seleccionado no pertenece a la solicitud.');
-            }
-
-            // Validar que la cantidad sobrante no supere la cantidad entregada
-            $deliveredAmount = $requestItem->delivered_amount ?? $requestItem->approved_amount ?? $requestItem->requested_amount;
-            if ($request->surplus_amount > $deliveredAmount) {
-                return redirect()->back()->with('error', "La cantidad ingresada ({$request->surplus_amount}) supera la cantidad entregada ({$deliveredAmount}) en la solicitud.");
-            }
+        if ($request->surplus_amount > $remaining) {
+            return redirect()->back()->with('error', "La cantidad ingresada ({$request->surplus_amount}) supera el saldo pendiente ({$remaining}).");
         }
 
         try {
             $surplus = Surplus::create([
-                'equipment_id' => $request->equipment_id,
+                'equipment_id' => $requestItem->equipment_id,
                 'user_id' => auth()->id(),
-                'request_id' => $request->request_id ?? null,
+                'request_id' => $request->request_id,
+                'request_item_id' => $requestItem->id,
                 'surplus_amount' => $request->surplus_amount,
                 'reason' => $request->reason,
                 'surplus_date' => $request->surplus_date,
@@ -858,10 +887,9 @@ class CienciasBasicasController extends Controller
     /**
      * Enviar notificación al administrador cuando se crea una nueva solicitud
      */
-    private function notifyAdminNewRequest($request)
+        private function notifyAdminNewRequest($request)
     {
         try {
-            // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
             $admins = User::whereHas('roles', function($query) {
                 $query->where('slug', 'infrastock.admin')
                       ->orWhere('slug', 'superadmin')
@@ -876,18 +904,16 @@ class CienciasBasicasController extends Controller
                 $equipmentList .= ' y ' . (count($equipmentNames) - 3) . ' más';
             }
 
-            $userName = $request->user->nickname ?? $request->user->name ?? 'Ciencias Basicas';
-            $roleName = 'Ciencias Basicas';
+            $userName = $request->user->nickname ?? $request->user->name ?? 'Ciencias Básicas';
 
             foreach ($admins as $admin) {
-                // Crear notificación en el dashboard
                 Notification::create([
                     'type' => 'request_created',
                     'notifiable_type' => 'App\Models\User',
                     'notifiable_id' => $admin->id,
                     'data' => [
                         'title' => 'Nueva Solicitud de Insumos',
-                        'message' => "Ciencias Basicas ha creado una nueva solicitud con {$totalItems} insumos: {$equipmentList}.",
+                        'message' => "Ciencias Básicas ha creado una nueva solicitud con {$totalItems} insumos: {$equipmentList}.",
                         'request_id' => $request->id,
                         'total_items' => $totalItems,
                         'equipment_list' => $equipmentList,
@@ -896,28 +922,10 @@ class CienciasBasicasController extends Controller
                         'created_at' => now()->format('d/m/Y H:i'),
                     ],
                 ]);
-
-                // Enviar correo electrónico al administrador
-                if ($admin->email) {
-                    try {
-                        Mail::to($admin->email)->send(
-                            new \Modules\INFRASTOCK\Mail\NewSupplyRequestNotification(
-                                $request,
-                                $userName,
-                                $roleName,
-                                $totalItems,
-                                $equipmentList
-                            )
-                        );
-                    } catch (\Exception $emailException) {
-                        \Log::error('Error enviando correo al administrador ' . $admin->email . ': ' . $emailException->getMessage());
-                    }
-                }
             }
-            
-            \Log::info('Notificación y correo enviados a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
+            Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
         } catch (\Exception $e) {
-            \Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
+            Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
         }
     }
 

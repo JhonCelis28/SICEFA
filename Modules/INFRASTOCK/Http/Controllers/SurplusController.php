@@ -343,14 +343,6 @@ class SurplusController extends Controller
                     ],
                 ]);
 
-                // Enviar email al administrador
-                try {
-                    \Mail::to($admin->email)->send(
-                        new \Modules\INFRASTOCK\Mail\ReturnNotificationMail($surplus, $returnMovement, $admin)
-                    );
-                } catch (\Exception $e) {
-                    \Log::error('Error enviando email de devolución al administrador: ' . $e->getMessage());
-                }
             }
         } catch (\Exception $e) {
             \Log::error('Error enviando notificación de devolución al administrador: ' . $e->getMessage());
