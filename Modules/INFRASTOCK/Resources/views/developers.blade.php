@@ -164,11 +164,11 @@
                 <!-- Desarrollador 1 -->
                 <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-blue-200">
                     <div class="text-center">
-                        <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-blue-500 bg-blue-500 flex items-center justify-center relative">
+                        <div class="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-blue-500 bg-blue-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador1.jpg') }}" 
                                  alt="Desarrollador 1" 
                                  class="w-full h-full"
-                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
+                                 style="object-fit: cover; object-position: center 20%; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador1.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
                             <div class="absolute inset-0 w-full h-full flex items-center justify-center hidden bg-blue-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
@@ -190,11 +190,11 @@
                 <!-- Desarrollador 2 -->
                 <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-green-200">
                     <div class="text-center">
-                        <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-green-500 bg-green-500 flex items-center justify-center relative">
+                        <div class="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-green-500 bg-green-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador2.jpg') }}" 
                                  alt="Desarrollador 2" 
                                  class="w-full h-full"
-                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
+                                 style="object-fit: cover; object-position: center top; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador2.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
                             <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-green-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
@@ -216,11 +216,11 @@
                 <!-- Desarrollador 3 -->
                 <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-purple-200">
                     <div class="text-center">
-                        <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-purple-500 bg-purple-500 flex items-center justify-center relative">
+                        <div class="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-purple-500 bg-purple-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador3.jpg') }}" 
                                  alt="Desarrollador 3" 
                                  class="w-full h-full"
-                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
+                                 style="object-fit: cover; object-position: top; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador3.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
                             <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-purple-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
@@ -242,11 +242,11 @@
                 <!-- Desarrollador 4 -->
                 <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-orange-200">
                     <div class="text-center">
-                        <div class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-orange-500 bg-orange-500 flex items-center justify-center relative">
+                        <div class="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg overflow-hidden border-4 border-orange-500 bg-orange-500 flex items-center justify-center relative">
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador4.jpg') }}" 
                                  alt="Desarrollador 4" 
                                  class="w-full h-full"
-                                 style="object-fit: cover; object-position: center center; width: 100%; height: 100%; display: block;"
+                                 style="object-fit: cover; object-position: 100% top; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador4.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
                             <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-orange-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
