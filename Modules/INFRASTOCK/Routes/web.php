@@ -384,6 +384,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/psicola/requests', 'PsicolaController@storeRequest')->name('infrastock.psicola.requests.store');
     Route::get('/infrastock/psicola/requests', 'PsicolaController@myRequests')->name('infrastock.psicola.requests.index');
     Route::get('/infrastock/psicola/requests/{id}', 'PsicolaController@showRequest')->name('infrastock.psicola.requests.show');
+    Route::get('/infrastock/psicola/requests/{id}/edit', 'PsicolaController@editRequest')->name('infrastock.psicola.requests.edit');
+    Route::put('/infrastock/psicola/requests/{id}', 'PsicolaController@updateRequest')->name('infrastock.psicola.requests.update');
+    Route::delete('/infrastock/psicola/requests/{id}', 'PsicolaController@destroyRequest')->name('infrastock.psicola.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/psicola/notifications', 'PsicolaController@notifications')->name('infrastock.psicola.notifications');
@@ -420,6 +423,9 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
     Route::post('/infrastock/ciencias-basicas/requests', 'CienciasBasicasController@storeRequest')->name('infrastock.ciencias-basicas.requests.store');
     Route::get('/infrastock/ciencias-basicas/requests', 'CienciasBasicasController@myRequests')->name('infrastock.ciencias-basicas.requests.index');
     Route::get('/infrastock/ciencias-basicas/requests/{id}', 'CienciasBasicasController@showRequest')->name('infrastock.ciencias-basicas.requests.show');
+    Route::get('/infrastock/ciencias-basicas/requests/{id}/edit', 'CienciasBasicasController@editRequest')->name('infrastock.ciencias-basicas.requests.edit');
+    Route::put('/infrastock/ciencias-basicas/requests/{id}', 'CienciasBasicasController@updateRequest')->name('infrastock.ciencias-basicas.requests.update');
+    Route::delete('/infrastock/ciencias-basicas/requests/{id}', 'CienciasBasicasController@destroyRequest')->name('infrastock.ciencias-basicas.requests.destroy');
     
     // Notificaciones
     Route::get('/infrastock/ciencias-basicas/notifications', 'CienciasBasicasController@notifications')->name('infrastock.ciencias-basicas.notifications');

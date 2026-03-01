@@ -525,13 +525,151 @@ class CienciasBasicasController extends Controller
                         'delivered_amount' => $item->delivered_amount ?? 0,
                         'returned_amount' => \Modules\INFRASTOCK\Entities\Surplus::where('request_item_id', $item->id)->sum('surplus_amount'),
                         'unit' => $item->equipment->unit_measure ?? $item->equipment->unit ?? 'unidades',
-                        'notes' => $item->notes ?? '',
                     ];
                 })
             ]);
         }
 
-        return view('infrastock::ciencias-basicas.show-request', compact('request'));
+    return view('infrastock::ciencias-basicas.show-request', compact('request'));
+}
+
+/**
+ * Muestra el formulario para editar una solicitud.
+ * @param int $id
+ * @return \Illuminate\Http\JsonResponse
+ */
+public function editRequest($id)
+{
+    $this->verifyRole();
+    $request = InfrastockRequest::with([
+        'items.equipment.category',
+        'productiveUnitWarehouse.productiveUnit',
+        'productiveUnitWarehouse.warehouse'
+    ])->where('id', $id)
+        ->where('user_id', auth()->id())
+        ->where('status', 'pending')
+        ->first();
+
+    if (!$request) {
+        return response()->json(['error' => 'Solicitud no encontrada o no se puede editar'], 404);
+    }
+
+    $items = $request->items->map(function($item) {
+        return [
+            'id' => $item->id,
+            'equipment_id' => $item->equipment_id,
+            'equipment_name' => $item->equipment->name ?? 'N/A',
+            'equipment_category' => $item->equipment->category->name ?? 'Sin categoría',
+            'requested_amount' => $item->requested_amount,
+            'unit' => $item->equipment->unit_measure ?? $item->equipment->unit ?? 'unidades',
+            'stock' => $item->equipment->amount ?? $item->equipment->stock ?? 0,
+        ];
+    });
+
+    return response()->json([
+        'id' => $request->id,
+        'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+        'description' => $request->description,
+        'items' => $items,
+    ]);
+}
+
+    /**
+     * Actualiza una solicitud existente.
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    public function updateRequest(Request $requestParam, $id)
+    {
+        $this->verifyRole();
+        $requestData = InfrastockRequest::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$requestData) {
+            if ($requestParam->ajax() || $requestParam->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Solicitud no encontrada o no se puede editar.'
+                ], 404);
+            }
+            return redirect()->route('infrastock.ciencias-basicas.requests.index')
+                ->with('error', 'Solicitud no encontrada o no se puede editar.');
+        }
+
+        $requestParam->validate([
+            'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
+            'items' => 'required|array|min:1',
+            'items.*.requested_amount' => 'required|integer|min:1',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $requestData->update([
+                'productive_unit_warehouse_id' => $requestParam->productive_unit_warehouse_id,
+                'description' => $requestParam->description,
+            ]);
+
+            foreach ($requestParam->items as $itemId => $itemData) {
+                $requestItem = \Modules\INFRASTOCK\Entities\RequestItem::where('id', $itemId)
+                    ->where('request_id', $requestData->id)
+                    ->first();
+
+                if ($requestItem) {
+                    $requestItem->update([
+                        'requested_amount' => $itemData['requested_amount'],
+                    ]);
+                }
+            }
+
+            if ($requestParam->ajax() || $requestParam->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud actualizada exitosamente.'
+                ]);
+            }
+            return redirect()->route('infrastock.ciencias-basicas.requests.index')
+                ->with('success', 'Solicitud actualizada exitosamente.');
+        } catch (\Exception $e) {
+            if ($requestParam->ajax() || $requestParam->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Error al actualizar la solicitud: ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->route('infrastock.ciencias-basicas.requests.index')
+                ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Elimina una solicitud.
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroyRequest($id)
+    {
+        $this->verifyRole();
+        $request = InfrastockRequest::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$request) {
+            return redirect()->route('infrastock.ciencias-basicas.requests.index')
+                ->with('error', 'Solicitud no encontrada.');
+        }
+
+        if ($request->status !== 'pending') {
+            return redirect()->route('infrastock.ciencias-basicas.requests.index')
+                ->with('error', 'Solo se pueden eliminar solicitudes pendientes.');
+        }
+
+        $request->delete();
+
+        return redirect()->route('infrastock.ciencias-basicas.requests.index')
+            ->with('success', 'Solicitud eliminada exitosamente.');
     }
 
     /**

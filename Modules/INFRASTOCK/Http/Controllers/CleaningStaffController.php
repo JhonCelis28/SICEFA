@@ -541,9 +541,15 @@ class CleaningStaffController extends Controller
             ->first();
 
         if (!$requestData) {
-            return redirect()->route('infrastock.cleaning-staff.requests.index')
-                ->with('error', 'Solicitud no encontrada o no se puede editar.');
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Solicitud no encontrada o no se puede editar.'
+            ], 404);
         }
+        return redirect()->route('infrastock.cleaning-staff.requests.index')
+            ->with('error', 'Solicitud no encontrada o no se puede editar.');
+    }
 
         $request->validate([
             'productive_unit_warehouse_id' => 'required|exists:productive_unit_warehouses,id',
@@ -567,30 +573,47 @@ class CleaningStaffController extends Controller
 
                 if ($requestItem) {
                     // Verificar stock disponible
-                    $equipment = $requestItem->equipment;
-                    if (!$equipment->hasStockFor($itemData['requested_amount'])) {
-                        return redirect()->route('infrastock.cleaning-staff.requests.index')
-                            ->with('error', "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}");
+                $equipment = $requestItem->equipment;
+                if (!$equipment->hasStockFor($itemData['requested_amount'])) {
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}"
+                        ], 422);
                     }
-
-                    $requestItem->update([
-                        'requested_amount' => $itemData['requested_amount'],
-                    ]);
+                    return redirect()->route('infrastock.cleaning-staff.requests.index')
+                        ->with('error', "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}");
                 }
+
+                $requestItem->update([
+                    'requested_amount' => $itemData['requested_amount'],
+                ]);
             }
-
-            return redirect()->route('infrastock.cleaning-staff.requests.index')
-                ->with('success', 'Solicitud actualizada exitosamente.');
-
-        } catch (\Exception $e) {
-            return redirect()->route('infrastock.cleaning-staff.requests.index')
-                ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
         }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud actualizada exitosamente.'
+            ]);
+        }
+        return redirect()->route('infrastock.cleaning-staff.requests.index')
+            ->with('success', 'Solicitud actualizada exitosamente.');
+
+    } catch (\Exception $e) {
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al actualizar la solicitud: ' . $e->getMessage()
+            ], 500);
+        }
+        return redirect()->route('infrastock.cleaning-staff.requests.index')
+            ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
+    }
     }
 
     /**
      * Elimina una solicitud específica (agrupada).
-     * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function destroyRequest($id)

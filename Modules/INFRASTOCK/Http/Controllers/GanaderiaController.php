@@ -588,6 +588,12 @@ class GanaderiaController extends Controller
             ->first();
 
         if (!$requestData) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Solicitud no encontrada o no se puede editar.'
+                ], 404);
+            }
             return redirect()->route('infrastock.ganaderia.requests.index')
                 ->with('error', 'Solicitud no encontrada o no se puede editar.');
         }
@@ -617,9 +623,21 @@ class GanaderiaController extends Controller
                 }
             }
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud actualizada exitosamente.'
+                ]);
+            }
             return redirect()->route('infrastock.ganaderia.requests.index')
                 ->with('success', 'Solicitud actualizada exitosamente.');
         } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Error al actualizar la solicitud: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->route('infrastock.ganaderia.requests.index')
                 ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
         }

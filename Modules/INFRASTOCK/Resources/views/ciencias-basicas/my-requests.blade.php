@@ -1424,7 +1424,7 @@
 
         // Cargar detalles de la solicitud
         function loadRequestDetails(requestId) {
-            fetch(`/infrastock/cleaning-staff/requests/${requestId}`)
+            fetch(`/infrastock/ciencias-basicas/requests/${requestId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -1592,7 +1592,7 @@
 
         // Cargar datos para edición
         function loadRequestForEdit(requestId) {
-            fetch(`/infrastock/cleaning-staff/requests/${requestId}/edit`)
+            fetch(`/infrastock/ciencias-basicas/requests/${requestId}/edit`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -1651,7 +1651,7 @@
                     document.getElementById('edit-description').value = data.description || '';
                     
                     // Actualizar la acción del formulario
-                    editForm.action = `/infrastock/cleaning-staff/requests/${requestId}`;
+                    editForm.action = `/infrastock/ciencias-basicas/requests/${requestId}`;
                 })
                 .catch(error => {
                     Swal.fire({
@@ -1681,7 +1681,7 @@
                     // Crear un formulario temporal para enviar la petición DELETE
                     const form = document.createElement('form');
                     form.method = 'POST';
-                    form.action = `/infrastock/cleaning-staff/requests/${requestId}`;
+                    form.action = `/infrastock/ciencias-basicas/requests/${requestId}`;
                     
                     // Agregar token CSRF
                     const csrfToken = document.createElement('input');
