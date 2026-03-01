@@ -418,7 +418,7 @@ class VigilanciaController extends Controller
                 ]);
             }
 
-            return redirect()->route('infrastock.Vigilancia.requests.index')
+            return redirect()->route('infrastock.vigilancia.requests.index')
                 ->with('success', $message);
 
         } catch (\Exception $e) {
@@ -943,7 +943,7 @@ class VigilanciaController extends Controller
                 $this->notifyAdminSurplus($surplus);
             }
 
-            return redirect()->route('infrastock.Vigilancia.surplus-report')
+            return redirect()->route('infrastock.vigilancia.surplus-report')
                 ->with('success', 'Reporte de sobrantes registrado exitosamente.');
 
         } catch (\Exception $e) {
@@ -996,16 +996,16 @@ class VigilanciaController extends Controller
             ->first();
 
         if (!$surplus) {
-            return redirect()->route('infrastock.Vigilancia.surplus-report')
+            return redirect()->route('infrastock.vigilancia.surplus-report')
                 ->with('error', 'Sobrante no encontrado.');
         }
 
         try {
             $surplus->delete();
-            return redirect()->route('infrastock.Vigilancia.surplus-report')
+            return redirect()->route('infrastock.vigilancia.surplus-report')
                 ->with('success', 'Sobrante eliminado exitosamente.');
         } catch (\Exception $e) {
-            return redirect()->route('infrastock.Vigilancia.surplus-report')
+            return redirect()->route('infrastock.vigilancia.surplus-report')
                 ->with('error', 'Error al eliminar el sobrante: ' . $e->getMessage());
         }
     }
