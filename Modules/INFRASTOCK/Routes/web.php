@@ -129,7 +129,15 @@ Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\ShareNotif
 Route::middleware(['web', 'auth', \Modules\INFRASTOCK\Http\Middleware\VerifyAdminRole::class])->group(function () {
     Route::get('/infrastock/admin/profile/edit', 'UserProfileController@edit')->name('cefa.infrastock.admin.profile.edit');
     Route::put('/infrastock/admin/profile', 'UserProfileController@update')->name('cefa.infrastock.admin.profile.update');
-});
+    Route::get('/manual_técnico', function () {$path = base_path('Modules/INFRASTOCK/Resources/private/manual/Manual_técnico.pdf');
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path); })->name('manual_técnico');
+    });
+
 
 Route::get('/logo', function() {
     $path = public_path('assets/img/logo.png');

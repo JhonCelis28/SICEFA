@@ -527,7 +527,7 @@ class SupplyController extends Controller
             
             // Extraer fecha de devolución de la descripción del préstamo
             if ($loan->is_returned && preg_match('/DEVUELTO:\s*(.+?)(?:\s*\|)?$/', $loan->description ?? '', $matches)) {
-                $loan->return_date = trim($matches[1]);
+                $loan->extracted_return_date = trim($matches[1]);
             } elseif ($existingReturn && preg_match('/Fecha y hora:\s*(.+?)$/', $existingReturn->description ?? '', $matches)) {
                 $loan->return_date = trim($matches[1]);
             } else {

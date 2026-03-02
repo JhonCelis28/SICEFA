@@ -131,19 +131,12 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             @php
-                                                // Extraer la fecha de préstamo de la descripción
-                                                $loanDate = '';
-                                                if (preg_match('/Fecha:\s*(.+?)$/', $description, $matches)) {
-                                                    $loanDate = trim($matches[1]);
-                                                    try {
-                                                        $date = \Carbon\Carbon::parse($loanDate);
-                                                        $loanDate = $date->format('d/m/Y');
-                                                    } catch (\Exception $e) {
-                                                        // Mantener el formato original si no se puede parsear
-                                                    }
-                                                } else {
-                                                    $loanDate = $loan->created_at->format('d/m/Y');
-                                                }
+                                            $loanDate = '';
+                                           if (preg_match('/^\d{2}\/\d{2}\/\d{4}/', $loanDate)) {
+                                            $date = \Carbon\Carbon::createFromFormat('d/m/Y', substr($loanDate, 0, 10));
+                                            } else {
+                                                $date = \Carbon\Carbon::parse($loanDate);
+                                            }
                                             @endphp
                                             <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                                 {{ $loanDate }}
@@ -159,7 +152,7 @@
                                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                                     <i class="fas fa-check-circle mr-1"></i>Devuelto
                                                 </span>
-                                                @if($loan->return_date)
+                                                @if($loan->extracted_return_date)
                                                     <div class="text-xs text-gray-500 mt-1">
                                                         {{ $loan->return_date }}
                                                     </div>
