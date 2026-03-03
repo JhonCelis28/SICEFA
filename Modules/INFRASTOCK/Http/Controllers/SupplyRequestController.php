@@ -165,6 +165,29 @@ class SupplyRequestController extends Controller
             $userId = $adminUser ? $adminUser->id : null;
         }
 
+        // Si se va a aprobar la solicitud, verificar stock primero
+        if ($request->status === 'approved') {
+            $supplyRequest->load('items.equipment');
+            $errors = [];
+            foreach ($supplyRequest->items as $item) {
+                $equipment = $item->equipment;
+                if (!$equipment || !$equipment->hasStockFor($item->requested_amount)) {
+                    $errors[] = "No hay suficiente stock para el insumo '" . ($equipment ? $equipment->name : 'desconocido') . "'. Stock disponible: " . ($equipment ? $equipment->stock : 0) . ", Solicitado: " . $item->requested_amount . ".";
+                }
+            }
+
+            if (!empty($errors)) {
+                $errorMessage = implode(' ', $errors);
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage
+                    ], 422);
+                }
+                return redirect()->back()->with('error', $errorMessage);
+            }
+        }
+
         // Actualiza la solicitud con el nuevo estado
         $supplyRequest->update([
             'status' => $request->status,

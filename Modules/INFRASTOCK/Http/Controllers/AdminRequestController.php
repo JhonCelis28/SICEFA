@@ -56,6 +56,19 @@ class AdminRequestController extends Controller
         }
 
         try {
+            // Verificar stock antes de aprobar
+            $errors = [];
+            foreach ($requestData->items as $item) {
+                $equipment = $item->equipment;
+                if (!$equipment || !$equipment->hasStockFor($item->requested_amount)) {
+                    $errors[] = "No hay suficiente stock para el insumo '" . ($equipment ? $equipment->name : 'desconocido') . "'. Stock disponible: " . ($equipment ? $equipment->stock : 0) . ", Solicitado: " . $item->requested_amount . ".";
+                }
+            }
+
+            if (!empty($errors)) {
+                return redirect()->back()->with('error', 'Error al aprobar la solicitud: ' . implode(' ', $errors));
+            }
+
             // Actualizar el estado de la solicitud
             $requestData->update([
                 'status' => 'approved',

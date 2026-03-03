@@ -590,7 +590,9 @@ class LoanController extends Controller
 
         // Verificar que la herramienta tiene stock suficiente antes de aprobar
         $tool = $loanMovement->tool;
+        // Refrescar herramienta desde la base de datos para obtener el stock más reciente
         if ($tool) {
+            $tool->refresh();
             $amount = $loanMovement->amount ?? 1;
             $available = $tool->cantidad_disponible ?? 0;
 
