@@ -545,6 +545,7 @@ function closeRequestModal() {
 // Cargar datos del formulario
 async function loadRequestFormData() {
     try {
+        
         const response = await fetch('{{ route("infrastock.agroindustria.requests.create") }}', {
             method: 'GET',
             headers: {

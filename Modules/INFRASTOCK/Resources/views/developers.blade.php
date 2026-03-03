@@ -194,9 +194,9 @@
                             <img src="{{ asset('modules/infrastock/images/developers/desarrollador2.png') }}" 
                                  alt="Desarrollador 2" 
                                  class="w-full h-full"
-                                 style="object-fit: cover; object-position: center top; width: 100%; height: 100%; display: block;"
+                                 style="object-fit: cover; object-position: center 20%; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador2.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-green-500" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full flex items-center justify-center hidden bg-green-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
@@ -222,7 +222,7 @@
                                  class="w-full h-full"
                                  style="object-fit: cover; object-position: top; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador3.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-purple-500" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full flex items-center justify-center hidden bg-green-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
@@ -248,7 +248,7 @@
                                  class="w-full h-full"
                                  style="object-fit: cover; object-position: 100% top; width: 100%; height: 100%; display: block;"
                                  onerror="this.onerror=null; this.src='{{ asset('modules/infrastock/images/developers/desarrollador4.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};">
-                            <div class="absolute inset-0 w-full h-full items-center justify-center hidden bg-orange-500" style="display: none;">
+                            <div class="absolute inset-0 w-full h-full flex items-center justify-center hidden bg-green-500" style="display: none;">
                                 <i class="fas fa-user-tie text-white text-4xl"></i>
                             </div>
                         </div>
@@ -447,45 +447,89 @@
     </section>
 
     <!-- PROJECT INFO SECTION -->
+
     <section class="bg-gradient-to-br from-gray-50 to-white py-16">
+        
         <div class="max-w-7xl mx-auto px-6">
             <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                
                 <div class="text-center mb-8">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Información del Proyecto</h2>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">
+                        Información del Proyecto
+                    </h2>
                 </div>
-                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
+
+                    <!-- Año -->
+
                     <div class="text-center">
                         <div class="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-calendar-alt text-green-600 text-3xl"></i>
                         </div>
+                        
                         <h3 class="text-xl font-bold text-gray-900 mb-2">Año de Desarrollo</h3>
                         <p class="text-gray-600">2025</p>
                     </div>
+
+                    <!-- Programa -->
+
                     <div class="text-center">
                         <div class="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-graduation-cap text-blue-600 text-3xl"></i>
                         </div>
+
                         <h3 class="text-xl font-bold text-gray-900 mb-2">Programa</h3>
                         <p class="text-gray-600">ADSO - Análisis y Desarrollo de Software</p>
                     </div>
+
+                    <!-- Equipo -->
                     <div class="text-center">
                         <div class="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-users text-purple-600 text-3xl"></i>
                         </div>
+
                         <h3 class="text-xl font-bold text-gray-900 mb-2">Equipo</h3>
                         <p class="text-gray-600">4 Desarrolladores</p>
                     </div>
+
+                    <!-- Ficha -->
                     <div class="text-center">
                         <div class="bg-orange-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-id-card text-orange-600 text-3xl"></i>
                         </div>
+
                         <h3 class="text-xl font-bold text-gray-900 mb-2">Ficha</h3>
                         <p class="text-gray-600">2995585</p>
                     </div>
-                </div>
+
+
+                    <!-- Manual Técnico -->
+                    @auth
+                    <div class="text-center">
+                        <a href="{{ route('manual_técnico') }}" target="_blank"> 
+
+                            <div class="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition group-hover:bg-green-200">
+                                <i class="fas fa-lock text-green-600 text-3xl transition group-hover:scale-110"></i>
+                            </div>
+
+                            <h3 class="text-xl font-bold text-gray-900 mb-2">
+                                Manual Técnico
+                            </h3>
+
+                            <p class="text-gray-600">
+                                Acceso exclusivo
+                            </p>
+                        </a>
+                    </div>
+                    @endauth
+                <div> <!-- cierre grid -->
             </div>
         </div>
     </section>
+
+  
+
 
     <!-- FOOTER -->
     <footer class="bg-gradient-to-r from-green-800 to-green-700 text-white mt-auto">
