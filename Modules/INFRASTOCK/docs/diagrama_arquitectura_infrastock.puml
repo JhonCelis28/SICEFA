@@ -1,0 +1,83 @@
+@startuml Arquitectura INFRASTOCK
+
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam handwritten false
+skinparam ActorBorderColor #333
+skinparam RectangleBorderColor #333
+skinparam ComponentBorderColor #333
+skinparam DatabaseBorderColor #333
+skinparam ArrowColor #333
+skinparam PackageBorderColor #333
+skinparam PackageFontStyle bold
+
+title **Diagrama de Arquitectura - Módulo INFRASTOCK**
+
+actor "Usuario" as USER
+
+rectangle "**Frontend**\nSoftware Web\n(Interfaz de Usuario)" as FRONT
+
+package "**Backend**" as BACK {
+    component [Autenticación y\nRoles] as AUTH
+    component [Gestión de\nUsuarios] as USERS
+    component [Módulo de\nInsumos] as INSUMOS
+    component [Módulo de\nHerramientas] as HERRAM
+    component [Módulo de\nPréstamos y\nDevoluciones] as PRESTAMOS
+    component [Módulo de\nSolicitudes] as SOLICITUDES
+    component [Módulo de\nDevoluciones\nde Insumos] as DEVOLUCIONES
+    component [Módulo de\nSobrantes] as SOBRANTES
+    component [Gestión de\nCategorías] as CATEGORIAS
+    component [Gestión de Áreas\nProductivas /\nAlmacenes] as AREAS
+    component [Control de\nInventario / Stock] as INVENTARIO
+    component [Generación de\nReportes] as REPORTES
+    component [Seguridad\n(Autorización)] as SEGURIDAD
+    component [Notificaciones] as NOTIF
+    component [Correo\nElectrónico] as CORREO
+    component [Exportación\n(PDF/Excel)] as EXPORT
+    component [Filtro y\nBúsqueda] as FILTRO
+    component [Historial /\nSeguimiento] as HISTORIAL
+}
+
+database "MySQL\nBD SICEFA" as DB
+
+USER -right-> FRONT : USA
+
+FRONT -right-> AUTH : HTTPS
+FRONT -right-> USERS : HTTPS
+FRONT -right-> INSUMOS : HTTPS
+FRONT -right-> HERRAM : HTTPS
+FRONT -right-> PRESTAMOS : HTTPS
+FRONT -right-> SOLICITUDES : HTTPS
+FRONT -right-> DEVOLUCIONES : HTTPS
+FRONT -right-> SOBRANTES : HTTPS
+FRONT -right-> CATEGORIAS : HTTPS
+FRONT -right-> AREAS : HTTPS
+FRONT -right-> INVENTARIO : HTTPS
+FRONT -right-> REPORTES : HTTPS
+FRONT -right-> SEGURIDAD : HTTPS
+FRONT -right-> NOTIF : HTTPS
+FRONT -right-> CORREO : HTTPS
+FRONT -right-> EXPORT : HTTPS
+FRONT -right-> FILTRO : HTTPS
+FRONT -right-> HISTORIAL : HTTPS
+
+AUTH -right-> DB
+USERS -right-> DB
+INSUMOS -right-> DB
+HERRAM -right-> DB
+PRESTAMOS -right-> DB
+SOLICITUDES -right-> DB
+DEVOLUCIONES -right-> DB
+SOBRANTES -right-> DB
+CATEGORIAS -right-> DB
+AREAS -right-> DB
+INVENTARIO -right-> DB
+REPORTES -right-> DB
+SEGURIDAD -right-> DB
+NOTIF -right-> DB
+CORREO -right-> DB
+EXPORT -right-> DB
+FILTRO -right-> DB
+HISTORIAL -right-> DB
+
+@enduml

@@ -54,11 +54,11 @@
                 <div>
                     <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Buscar Insumo</label>
                     <div class="relative">
-                        <input type="text" id="search" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Buscar insumos disponibles...">
+                        <input type="text" id="main-search-input" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Buscar solicitudes anteriores...">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
-                        <button type="button" id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" style="display: none;">
+                        <button type="button" id="main-search-clear" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" style="display: none;">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -348,11 +348,11 @@
                                 <i class="fas fa-search text-gray-400"></i>
                             </div>
                             <input type="text" 
-                                   id="equipment-search" 
+                                   id="modal-equipment-search-input" 
                                    class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" 
                                    placeholder="Buscar insumo por nombre o categoría...">
                             <button type="button" 
-                                    id="clear-search" 
+                                    id="modal-equipment-search-clear" 
                                     class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -517,7 +517,7 @@
                         <div>
                             <label for="equipment-search-input" class="block text-sm font-medium text-gray-700 mb-2">Buscar Insumo</label>
                             <div class="relative">
-                                <input type="text" id="equipment-search-input" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Nombre del insumo...">
+                                <input type="text" id="catalog-search-input" class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Nombre del insumo...">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fas fa-search text-gray-400"></i>
                                 </div>
@@ -547,7 +547,7 @@
                         <div class="text-sm text-gray-600">
                             <span id="equipment-search-count">0</span> insumos encontrados
                         </div>
-                        <button type="button" id="clear-equipment-search" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+                        <button type="button" id="catalog-search-clear" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
                             <i class="fas fa-times mr-1"></i>
                             Limpiar filtros
                         </button>
@@ -605,783 +605,352 @@
     </div>
 </div>
 
-<script>
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('search');
+            // Elementos de búsqueda principal
+            const mainSearchInput = document.getElementById('main-search-input');
+            const mainSearchClearBtn = document.getElementById('main-search-clear');
             const statusFilter = document.getElementById('status-filter');
             const dateFilter = document.getElementById('date-filter');
+            const clearFiltersBtn = document.getElementById('clear-filters');
+            const activeFiltersDiv = document.getElementById('active-filters');
+            const filterTagsDiv = document.getElementById('filter-tags');
             const requestCards = document.querySelectorAll('.bg-white.rounded-lg.shadow-sm.border.border-gray-200');
 
-            // Elementos del modal
+            // Elementos del modal de solicitud (Nueva Solicitud)
             const openRequestModalBtn = document.getElementById('open-request-modal');
             const requestModal = document.getElementById('request-modal');
             const closeRequestModalBtn = document.getElementById('close-request-modal');
             const cancelRequestBtn = document.getElementById('cancel-request');
-            
+            const requestForm = document.getElementById('request-form');
+            const equipmentList = document.getElementById('equipment-list');
+            const noEquipmentMessage = document.getElementById('no-equipment-message');
             const addEquipmentBtn = document.getElementById('add-equipment-btn');
+
+            // Elementos del modal de selección de insumo
             const equipmentModal = document.getElementById('equipment-modal');
             const closeEquipmentModalBtn = document.getElementById('close-equipment-modal');
             const equipmentCards = document.querySelectorAll('.equipment-card');
-            const equipmentSearch = document.getElementById('equipment-search');
-            const clearSearchBtn = document.getElementById('clear-search');
+            const modalEquipmentSearchInput = document.getElementById('modal-equipment-search-input');
+            const modalEquipmentSearchClearBtn = document.getElementById('modal-equipment-search-clear');
             const equipmentGrid = document.getElementById('equipment-grid');
             const noEquipmentResults = document.getElementById('no-equipment-results');
-            
-            const equipmentList = document.getElementById('equipment-list');
-            const noEquipmentMessage = document.getElementById('no-equipment-message');
-            
-            let equipmentCounter = 0;
-            let selectedEquipments = new Set();
 
-            // Función para filtrar las solicitudes
+            // Elementos del modal de catálogo (si existe un modal separado)
+            const catalogSearchModal = document.getElementById('equipment-search-modal');
+            const closeCatalogSearchModalBtn = document.getElementById('close-equipment-search-modal');
+            const catalogSearchInput = document.getElementById('catalog-search-input');
+            const catalogSearchClearBtn = document.getElementById('catalog-search-clear');
+            const catalogCategoryFilter = document.getElementById('equipment-category-filter');
+            const catalogStockFilter = document.getElementById('equipment-stock-filter');
+            const catalogSearchResults = document.getElementById('equipment-search-results');
+            const catalogSearchCount = document.getElementById('equipment-search-count');
+            const noCatalogResults = document.getElementById('no-equipment-results'); // Nota: ID compartido en el HTML original
+
+            // Estado interno
+            let selectedEquipments = new Set();
+            let equipmentCounter = 0;
+
+            // === FUNCIONALIDAD DE BÚSQUEDA Y FILTROS PRINCIPALES ===
+
             function filterRequests() {
-                const searchTerm = searchInput.value.toLowerCase().trim();
+                const searchTerm = mainSearchInput.value.toLowerCase().trim();
                 const statusValue = statusFilter.value;
                 const dateValue = dateFilter.value;
                 const today = new Date();
                 
                 requestCards.forEach(card => {
-                    // Obtener información de la solicitud
-                    const requestId = card.querySelector('h3').textContent.match(/#(\d+)/)?.[1];
+                    const requestId = card.querySelector('h3').textContent.match(/#(\d+)/)?.[1] || '';
                     const requestDateText = card.querySelector('.flex.items-center.space-x-4.text-sm.text-gray-600 span:first-child').textContent;
                     const statusElement = card.querySelector('.inline-flex.items-center.px-3.py-1.rounded-full.text-sm.font-medium');
                     const statusText = statusElement ? statusElement.textContent.trim() : '';
                     
-                    // Extraer información completa de la solicitud para búsqueda
                     const equipmentNames = Array.from(card.querySelectorAll('.text-sm.font-medium.text-gray-900.truncate'))
                         .map(el => el.textContent.toLowerCase());
-                    
                     const requestDescription = card.querySelector('.text-sm.text-blue-800')?.textContent.toLowerCase() || '';
                     const productiveUnit = card.querySelector('.flex.items-center.space-x-4.text-sm.text-gray-600 span:last-child')?.textContent.toLowerCase() || '';
                     
-                    // Convertir fecha
                     const requestDate = parseRequestDate(requestDateText);
-                    
                     let showCard = true;
-                    
-                    // Filtro por búsqueda (buscar en múltiples campos)
+
+                    // Búsqueda
                     if (searchTerm) {
-                        const searchFields = [
-                            ...equipmentNames,
-                            requestDescription,
-                            productiveUnit,
-                            requestId || ''
-                        ];
-                        
-                        const hasMatch = searchFields.some(field => 
-                            field.includes(searchTerm)
-                        );
-                        
-                        if (!hasMatch) {
-                            showCard = false;
-                        }
+                        const searchFields = [...equipmentNames, requestDescription, productiveUnit, requestId];
+                        if (!searchFields.some(field => field.includes(searchTerm))) showCard = false;
                     }
                     
-                    // Filtro por estado
-                    if (statusValue) {
-                        const currentStatus = getStatusFromText(statusText);
-                        if (currentStatus !== statusValue) {
-                            showCard = false;
-                        }
+                    // Estado
+                    if (showCard && statusValue) {
+                        if (getStatusFromText(statusText) !== statusValue) showCard = false;
                     }
                     
-                    // Filtro por fecha
-                    if (dateValue && requestDate) {
+                    // Fecha
+                    if (showCard && dateValue && requestDate) {
                         switch(dateValue) {
                             case 'today':
-                                if (requestDate.toDateString() !== today.toDateString()) {
-                                    showCard = false;
-                                }
+                                if (requestDate.toDateString() !== today.toDateString()) showCard = false;
                                 break;
                             case 'week':
                                 const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-                                if (requestDate < weekAgo) {
-                                    showCard = false;
-                                }
+                                if (requestDate < weekAgo) showCard = false;
                                 break;
                             case 'month':
                                 const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-                                if (requestDate < monthAgo) {
-                                    showCard = false;
-                                }
+                                if (requestDate < monthAgo) showCard = false;
                                 break;
                         }
                     }
                     
                     card.style.display = showCard ? '' : 'none';
                 });
-                
-                // Actualizar contador de resultados
                 updateResultsCount();
             }
 
-            // Función para parsear la fecha de la solicitud
             function parseRequestDate(dateText) {
-                try {
-                    // Formato esperado: "dd/mm/yyyy H:i"
-                    const match = dateText.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/);
-                    if (match) {
-                        const [, day, month, year, hour, minute] = match;
-                        return new Date(year, month - 1, day, hour, minute);
-                    }
-                } catch (e) {
-                    console.warn('Error parsing date:', dateText);
+                const match = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (match) {
+                    const [, day, month, year] = match;
+                    return new Date(year, month - 1, day);
                 }
                 return null;
             }
 
-            // Función para obtener el estado desde el texto
             function getStatusFromText(statusText) {
-                if (statusText.includes('Pendiente')) return 'pending';
-                if (statusText.includes('Aprobada')) return 'approved';
-                if (statusText.includes('Rechazada')) return 'rejected';
+                if (statusText.toLowerCase().includes('pendiente')) return 'pending';
+                if (statusText.toLowerCase().includes('aprobada')) return 'approved';
+                if (statusText.toLowerCase().includes('rechazada')) return 'rejected';
                 return '';
             }
 
-            // Función para actualizar el contador de resultados
             function updateResultsCount() {
-                const visibleCards = Array.from(requestCards).filter(card => card.style.display !== 'none');
+                const visibleCount = Array.from(requestCards).filter(card => card.style.display !== 'none').length;
                 const totalElement = document.querySelector('.text-sm.text-gray-500.mt-1');
-                if (totalElement) {
-                    totalElement.textContent = `Total: ${visibleCards.length} solicitudes`;
-                }
-                
-                // Mostrar mensaje cuando no hay resultados
-                const noResultsMessage = document.getElementById('no-results-message');
-                if (visibleCards.length === 0 && (searchInput.value || statusFilter.value || dateFilter.value)) {
-                    if (!noResultsMessage) {
-                        createNoResultsMessage();
-                    }
-                } else if (noResultsMessage) {
-                    noResultsMessage.remove();
-                }
+                if (totalElement) totalElement.textContent = `Total: ${visibleCount} solicitudes`;
             }
 
-            // Función para crear mensaje de no resultados
-            function createNoResultsMessage() {
-                const container = document.querySelector('.space-y-4');
-                const noResultsDiv = document.createElement('div');
-                noResultsDiv.id = 'no-results-message';
-                noResultsDiv.className = 'text-center py-12 bg-gray-50 rounded-lg';
-                noResultsDiv.innerHTML = `
-                    <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
-                    <p class="text-gray-500 mb-4">No hay solicitudes que coincidan con los filtros aplicados.</p>
-                    <button type="button" id="clear-filters-from-no-results" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200">
-                        <i class="fas fa-times mr-2"></i>
-                        Limpiar filtros
-                    </button>
-                `;
-                
-                container.appendChild(noResultsDiv);
-                
-                // Event listener para el botón de limpiar filtros desde el mensaje
-                document.getElementById('clear-filters-from-no-results').addEventListener('click', function() {
-                    clearFiltersBtn.click();
-                });
-            }
-
-            // Event listeners para los filtros
-            searchInput.addEventListener('focus', openEquipmentSearchModal);
-            searchInput.addEventListener('input', handleSearchInput);
-            statusFilter.addEventListener('change', filterRequests);
-            dateFilter.addEventListener('change', filterRequests);
-
-            // Botón para limpiar búsqueda
-            const clearSearchBtn = document.getElementById('clear-search');
-            clearSearchBtn.addEventListener('click', function() {
-                searchInput.value = '';
-                filterRequests();
-                updateClearButton();
-            });
-
-            // Mostrar/ocultar botón de limpiar búsqueda
-            searchInput.addEventListener('input', function() {
-                updateClearButton();
-            });
-
-            function updateClearButton() {
-                if (searchInput.value.length > 0) {
-                    clearSearchBtn.style.display = 'flex';
+            function updateMainSearchClearBtn() {
+                if (mainSearchInput.value.length > 0) {
+                    mainSearchClearBtn.style.display = 'flex';
                 } else {
-                    clearSearchBtn.style.display = 'none';
+                    mainSearchClearBtn.style.display = 'none';
                 }
             }
 
-            // Botón para limpiar todos los filtros
-            const clearFiltersBtn = document.getElementById('clear-filters');
-            clearFiltersBtn.addEventListener('click', function() {
-                searchInput.value = '';
-                statusFilter.value = '';
-                dateFilter.value = '';
+            // Listeners principales
+            mainSearchInput.addEventListener('input', () => {
                 filterRequests();
-                updateClearButton();
+                updateMainSearchClearBtn();
                 updateActiveFilters();
             });
 
-            // Función para actualizar los filtros activos
+            mainSearchClearBtn.addEventListener('click', () => {
+                mainSearchInput.value = '';
+                filterRequests();
+                updateMainSearchClearBtn();
+                updateActiveFilters();
+                mainSearchInput.focus();
+            });
+
+            statusFilter.addEventListener('change', () => {
+                filterRequests();
+                updateActiveFilters();
+            });
+
+            dateFilter.addEventListener('change', () => {
+                filterRequests();
+                updateActiveFilters();
+            });
+
+            clearFiltersBtn.addEventListener('click', () => {
+                mainSearchInput.value = '';
+                statusFilter.value = '';
+                dateFilter.value = '';
+                filterRequests();
+                updateMainSearchClearBtn();
+                updateActiveFilters();
+            });
+
             function updateActiveFilters() {
-                const activeFiltersDiv = document.getElementById('active-filters');
-                const filterTagsDiv = document.getElementById('filter-tags');
-                
                 const filters = [];
-                
-                if (searchInput.value) {
-                    filters.push({
-                        type: 'search',
-                        label: `Búsqueda: "${searchInput.value}"`,
-                        remove: () => {
-                            searchInput.value = '';
-                            filterRequests();
-                            updateClearButton();
-                            updateActiveFilters();
-                        }
-                    });
+                if (mainSearchInput.value) {
+                    filters.push({ label: `Búsqueda: "${mainSearchInput.value}"`, remove: () => { mainSearchInput.value = ''; mainSearchInput.dispatchEvent(new Event('input')); } });
                 }
-                
                 if (statusFilter.value) {
-                    const statusLabels = {
-                        'pending': 'Pendientes',
-                        'approved': 'Aprobadas',
-                        'rejected': 'Rechazadas'
-                    };
-                    filters.push({
-                        type: 'status',
-                        label: `Estado: ${statusLabels[statusFilter.value]}`,
-                        remove: () => {
-                            statusFilter.value = '';
-                            filterRequests();
-                            updateActiveFilters();
-                        }
-                    });
+                    const labels = { 'pending': 'Pendientes', 'approved': 'Aprobadas', 'rejected': 'Rechazadas' };
+                    filters.push({ label: `Estado: ${labels[statusFilter.value]}`, remove: () => { statusFilter.value = ''; statusFilter.dispatchEvent(new Event('change')); } });
                 }
-                
                 if (dateFilter.value) {
-                    const dateLabels = {
-                        'today': 'Hoy',
-                        'week': 'Esta semana',
-                        'month': 'Este mes'
-                    };
-                    filters.push({
-                        type: 'date',
-                        label: `Fecha: ${dateLabels[dateFilter.value]}`,
-                        remove: () => {
-                            dateFilter.value = '';
-                            filterRequests();
-                            updateActiveFilters();
-                        }
-                    });
+                    const labels = { 'today': 'Hoy', 'week': 'Esta semana', 'month': 'Este mes' };
+                    filters.push({ label: `Fecha: ${labels[dateFilter.value]}`, remove: () => { dateFilter.value = ''; dateFilter.dispatchEvent(new Event('change')); } });
                 }
-                
+
                 if (filters.length > 0) {
                     activeFiltersDiv.classList.remove('hidden');
-                    filterTagsDiv.innerHTML = filters.map(filter => `
+                    filterTagsDiv.innerHTML = filters.map(f => `
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ${filter.label}
-                            <button type="button" onclick="(${filter.remove})()" class="ml-1 hover:text-green-600">
+                            ${f.label}
+                            <button type="button" class="ml-1 hover:text-green-600 remove-filter-btn" data-type="${f.label}">
                                 <i class="fas fa-times"></i>
                             </button>
                         </span>
                     `).join('');
+                    
+                    filterTagsDiv.querySelectorAll('.remove-filter-btn').forEach((btn, index) => {
+                        btn.addEventListener('click', filters[index].remove);
+                    });
                 } else {
                     activeFiltersDiv.classList.add('hidden');
                 }
             }
 
-            // Actualizar filtros activos cuando cambien los filtros
-            statusFilter.addEventListener('change', updateActiveFilters);
-            dateFilter.addEventListener('change', updateActiveFilters);
-
-            // === FUNCIONALIDAD DE BÚSQUEDA DE INSUMOS ===
-            
-            // Variables para el modal de búsqueda de insumos
-            const equipmentSearchModal = document.getElementById('equipment-search-modal');
-            const closeEquipmentSearchModalBtn = document.getElementById('close-equipment-search-modal');
-            const equipmentSearchInput = document.getElementById('equipment-search-input');
-            const equipmentCategoryFilter = document.getElementById('equipment-category-filter');
-            const equipmentStockFilter = document.getElementById('equipment-stock-filter');
-            const equipmentSearchResults = document.getElementById('equipment-search-results');
-            const equipmentSearchCount = document.getElementById('equipment-search-count');
-            const noEquipmentResults = document.getElementById('no-equipment-results');
-            const clearEquipmentSearchBtn = document.getElementById('clear-equipment-search');
-
-            // Función para abrir el modal de búsqueda de insumos
-            function openEquipmentSearchModal() {
-                equipmentSearchModal.classList.remove('hidden');
-                equipmentSearchInput.focus();
-                loadEquipmentCategories();
-                searchEquipment();
-            }
-
-            // Función para manejar la entrada en el campo de búsqueda
-            function handleSearchInput() {
-                const searchTerm = searchInput.value.trim();
-                if (searchTerm.length > 0) {
-                    openEquipmentSearchModal();
-                    equipmentSearchInput.value = searchTerm;
-                    searchEquipment();
-                }
-            }
-
-            // Función para cerrar el modal de búsqueda de insumos
-            function closeEquipmentSearchModal() {
-                equipmentSearchModal.classList.add('hidden');
-                searchInput.value = '';
-                updateClearButton();
-            }
-
-            // Event listeners para el modal de búsqueda de insumos
-            closeEquipmentSearchModalBtn.addEventListener('click', closeEquipmentSearchModal);
-            equipmentSearchModal.addEventListener('click', function(e) {
-                if (e.target === equipmentSearchModal) {
-                    closeEquipmentSearchModal();
-                }
-            });
-
-            // Event listeners para los filtros del modal de búsqueda
-            equipmentSearchInput.addEventListener('input', searchEquipment);
-            equipmentCategoryFilter.addEventListener('change', searchEquipment);
-            equipmentStockFilter.addEventListener('change', searchEquipment);
-
-            // Botón para limpiar filtros de búsqueda de insumos
-            clearEquipmentSearchBtn.addEventListener('click', function() {
-                equipmentSearchInput.value = '';
-                equipmentCategoryFilter.value = '';
-                equipmentStockFilter.value = '';
-                searchEquipment();
-            });
-
-            // Función para cargar las categorías de insumos
-            function loadEquipmentCategories() {
-                const categories = [...new Set(Array.from(equipmentCards).map(eq => eq.dataset.equipmentCategory))];
-                equipmentCategoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
-                categories.forEach(category => {
-                    if (category && category !== 'Sin categoría') {
-                        const option = document.createElement('option');
-                        option.value = category;
-                        option.textContent = category;
-                        equipmentCategoryFilter.appendChild(option);
-                    }
-                });
-            }
-
-            // Función para buscar insumos
-            function searchEquipment() {
-                const searchTerm = equipmentSearchInput.value.toLowerCase().trim();
-                const categoryFilter = equipmentCategoryFilter.value;
-                const stockFilter = equipmentStockFilter.value;
-
-                let filteredEquipments = Array.from(equipmentCards);
-
-                // Filtro por término de búsqueda
-                if (searchTerm) {
-                    filteredEquipments = filteredEquipments.filter(equipment => {
-                        const name = equipment.dataset.equipmentName.toLowerCase();
-                        const category = equipment.dataset.equipmentCategory.toLowerCase();
-                        const description = equipment.dataset.equipmentDescription.toLowerCase();
-                        return name.includes(searchTerm) || 
-                               category.includes(searchTerm) || 
-                               description.includes(searchTerm);
-                    });
-                }
-
-                // Filtro por categoría
-                if (categoryFilter) {
-                    filteredEquipments = filteredEquipments.filter(equipment => 
-                        equipment.dataset.equipmentCategory === categoryFilter
-                    );
-                }
-
-                // Filtro por stock
-                if (stockFilter) {
-                    filteredEquipments = filteredEquipments.filter(equipment => {
-                        const stock = parseInt(equipment.dataset.equipmentStock);
-                        switch(stockFilter) {
-                            case 'available':
-                                return stock > 5;
-                            case 'low':
-                                return stock > 0 && stock <= 5;
-                            case 'out':
-                                return stock <= 0;
-                            default:
-                                return true;
-                        }
-                    });
-                }
-
-                // Mostrar resultados
-                displayEquipmentResults(filteredEquipments);
-            }
-
-            // Función para mostrar los resultados de búsqueda de insumos
-            function displayEquipmentResults(equipments) {
-                equipmentSearchResults.innerHTML = '';
-                equipmentSearchCount.textContent = equipments.length;
-
-                if (equipments.length === 0) {
-                    noEquipmentResults.classList.remove('hidden');
-                    return;
-                }
-
-                noEquipmentResults.classList.add('hidden');
-
-                equipments.forEach(equipment => {
-                    const equipmentCard = document.createElement('div');
-                    equipmentCard.className = 'equipment-search-card border border-gray-200 rounded-lg p-4 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer';
-                    
-                    const stock = parseInt(equipment.dataset.equipmentStock);
-                    const stockStatus = stock <= 0 ? 'Agotado' : stock <= 5 ? 'Poco Stock' : 'Disponible';
-                    const stockClass = stock <= 0 ? 'bg-red-100 text-red-800' : stock <= 5 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
-                    
-                    equipmentCard.innerHTML = `
-                        <div class="flex items-start justify-between mb-3">
-                            <div class="flex-1">
-                                <h4 class="font-medium text-gray-900 text-sm">${equipment.dataset.equipmentName}</h4>
-                                <p class="text-xs text-gray-600">${equipment.dataset.equipmentCategory}</p>
-                            </div>
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${stockClass}">
-                                <i class="fas ${stock <= 0 ? 'fa-times-circle' : stock <= 5 ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-1"></i>
-                                ${stockStatus}
-                            </span>
-                        </div>
-                        
-                        <div class="space-y-2 text-xs text-gray-600">
-                            <div class="flex justify-between">
-                                <span><strong>Stock:</strong></span>
-                                <span>${stock} ${equipment.dataset.equipmentUnit}</span>
-                            </div>
-                            ${equipment.dataset.equipmentDescription ? `
-                                <div>
-                                    <strong>Descripción:</strong>
-                                    <p class="mt-1">${equipment.dataset.equipmentDescription}</p>
-                                </div>
-                            ` : ''}
-                            ${equipment.dataset.equipmentPrice > 0 ? `
-                                <div class="flex justify-between">
-                                    <span><strong>Precio:</strong></span>
-                                    <span>$${parseFloat(equipment.dataset.equipmentPrice).toLocaleString()}</span>
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        <div class="mt-4 flex space-x-2">
-                            <button type="button" class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-2 px-3 rounded-md transition-colors duration-200" onclick="addEquipmentToRequest('${equipment.dataset.equipmentId}')">
-                                <i class="fas fa-plus mr-1"></i>
-                                Agregar a Solicitud
-                            </button>
-                            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white text-xs py-2 px-3 rounded-md transition-colors duration-200" onclick="viewEquipmentDetails('${equipment.dataset.equipmentId}')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    `;
-                    
-                    equipmentSearchResults.appendChild(equipmentCard);
-                });
-            }
-
-            // Función global para agregar insumo a solicitud
-            window.addEquipmentToRequest = function(equipmentId) {
-                const equipment = Array.from(equipmentCards).find(eq => eq.dataset.equipmentId === equipmentId);
-                if (equipment) {
-                    addEquipmentToList(equipment);
-                    closeEquipmentSearchModal();
-                    // Abrir modal de solicitud si no está abierto
-                    if (requestModal.classList.contains('hidden')) {
-                        requestModal.classList.remove('hidden');
-                    }
-                }
-            };
-
-            // Función global para ver detalles del insumo
-            window.viewEquipmentDetails = function(equipmentId) {
-                const equipment = Array.from(equipmentCards).find(eq => eq.dataset.equipmentId === equipmentId);
-                if (equipment) {
-                    // Aquí podrías implementar un modal de detalles del insumo
-                    alert(`Detalles de ${equipment.dataset.equipmentName}\n\nStock: ${equipment.dataset.equipmentStock} ${equipment.dataset.equipmentUnit}\nCategoría: ${equipment.dataset.equipmentCategory}`);
-                }
-            };
-
             // === FUNCIONALIDAD DEL MODAL DE SOLICITUD ===
-            
-            // Abrir modal de solicitud
-            openRequestModalBtn.addEventListener('click', function() {
-                requestModal.classList.remove('hidden');
-            });
 
-            // Cerrar modal de solicitud
-            closeRequestModalBtn.addEventListener('click', function() {
-                requestModal.classList.add('hidden');
-                resetForm();
-            });
+            if (openRequestModalBtn) {
+                openRequestModalBtn.addEventListener('click', () => {
+                    requestModal.classList.remove('hidden');
+                });
+            }
 
-            cancelRequestBtn.addEventListener('click', function() {
-                requestModal.classList.add('hidden');
-                resetForm();
-            });
+            const closeReq = () => { requestModal.classList.add('hidden'); resetForm(); };
+            if (closeRequestModalBtn) closeRequestModalBtn.addEventListener('click', closeReq);
+            if (cancelRequestBtn) cancelRequestBtn.addEventListener('click', closeReq);
+            requestModal.addEventListener('click', (e) => { if (e.target === requestModal) closeReq(); });
 
-            // Cerrar modal al hacer clic fuera
-            requestModal.addEventListener('click', function(e) {
-                if (e.target === requestModal) {
-                    requestModal.classList.add('hidden');
-                    resetForm();
-                }
-            });
-
-            // === FUNCIONALIDAD DEL MODAL DE INSUMOS ===
-            
-            // Abrir modal de insumos
-            addEquipmentBtn.addEventListener('click', function() {
-                equipmentModal.classList.remove('hidden');
+            function resetForm() {
+                requestForm.reset();
+                equipmentList.innerHTML = '';
+                selectedEquipments.clear();
+                noEquipmentMessage.style.display = 'block';
                 updateEquipmentCards();
-                // Limpiar búsqueda al abrir el modal
-                if (equipmentSearch) {
-                    equipmentSearch.value = '';
-                    if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+            }
+
+            // === FUNCIONALIDAD DEL MODAL DE SELECCIÓN DE INSUMO ===
+
+            if (addEquipmentBtn) {
+                addEquipmentBtn.addEventListener('click', () => {
+                    equipmentModal.classList.remove('hidden');
+                    updateEquipmentCards();
+                    modalEquipmentSearchInput.value = '';
+                    modalEquipmentSearchClearBtn.classList.add('hidden');
                     filterEquipmentCards();
-                }
+                });
+            }
+
+            const closeEq = () => equipmentModal.classList.add('hidden');
+            if (closeEquipmentModalBtn) closeEquipmentModalBtn.addEventListener('click', closeEq);
+            equipmentModal.addEventListener('click', (e) => { if (e.target === equipmentModal) closeEq(); });
+
+            modalEquipmentSearchInput.addEventListener('input', function() {
+                filterEquipmentCards();
+                if (this.value.length > 0) modalEquipmentSearchClearBtn.classList.remove('hidden');
+                else modalEquipmentSearchClearBtn.classList.add('hidden');
             });
-            
-            // Filtrar insumos en tiempo real
-            if (equipmentSearch) {
-                equipmentSearch.addEventListener('input', function() {
-                    filterEquipmentCards();
-                    // Mostrar/ocultar botón de limpiar
-                    if (this.value.length > 0 && clearSearchBtn) {
-                        clearSearchBtn.classList.remove('hidden');
-                    } else if (clearSearchBtn) {
-                        clearSearchBtn.classList.add('hidden');
-                    }
-                });
-            }
-            
-            // Limpiar búsqueda
-            if (clearSearchBtn) {
-                clearSearchBtn.addEventListener('click', function() {
-                    if (equipmentSearch) {
-                        equipmentSearch.value = '';
-                        clearSearchBtn.classList.add('hidden');
-                        filterEquipmentCards();
-                        equipmentSearch.focus();
-                    }
-                });
-            }
-            
-            // Función para filtrar las tarjetas de insumos
+
+            modalEquipmentSearchClearBtn.addEventListener('click', () => {
+                modalEquipmentSearchInput.value = '';
+                filterEquipmentCards();
+                modalEquipmentSearchClearBtn.classList.add('hidden');
+                modalEquipmentSearchInput.focus();
+            });
+
             function filterEquipmentCards() {
-                if (!equipmentSearch || !equipmentGrid) return;
-                
-                const searchTerm = equipmentSearch.value.toLowerCase().trim();
-                const allEquipmentCards = Array.from(document.querySelectorAll('.equipment-card'));
+                const term = modalEquipmentSearchInput.value.toLowerCase().trim();
                 let visibleCount = 0;
-                
-                allEquipmentCards.forEach(card => {
-                    const equipmentName = card.dataset.equipmentName.toLowerCase();
-                    const equipmentCategory = card.dataset.equipmentCategory.toLowerCase();
-                    
-                    if (searchTerm === '' || 
-                        equipmentName.includes(searchTerm) || 
-                        equipmentCategory.includes(searchTerm)) {
+                equipmentCards.forEach(card => {
+                    const name = card.dataset.equipmentName.toLowerCase();
+                    const category = card.dataset.equipmentCategory.toLowerCase();
+                    if (term === '' || name.includes(term) || category.includes(term)) {
                         card.style.display = 'block';
                         visibleCount++;
                     } else {
                         card.style.display = 'none';
                     }
                 });
-                
-                // Mostrar/ocultar mensaje de no resultados
-                if (noEquipmentResults && equipmentGrid) {
-                    if (visibleCount === 0 && searchTerm !== '') {
-                        noEquipmentResults.classList.remove('hidden');
-                        equipmentGrid.classList.add('hidden');
-                    } else {
-                        noEquipmentResults.classList.add('hidden');
-                        equipmentGrid.classList.remove('hidden');
-                    }
+                if (visibleCount === 0) {
+                    noEquipmentResults.classList.remove('hidden');
+                    equipmentGrid.classList.add('hidden');
+                } else {
+                    noEquipmentResults.classList.add('hidden');
+                    equipmentGrid.classList.remove('hidden');
                 }
             }
 
-            // Cerrar modal de insumos
-            closeEquipmentModalBtn.addEventListener('click', function() {
-                equipmentModal.classList.add('hidden');
-            });
-
-            // Cerrar modal al hacer clic fuera
-            equipmentModal.addEventListener('click', function(e) {
-                if (e.target === equipmentModal) {
-                    equipmentModal.classList.add('hidden');
-                }
-            });
-
-            // Seleccionar insumo
             equipmentCards.forEach(card => {
                 card.addEventListener('click', function() {
-                    const equipmentId = this.dataset.equipmentId;
-                    const equipmentStock = parseInt(this.dataset.equipmentStock);
-                    
-                    // Verificar si el insumo está agotado
-                    if (equipmentStock <= 0) {
-                        alert('Este insumo está agotado y no se puede seleccionar.');
-                        return;
-                    }
-                    
-                    if (selectedEquipments.has(equipmentId)) {
-                        alert('Este insumo ya ha sido seleccionado.');
-                        return;
-                    }
-
+                    const id = this.dataset.equipmentId;
+                    const stock = parseInt(this.dataset.equipmentStock);
+                    if (stock <= 0) { alert('Insumo agotado'); return; }
+                    if (selectedEquipments.has(id)) { alert('Ya seleccionado'); return; }
                     addEquipmentToList(this);
-                    equipmentModal.classList.add('hidden');
+                    closeEq();
                 });
             });
 
             function addEquipmentToList(card) {
-                const equipmentId = card.dataset.equipmentId;
-                const equipmentName = card.dataset.equipmentName;
-                const equipmentStock = parseInt(card.dataset.equipmentStock);
-                const equipmentCategory = card.dataset.equipmentCategory;
-                const equipmentDescription = card.dataset.equipmentDescription;
-                const equipmentUnit = card.dataset.equipmentUnit;
-                const equipmentPrice = parseFloat(card.dataset.equipmentPrice);
+                const id = card.dataset.equipmentId;
+                const name = card.dataset.equipmentName;
+                const stock = parseInt(card.dataset.equipmentStock);
+                const category = card.dataset.equipmentCategory;
+                const unit = card.dataset.equipmentUnit;
 
-                selectedEquipments.add(equipmentId);
-                equipmentCounter++;
-
-                const equipmentItem = document.createElement('div');
-                equipmentItem.className = 'equipment-item bg-gray-50 border border-gray-200 rounded-lg p-4';
-                equipmentItem.innerHTML = `
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex-1">
-                            <h4 class="font-medium text-gray-900">${equipmentName}</h4>
-                            <p class="text-sm text-gray-600">${equipmentCategory}</p>
+                selectedEquipments.add(id);
+                const item = document.createElement('div');
+                item.className = 'equipment-item bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4';
+                item.innerHTML = `
+                    <div class="flex justify-between mb-2">
+                        <div>
+                            <h4 class="font-medium">${name}</h4>
+                            <p class="text-xs text-gray-500">${category}</p>
                         </div>
-                        <button type="button" class="remove-equipment text-red-500 hover:text-red-700" data-equipment-id="${equipmentId}">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <button type="button" class="text-red-500 hover:text-red-700 remove-item" data-id="${id}"><i class="fas fa-times"></i></button>
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
-                            <input type="number" 
-                                   name="equipments[${equipmentId}][amount]" 
-                                   min="1" 
-                                   max="${equipmentStock}"
-                                   value="1"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                   required>
-                            <p class="text-xs text-gray-500 mt-1">Máximo: ${equipmentStock} ${equipmentUnit}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Información</label>
-                            <div class="text-xs text-gray-600 space-y-1">
-                                <p><strong>Stock:</strong> ${equipmentStock} ${equipmentUnit}</p>
-                                ${equipmentDescription ? `<p><strong>Descripción:</strong> ${equipmentDescription}</p>` : ''}
-                                ${equipmentPrice > 0 ? `<p><strong>Precio:</strong> $${equipmentPrice.toLocaleString()}</p>` : ''}
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-xs font-medium mb-1">Cantidad (${unit})</label>
+                        <input type="number" name="equipments[${id}][amount]" min="1" max="${stock}" value="1" class="w-full border rounded p-1" required>
+                        <p class="text-[10px] text-gray-400">Stock disponible: ${stock}</p>
                     </div>
                 `;
-
-                equipmentList.appendChild(equipmentItem);
+                equipmentList.appendChild(item);
                 noEquipmentMessage.style.display = 'none';
-
-                // Agregar evento para remover insumo
-                const removeBtn = equipmentItem.querySelector('.remove-equipment');
-                removeBtn.addEventListener('click', function() {
-                    const id = this.dataset.equipmentId;
-                    selectedEquipments.delete(id);
-                    equipmentItem.remove();
-                    
-                    if (selectedEquipments.size === 0) {
-                        noEquipmentMessage.style.display = 'block';
-                    }
-                    
+                item.querySelector('.remove-item').addEventListener('click', function() {
+                    selectedEquipments.delete(this.dataset.id);
+                    item.remove();
+                    if (selectedEquipments.size === 0) noEquipmentMessage.style.display = 'block';
                     updateEquipmentCards();
                 });
-
                 updateEquipmentCards();
             }
 
             function updateEquipmentCards() {
                 equipmentCards.forEach(card => {
-                    const equipmentId = card.dataset.equipmentId;
-                    const equipmentStock = parseInt(card.dataset.equipmentStock);
-                    
-                    if (selectedEquipments.has(equipmentId)) {
+                    const id = card.dataset.equipmentId;
+                    const stock = parseInt(card.dataset.equipmentStock);
+                    if (selectedEquipments.has(id) || stock <= 0) {
                         card.classList.add('opacity-50', 'cursor-not-allowed');
                         card.style.pointerEvents = 'none';
-                    } else if (equipmentStock <= 0) {
-                        // Insumos agotados: visibles pero no seleccionables
-                        card.classList.add('opacity-60', 'cursor-not-allowed');
-                        card.style.pointerEvents = 'none';
-                        card.style.backgroundColor = '#fef2f2'; // Fondo rojo claro
                     } else {
-                        card.classList.remove('opacity-50', 'opacity-60', 'cursor-not-allowed');
+                        card.classList.remove('opacity-50', 'cursor-not-allowed');
                         card.style.pointerEvents = 'auto';
-                        card.style.backgroundColor = '';
                     }
                 });
             }
 
-            function resetForm() {
-                // Limpiar formulario
-                document.getElementById('productive_unit_warehouse_id').value = '';
-                document.getElementById('description').value = '';
-                
-                // Limpiar lista de insumos
-                equipmentList.innerHTML = '';
-                selectedEquipments.clear();
-                equipmentCounter = 0;
-                noEquipmentMessage.style.display = 'block';
-                
-                // Actualizar tarjetas
-                updateEquipmentCards();
-            }
+            // === FUNCIONALIDAD DEL CATÁLOGO (SI SE USA EL BUSCADOR PRINCIPAL) ===
 
-            // Validar formulario antes de enviar
-            document.getElementById('request-form').addEventListener('submit', function(e) {
+            window.addEquipmentToRequest = function(equipmentId) {
+                const card = Array.from(equipmentCards).find(c => c.dataset.equipmentId === equipmentId);
+                if (card) {
+                    addEquipmentToList(card);
+                    if (requestModal.classList.contains('hidden')) requestModal.classList.remove('hidden');
+                    if (!catalogSearchModal.classList.contains('hidden')) catalogSearchModal.classList.add('hidden');
+                }
+            };
+
+            // Validación de envío
+            requestForm.addEventListener('submit', function(e) {
                 if (selectedEquipments.size === 0) {
                     e.preventDefault();
-                    alert('Debe seleccionar al menos un insumo para la solicitud.');
-                    return false;
-                }
-
-                // Validar cantidades
-                const amountInputs = document.querySelectorAll('input[name*="[amount]"]');
-                let hasErrors = false;
-
-                amountInputs.forEach(input => {
-                    const maxAmount = parseInt(input.max);
-                    const currentAmount = parseInt(input.value);
-
-                    if (currentAmount > maxAmount) {
-                        input.setCustomValidity(`La cantidad no puede ser mayor a ${maxAmount}`);
-                        hasErrors = true;
-                    } else if (currentAmount < 1) {
-                        input.setCustomValidity('La cantidad debe ser al menos 1');
-                        hasErrors = true;
-                    } else {
-                        input.setCustomValidity('');
-                    }
-                });
-
-                if (hasErrors) {
-                    e.preventDefault();
-                    alert('Por favor, corrija los errores en las cantidades antes de enviar.');
-                    return false;
-                }
-            });
-
-            // Validar longitud de descripción
-            const descriptionTextarea = document.getElementById('description');
-            descriptionTextarea.addEventListener('input', function() {
-                const maxLength = 500;
-                const currentLength = this.value.length;
-                
-                if (currentLength > maxLength) {
-                    this.setCustomValidity(`La descripción no puede tener más de ${maxLength} caracteres`);
-                } else {
-                    this.setCustomValidity('');
+                    alert('Seleccione al menos un insumo');
                 }
             });
         });

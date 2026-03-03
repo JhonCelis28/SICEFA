@@ -1,0 +1,190 @@
+@startuml Diagrama de Actividades - INFRASTOCK
+
+skinparam shadowing false
+skinparam defaultFontSize 10
+skinparam ActivityBorderColor #333
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ArrowColor #555
+skinparam DiamondBorderColor #333
+skinparam DiamondBackgroundColor #FFFDE7
+skinparam PartitionBorderColor #333
+skinparam SwimlaneBorderColor #333
+
+title **Diagrama de Actividades - Módulo INFRASTOCK**\nFlujo General del Sistema
+
+start
+
+:Usuario ingresa al sistema;
+
+:Iniciar sesión\n(Autenticación SICA);
+
+if (¿Credenciales\nválidas?) then (Sí)
+else (No)
+    :Mostrar mensaje\nde error;
+    stop
+endif
+
+:Detectar rol del usuario;
+
+if (¿Rol del\nusuario?) then (Administrador)
+
+    partition "**FLUJO DEL ADMINISTRADOR**" {
+
+        :Acceder al Dashboard\nAdministrador;
+
+        repeat
+
+            :Seleccionar módulo;
+
+            switch (¿Qué acción?)
+            case (Gestionar\nInsumos)
+                :CRUD de Insumos\n(crear, editar,\neliminar, listar);
+                :Asignar categoría\ny área productiva;
+                :Controlar stock\ny fecha de vencimiento;
+
+            case (Gestionar\nHerramientas)
+                :CRUD de Herramientas\n(crear, editar,\neliminar, listar);
+                :Asignar categoría;
+
+            case (Gestionar\nCategorías)
+                :CRUD de Categorías;
+
+            case (Gestionar\nÁreas)
+                :CRUD de Áreas\nProductivas y Almacenes;
+
+            case (Gestionar\nUsuarios)
+                :CRUD de Usuarios;
+                :Asignar roles;
+                :Activar / Desactivar;
+
+            case (Revisar\nSolicitudes)
+                :Ver solicitudes\npendientes;
+
+                if (¿Aprobar o\nRechazar?) then (Aprobar)
+                    :Cambiar estado a\n"approved";
+                    :Verificar stock\ndisponible;
+                    :Crear movimiento\nde almacén (Entrega);
+                    :Crear registro de\nsobrante (pendiente);
+                    :Enviar notificación\nal solicitante\n(request_approved);
+                else (Rechazar)
+                    :Ingresar motivo\nde rechazo;
+                    :Cambiar estado a\n"rejected";
+                    :Enviar notificación\nal solicitante\n(request_rejected);
+                endif
+
+            case (Revisar\nPréstamos)
+                :Ver préstamos\npendientes;
+
+                if (¿Aprobar o\nRechazar?) then (Aprobar)
+                    :Cambiar estado a\n"approved";
+                    :Enviar notificación\n(loan_approved);
+                else (Rechazar)
+                    :Ingresar motivo\nde rechazo;
+                    :Cambiar estado a\n"rejected";
+                    :Enviar notificación\n(loan_rejected);
+                endif
+
+            case (Revisar\nDevoluciones)
+                :Ver devoluciones\npendientes;
+
+                if (¿Aprobar o\nRechazar?) then (Aprobar)
+                    :Cambiar estado a\n"approved";
+                    :Crear movimiento\nde almacén (Recibe);
+                    :Restaurar stock\nen inventario;
+                    :Enviar notificación\n(return_approved);
+                else (Rechazar)
+                    :Ingresar motivo;
+                    :Cambiar estado a\n"rejected";
+                    :Enviar notificación\n(return_rejected);
+                endif
+
+            case (Revisar\nSobrantes)
+                :Ver reportes de\nsobrantes pendientes;
+
+                if (¿Aprobar o\nRechazar?) then (Aprobar)
+                    :Cambiar estado a\n"approved";
+                    :Crear movimiento\nde almacén (Recibe);
+                    :Restaurar stock;
+                else (Rechazar)
+                    :Ingresar motivo;
+                    :Cambiar estado a\n"rejected";
+                endif
+
+            case (Ver\nReportes)
+                :Generar reportes\ndel sistema;
+                :Exportar a\nPDF / Excel;
+
+            endswitch
+
+        repeat while (¿Continuar\nen el sistema?) is (Sí) not (No)
+    }
+
+else (Personal de Área /\nOperario / Instructor)
+
+    partition "**FLUJO DEL USUARIO POR ROL**" {
+
+        :Acceder al Dashboard\nsegún su rol;
+
+        repeat
+
+            :Seleccionar acción;
+
+            switch (¿Qué acción?)
+            case (Solicitar\nInsumos)
+                :Seleccionar insumo\ndel catálogo;
+                :Indicar cantidad\nrequerida;
+                :Seleccionar área\nproductiva destino;
+                :Enviar solicitud\n(estado: pending);
+                :Esperar aprobación\ndel administrador;
+
+                if (¿Resultado?) then (Aprobada)
+                    :Recibir notificación\nde aprobación;
+                    :Recibir insumos;
+
+                    if (¿Hay\nsobrantes?) then (Sí)
+                        :Reportar sobrantes\n(cantidad, motivo, fecha);
+                        :Enviar reporte\n(estado: pending);
+                        :Notificar al\nadministrador\n(surplus_reported);
+                    else (No)
+                        :Utilizar insumos;
+                    endif
+
+                else (Rechazada)
+                    :Recibir notificación\nde rechazo con motivo;
+                endif
+
+            case (Solicitar\nPréstamo de\nHerramienta)
+                :Seleccionar\nherramienta;
+                :Enviar solicitud\nde préstamo\n(estado: pending);
+                :Esperar aprobación;
+
+                if (¿Resultado?) then (Aprobado)
+                    :Recibir notificación\nde aprobación;
+                    :Recibir herramienta;
+                    :Usar herramienta;
+                    :Registrar devolución\nde herramienta;
+                    :Esperar confirmación\nde devolución;
+                else (Rechazado)
+                    :Recibir notificación\nde rechazo con motivo;
+                endif
+
+            case (Ver\nNotificaciones)
+                :Ver listado de\nnotificaciones;
+                :Marcar como leídas;
+                :Consultar estado de\nsolicitudes/préstamos;
+
+            case (Editar\nPerfil)
+                :Actualizar datos\npersonales;
+
+            endswitch
+
+        repeat while (¿Continuar\nen el sistema?) is (Sí) not (No)
+    }
+
+endif
+
+:Cerrar sesión;
+
+stop
+
+@enduml

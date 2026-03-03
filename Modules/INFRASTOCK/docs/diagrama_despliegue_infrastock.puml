@@ -1,0 +1,57 @@
+@startuml Diagrama de Despliegue - INFRASTOCK
+
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam handwritten false
+skinparam NodeBorderColor #333
+skinparam ComponentBorderColor #333
+skinparam ArtifactBorderColor #333
+skinparam DatabaseBorderColor #333
+skinparam ArrowColor #333
+
+title **Diagrama de Despliegue - Módulo INFRASTOCK**
+
+' ============= USUARIOS =============
+node "Usuarios" as USERS {
+    artifact "Navegador Web\n(Chrome/Edge/Firefox)" as BROWSER
+}
+
+' ============= SERVIDOR WEB =============
+node "Servidor Web" as SERVER {
+
+    artifact "Aplicación INFRASTOCK\n(PHP 8.2 / Laravel 8.x)" as APP
+
+    artifact "Módulo de Seguridad\n(Autenticación/Autorización)" as SEG
+
+    artifact "Módulo de Gestión\nde Inventario\n(Insumos/Herramientas)" as INV
+
+    artifact "Módulo de Préstamos\ny Devoluciones" as PREST
+
+    artifact "Módulo de Solicitudes\nde Insumos" as SOLIC
+
+    artifact "Módulo de Sobrantes" as SOBR
+
+    artifact "Módulo de\nNotificaciones\ny Correo (SMTP)" as NOTIF
+
+    artifact "Módulo de Reportes\n(PDF/Excel)" as REP
+}
+
+' ============= BASE DE DATOS =============
+database "Base de Datos SICEFA\n(MySQL)" as DB
+
+' ============= SERVIDOR CORREO =============
+node "Servidor de Correo\n(SMTP)" as SMTP
+
+' ============= CONEXIONES =============
+USERS -down-> SERVER : HTTPS
+APP -down-> SEG
+APP -down-> INV
+APP -down-> PREST
+APP -down-> SOLIC
+APP -down-> SOBR
+APP -down-> NOTIF
+APP -down-> REP
+SERVER -down-> DB : TCP/IP\n(Eloquent ORM)
+NOTIF -right-> SMTP : SMTP\nPuerto 587
+
+@enduml

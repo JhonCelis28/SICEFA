@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @class CienciasBasicasController
@@ -38,7 +39,7 @@ class CienciasBasicasController extends Controller
     {
         $user = auth()->user();
         $userRoles = $user->roles->pluck('name')->toArray();
-        
+
         if (!in_array('Ciencias Basicas', $userRoles)) {
             abort(403, 'No tienes permiso para acceder a esta sección. Solo usuarios con rol de Ciencias Basicas pueden acceder.');
         }
@@ -52,7 +53,7 @@ class CienciasBasicasController extends Controller
     {
         $this->verifyRole();
         $user = auth()->user();
-        
+
         // Obtener estadísticas del usuario actual basadas en solicitudes
         $pendingRequests = InfrastockRequest::where('user_id', $user->id)
             ->where('status', 'pending')
@@ -84,20 +85,20 @@ class CienciasBasicasController extends Controller
             ->where('user_id', $user->id)
             ->whereIn('status', ['approved', 'delivered'])
             ->get()
-            ->flatMap(function($request) {
-                return $request->items;
-            })
+            ->flatMap(function ($request) {
+            return $request->items;
+        })
             ->groupBy('equipment_id')
-            ->map(function($items) {
-                return [
-                    'equipment' => $items->first()->equipment ?? null,
-                    'request_count' => $items->count(),
-                    'total_amount_requested' => $items->sum('requested_amount')
-                ];
-            })
-            ->filter(function($item) {
-                return $item['equipment'] !== null;
-            })
+            ->map(function ($items) {
+            return [
+            'equipment' => $items->first()->equipment ?? null,
+            'request_count' => $items->count(),
+            'total_amount_requested' => $items->sum('requested_amount')
+            ];
+        })
+            ->filter(function ($item) {
+            return $item['equipment'] !== null;
+        })
             ->sortByDesc('request_count')
             ->first();
 
@@ -105,7 +106,7 @@ class CienciasBasicasController extends Controller
 
         return view('infrastock::ciencias-basicas.dashboard', compact(
             'pendingRequests',
-            'approvedRequests', 
+            'approvedRequests',
             'deliveredRequests',
             'rejectedRequests',
             'notifications',
@@ -136,31 +137,32 @@ class CienciasBasicasController extends Controller
         // Filtro por búsqueda (nombre o código)
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
+                    ->orWhere('id', 'like', "%{$search}%");
             });
         }
 
         // Filtro por stock bajo
         if ($request->has('low_stock')) {
             $equipments = $query->get();
-            $equipments = $equipments->filter(function($equipment) {
+            $equipments = $equipments->filter(function ($equipment) {
                 return $equipment->stock <= 10 && $equipment->stock > 0;
             });
-        } else {
+        }
+        else {
             $equipments = $query->get();
         }
 
         // Obtener solo categorías permitidas (excluir aseo)
-        $categories = InfrastockCategory::where(function($q) {
-                $q->where('name', 'not like', '%aseo%')
-                  ->where('name', 'not like', '%Aseo%')
-                  ->where('name', 'not like', '%limpieza%')
-                  ->where('name', 'not like', '%Limpieza%')
-                  ->where('name', 'not like', '%cleaning%')
-                  ->where('name', 'not like', '%Cleaning%');
-            })
+        $categories = InfrastockCategory::where(function ($q) {
+            $q->where('name', 'not like', '%aseo%')
+                ->where('name', 'not like', '%Aseo%')
+                ->where('name', 'not like', '%limpieza%')
+                ->where('name', 'not like', '%Limpieza%')
+                ->where('name', 'not like', '%cleaning%')
+                ->where('name', 'not like', '%Cleaning%');
+        })
             ->orderBy('name')
             ->get();
 
@@ -168,10 +170,10 @@ class CienciasBasicasController extends Controller
         $allEquipmentsForStats = Equipment::all();
         $totalEquipment = $allEquipmentsForStats->count();
         $totalStock = $allEquipmentsForStats->sum('stock');
-        $lowStockCount = $allEquipmentsForStats->filter(function($equipment) {
+        $lowStockCount = $allEquipmentsForStats->filter(function ($equipment) {
             return $equipment->stock <= 10 && $equipment->stock > 0;
         })->count();
-        $outOfStockCount = $allEquipmentsForStats->filter(function($equipment) {
+        $outOfStockCount = $allEquipmentsForStats->filter(function ($equipment) {
             return $equipment->stock == 0;
         })->count();
 
@@ -223,22 +225,24 @@ class CienciasBasicasController extends Controller
      */
     private function excludeCleaningCategories($query)
     {
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             // Opción 1: Tiene categoría que NO es de aseo
-            $q->whereHas('category', function($categoryQuery) {
-                $categoryQuery->where(function($excludeQuery) {
-                    // Excluir aseo/limpieza explícitamente
-                    $excludeQuery->where('name', 'not like', '%aseo%')
-                                 ->where('name', 'not like', '%Aseo%')
-                                 ->where('name', 'not like', '%limpieza%')
-                                 ->where('name', 'not like', '%Limpieza%')
-                                 ->where('name', 'not like', '%cleaning%')
-                                 ->where('name', 'not like', '%Cleaning%');
+            $q->whereHas('category', function ($categoryQuery) {
+                    $categoryQuery->where(function ($excludeQuery) {
+                            // Excluir aseo/limpieza explícitamente
+                            $excludeQuery->where('name', 'not like', '%aseo%')
+                                ->where('name', 'not like', '%Aseo%')
+                                ->where('name', 'not like', '%limpieza%')
+                                ->where('name', 'not like', '%Limpieza%')
+                                ->where('name', 'not like', '%cleaning%')
+                                ->where('name', 'not like', '%Cleaning%');
+                        }
+                        );
+                    }
+                    )
+                        // Opción 2: No tiene categoría (permitir para flexibilidad)
+                        ->orWhereNull('category_id');
                 });
-            })
-            // Opción 2: No tiene categoría (permitir para flexibilidad)
-            ->orWhereNull('category_id');
-        });
     }
 
     /**
@@ -253,38 +257,38 @@ class CienciasBasicasController extends Controller
         // Filtrar equipos: excluir categorías de aseo (herramientas e insumos generales)
         $query = Equipment::with('category')
             ->orderBy('name');
-        
+
         $equipments = $this->excludeCleaningCategories($query)->get()
-            ->map(function($equipment) {
-                return [
-                    'id' => $equipment->id,
-                    'name' => $equipment->name,
-                    'category' => $equipment->category->name ?? 'Sin categoría',
-                    'stock' => $equipment->stock,
-                    'unit' => $equipment->unit ?? 'unidades',
-                    'description' => $equipment->description ?? '',
-                    'price' => $equipment->price ?? 0,
-                ];
-            });
+            ->map(function ($equipment) {
+            return [
+            'id' => $equipment->id,
+            'name' => $equipment->name,
+            'category' => $equipment->category->name ?? 'Sin categoría',
+            'stock' => $equipment->stock,
+            'unit' => $equipment->unit ?? 'unidades',
+            'description' => $equipment->description ?? '',
+            'price' => $equipment->price ?? 0,
+            ];
+        });
 
         $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')
             ->get()
-            ->map(function($puw) {
-                return [
-                    'id' => $puw->id,
-                    'productive_unit' => $puw->productiveUnit->name ?? 'Sin nombre',
-                    'warehouse' => $puw->warehouse->name ?? 'Sin nombre',
-                    'full_name' => ($puw->productiveUnit->name ?? 'Sin nombre') . ' - ' . ($puw->warehouse->name ?? 'Sin nombre'),
-                ];
-            });
+            ->map(function ($puw) {
+            return [
+            'id' => $puw->id,
+            'productive_unit' => $puw->productiveUnit->name ?? 'Sin nombre',
+            'warehouse' => $puw->warehouse->name ?? 'Sin nombre',
+            'full_name' => ($puw->productiveUnit->name ?? 'Sin nombre') . ' - ' . ($puw->warehouse->name ?? 'Sin nombre'),
+            ];
+        });
 
         // Si es una petición AJAX o espera JSON, retornar JSON
         $acceptHeader = $request->header('Accept', '');
-        if ($request->ajax() || 
-            $request->wantsJson() || 
-            $request->expectsJson() ||
-            $acceptHeader === 'application/json' ||
-            strpos($acceptHeader, 'application/json') !== false) {
+        if ($request->ajax() ||
+        $request->wantsJson() ||
+        $request->expectsJson() ||
+        $acceptHeader === 'application/json' ||
+        strpos($acceptHeader, 'application/json') !== false) {
             return response()->json([
                 'success' => true,
                 'equipments' => $equipments,
@@ -324,7 +328,7 @@ class CienciasBasicasController extends Controller
         // Validar cada insumo seleccionado
         foreach ($request->equipments as $equipmentId => $equipmentData) {
             $equipment = Equipment::find($equipmentId);
-            
+
             if (!$equipment) {
                 $errors[] = "El insumo con ID {$equipmentId} no existe.";
                 continue;
@@ -404,7 +408,7 @@ class CienciasBasicasController extends Controller
             ]);
 
             $totalItems = count($validItems);
-            $message = $totalItems === 1 
+            $message = $totalItems === 1
                 ? 'Solicitud de insumo creada exitosamente.'
                 : "Solicitud creada exitosamente con {$totalItems} insumos.";
 
@@ -420,7 +424,8 @@ class CienciasBasicasController extends Controller
             return redirect()->route('infrastock.ciencias-basicas.requests.index')
                 ->with('success', $message);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             $errorMessage = 'Error al crear la solicitud: ' . $e->getMessage();
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -441,14 +446,14 @@ class CienciasBasicasController extends Controller
     {
         $this->verifyRole();
         $user = auth()->user();
-        
+
         $query = InfrastockRequest::with([
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
             'productiveUnitWarehouse.warehouse',
             'user'
         ])->where('user_id', $user->id);
-        
+
         // Filtrar por estado si se proporciona
         $status = $request->get('status');
         if ($status) {
@@ -458,15 +463,16 @@ class CienciasBasicasController extends Controller
         // Búsqueda por texto
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('items.equipment', function($eq) use ($search) {
-                      $eq->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('items.equipment', function ($eq) use ($search) {
+                    $eq->where('name', 'like', "%{$search}%");
+                }
+                );
             });
         }
-        
+
         $requests = $query->orderBy('created_at', 'desc')->paginate(10);
 
         // Obtener equipos disponibles para el modal
@@ -489,7 +495,7 @@ class CienciasBasicasController extends Controller
      */
     public function showRequest($id)
     {
-                $this->verifyRole();
+        $this->verifyRole();
         $request = InfrastockRequest::with([
             'items.equipment.category',
             'productiveUnitWarehouse.productiveUnit',
@@ -515,8 +521,8 @@ class CienciasBasicasController extends Controller
                 'productive_unit' => $request->productiveUnitWarehouse->productiveUnit->name ?? 'N/A',
                 'warehouse' => $request->productiveUnitWarehouse->warehouse->name ?? 'N/A',
                 'user' => $request->user->nickname ?? $request->user->name ?? 'N/A',
-                'items' => $request->items->map(function($item) {
-                    return [
+                'items' => $request->items->map(function ($item) {
+                return [
                         'equipment_name' => $item->equipment->name ?? 'N/A',
                         'equipment_category' => $item->equipment->category->name ?? 'N/A',
                         'status' => $item->status,
@@ -526,36 +532,32 @@ class CienciasBasicasController extends Controller
                         'returned_amount' => \Modules\INFRASTOCK\Entities\Surplus::where('request_item_id', $item->id)->sum('surplus_amount'),
                         'unit' => $item->equipment->unit_measure ?? $item->equipment->unit ?? 'unidades',
                     ];
-                })
+            })
             ]);
         }
 
-    return view('infrastock::ciencias-basicas.show-request', compact('request'));
-}
+        return view('infrastock::ciencias-basicas.show-request', compact('request'));    }
+    /**
+     * Muestra el formulario para editar una solicitud.
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */    public function editRequest($id)    {
+        $this->verifyRole();
+        $request = InfrastockRequest::with([
+            'items.equipment.category',
+            'productiveUnitWarehouse.productiveUnit',
+            'productiveUnitWarehouse.warehouse'
+        ])->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending')
+            ->first();
 
-/**
- * Muestra el formulario para editar una solicitud.
- * @param int $id
- * @return \Illuminate\Http\JsonResponse
- */
-public function editRequest($id)
-{
-    $this->verifyRole();
-    $request = InfrastockRequest::with([
-        'items.equipment.category',
-        'productiveUnitWarehouse.productiveUnit',
-        'productiveUnitWarehouse.warehouse'
-    ])->where('id', $id)
-        ->where('user_id', auth()->id())
-        ->where('status', 'pending')
-        ->first();
+        if (!$request) {
+            return response()->json(['error' => 'Solicitud no encontrada o no se puede editar'], 404);
+        }
 
-    if (!$request) {
-        return response()->json(['error' => 'Solicitud no encontrada o no se puede editar'], 404);
-    }
-
-    $items = $request->items->map(function($item) {
-        return [
+        $items = $request->items->map(function ($item) {
+            return [
             'id' => $item->id,
             'equipment_id' => $item->equipment_id,
             'equipment_name' => $item->equipment->name ?? 'N/A',
@@ -563,16 +565,15 @@ public function editRequest($id)
             'requested_amount' => $item->requested_amount,
             'unit' => $item->equipment->unit_measure ?? $item->equipment->unit ?? 'unidades',
             'stock' => $item->equipment->amount ?? $item->equipment->stock ?? 0,
-        ];
-    });
+            ];
+        });
 
-    return response()->json([
-        'id' => $request->id,
-        'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
-        'description' => $request->description,
-        'items' => $items,
-    ]);
-}
+        return response()->json([
+            'id' => $request->id,
+            'productive_unit_warehouse_id' => $request->productive_unit_warehouse_id,
+            'description' => $request->description,
+            'items' => $items,
+        ]);    }
 
     /**
      * Actualiza una solicitud existente.
@@ -632,7 +633,8 @@ public function editRequest($id)
             }
             return redirect()->route('infrastock.ciencias-basicas.requests.index')
                 ->with('success', 'Solicitud actualizada exitosamente.');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             if ($requestParam->ajax() || $requestParam->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -680,14 +682,14 @@ public function editRequest($id)
     {
         $this->verifyRole();
         $user = auth()->user();
-        
+
         $notifications = Notification::where('notifiable_type', 'App\Models\User')
             ->where('notifiable_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         // Cargar las solicitudes relacionadas con las notificaciones
-        $requestIds = $notifications->pluck('data')->filter(function($data) {
+        $requestIds = $notifications->pluck('data')->filter(function ($data) {
             return isset($data['request_id']);
         })->pluck('request_id')->unique()->toArray();
 
@@ -753,7 +755,7 @@ public function editRequest($id)
     {
         $this->verifyRole();
         $user = auth()->user();
-        
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
@@ -798,7 +800,8 @@ public function editRequest($id)
             return redirect()->route('infrastock.ciencias-basicas.profile')
                 ->with('success', 'Perfil actualizado exitosamente.');
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return redirect()->route('infrastock.ciencias-basicas.profile')
                 ->with('error', 'Error al actualizar el perfil: ' . $e->getMessage());
         }
@@ -816,30 +819,31 @@ public function editRequest($id)
 
         // 1. Obtener solicitudes entregadas para el selector de solicitudes
         // Solo solicitudes que tengan ítems con saldo pendiente de devolución
-        $deliveredRequests = InfrastockRequest::with(['items' => function($query) {
-                $query->with(['equipment.category', 'surpluses']);
-            }])
+        $deliveredRequests = InfrastockRequest::with(['items' => function ($query) {
+            $query->with(['equipment.category', 'surpluses']);
+        }])
             ->where('user_id', $user->id)
             ->whereIn('status', ['approved', 'delivered'])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->filter(function($req) {
-                // Calcular el saldo restante para cada ítem en la solicitud
-                foreach($req->items as $item) {
-                    $returned = $item->surpluses->sum('surplus_amount');
-                    $base = $item->delivered_amount ?? $item->approved_amount ?? $item->requested_amount ?? 0;
-                    $item->remaining_amount = max(0, $base - $returned);
-                }
-                // Mantener la solicitud si al menos un ítem tiene saldo pendiente
-                return $req->items->contains(function($item) {
+            ->filter(function ($req) {
+            // Calcular el saldo restante para cada ítem en la solicitud
+            foreach ($req->items as $item) {
+                $returned = $item->surpluses->sum('surplus_amount');
+                $base = $item->delivered_amount ?? $item->approved_amount ?? $item->requested_amount ?? 0;
+                $item->remaining_amount = max(0, $base - $returned);
+            }
+            // Mantener la solicitud si al menos un ítem tiene saldo pendiente
+            return $req->items->contains(function ($item) {
                     return $item->remaining_amount > 0;
-                });
+                }
+                );
             });
 
         // Obtener herramientas e insumos generales (excluir aseo)
         $query = Equipment::with('category')
             ->orderBy('name');
-        
+
         $equipments = $this->excludeCleaningCategories($query)->get();
 
         // Obtener reportes de sobrantes del usuario
@@ -849,12 +853,13 @@ public function editRequest($id)
         // Filtro por búsqueda
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->whereHas('equipment', function($eq) use ($search) {
-                    $eq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhere('reason', 'like', "%{$search}%");
-            });
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('equipment', function ($eq) use ($search) {
+                        $eq->where('name', 'like', "%{$search}%");
+                    }
+                    )
+                        ->orWhere('reason', 'like', "%{$search}%");
+                });
         }
 
         // Filtro por fecha
@@ -905,9 +910,9 @@ public function editRequest($id)
         // Validar que el equipo no sea de categoría de aseo
         if ($requestItem->equipment && $requestItem->equipment->category) {
             $categoryName = strtolower($requestItem->equipment->category->name);
-            if (strpos($categoryName, 'aseo') !== false || 
-                strpos($categoryName, 'limpieza') !== false || 
-                strpos($categoryName, 'cleaning') !== false) {
+            if (strpos($categoryName, 'aseo') !== false ||
+            strpos($categoryName, 'limpieza') !== false ||
+            strpos($categoryName, 'cleaning') !== false) {
                 return redirect()->back()->with('error', 'No puedes registrar sobrantes de insumos de aseo.');
             }
         }
@@ -917,7 +922,7 @@ public function editRequest($id)
         $alreadyReturned = Surplus::where('request_item_id', $requestItem->id)
             ->whereIn('status', ['pending', 'approved'])
             ->sum('surplus_amount');
-        
+
         $remaining = $delivered - $alreadyReturned;
 
         if ($request->surplus_amount > $remaining) {
@@ -944,8 +949,9 @@ public function editRequest($id)
             return redirect()->route('infrastock.ciencias-basicas.surplus-report')
                 ->with('success', 'Reporte de sobrantes registrado exitosamente.');
 
-        } catch (\Exception $e) {
-            \Log::error('Error al registrar sobrante: ' . $e->getMessage());
+        }
+        catch (\Exception $e) {
+            Log::error('Error al registrar sobrante: ' . $e->getMessage());
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error al registrar el reporte: ' . $e->getMessage());
@@ -1002,7 +1008,8 @@ public function editRequest($id)
             $surplus->delete();
             return redirect()->route('infrastock.ciencias-basicas.surplus-report')
                 ->with('success', 'Sobrante eliminado exitosamente.');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return redirect()->route('infrastock.ciencias-basicas.surplus-report')
                 ->with('error', 'Error al eliminar el sobrante: ' . $e->getMessage());
         }
@@ -1016,10 +1023,10 @@ public function editRequest($id)
     public function logout(Request $request)
     {
         auth()->logout();
-        
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('cefa.welcome')
             ->with('success', 'Has cerrado sesión correctamente.');
     }
@@ -1027,14 +1034,14 @@ public function editRequest($id)
     /**
      * Enviar notificación al administrador cuando se crea una nueva solicitud
      */
-        private function notifyAdminNewRequest($request)
+    private function notifyAdminNewRequest($request)
     {
         try {
-            $admins = User::whereHas('roles', function($query) {
+            $admins = User::whereHas('roles', function ($query) {
                 $query->where('slug', 'infrastock.admin')
-                      ->orWhere('slug', 'superadmin')
-                      ->orWhere('name', 'Administrador')
-                      ->orWhere('name', 'Super Administrador');
+                    ->orWhere('slug', 'superadmin')
+                    ->orWhere('name', 'Administrador')
+                    ->orWhere('name', 'Super Administrador');
             })->get();
 
             $totalItems = $request->items->count();
@@ -1064,7 +1071,8 @@ public function editRequest($id)
                 ]);
             }
             Log::info('Notificación enviada a ' . $admins->count() . ' administradores para solicitud #' . $request->id);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error enviando notificación al administrador: ' . $e->getMessage());
         }
     }
@@ -1076,11 +1084,11 @@ public function editRequest($id)
     {
         try {
             // Buscar usuarios con roles de administrador de INFRASTOCK por slug o nombre
-            $admins = User::whereHas('roles', function($query) {
+            $admins = User::whereHas('roles', function ($query) {
                 $query->where('slug', 'infrastock.admin')
-                      ->orWhere('slug', 'superadmin')
-                      ->orWhere('name', 'Administrador')
-                      ->orWhere('name', 'Super Administrador');
+                    ->orWhere('slug', 'superadmin')
+                    ->orWhere('name', 'Administrador')
+                    ->orWhere('name', 'Super Administrador');
             })->get();
 
             foreach ($admins as $admin) {
@@ -1100,8 +1108,9 @@ public function editRequest($id)
                     ],
                 ]);
             }
-        } catch (\Exception $e) {
-            \Log::error('Error enviando notificación de sobrantes al administrador: ' . $e->getMessage());
+        }
+        catch (\Exception $e) {
+            Log::error('Error enviando notificación de sobrantes al administrador: ' . $e->getMessage());
         }
     }
 }

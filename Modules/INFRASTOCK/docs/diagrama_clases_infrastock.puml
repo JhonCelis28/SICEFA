@@ -1,0 +1,367 @@
+@startuml Diagrama de Clases - Módulo INFRASTOCK
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 12
+skinparam classHeaderBackgroundColor #2E7D32
+skinparam classHeaderFontColor #FFFFFF
+skinparam classBorderColor #1B5E20
+skinparam classBackgroundColor #F1F8E9
+skinparam ArrowColor #333333
+skinparam stereotypeCBackgroundColor #C8E6C9
+skinparam packageBackgroundColor #FAFAFA
+skinparam packageBorderColor #388E3C
+skinparam shadowing false
+skinparam linetype ortho
+
+title **Diagrama de Clases - Módulo INFRASTOCK**\n Sistema de Gestión de Inventario, Préstamos y Solicitudes\n SICEFA - Centro de Formación Agropecuaria
+
+' =========================================
+' PAQUETE: Gestión de Inventario
+' =========================================
+package "Gestión de Inventario" #E8F5E9 {
+
+    class Equipment <<(E,#4CAF50) Entity>> {
+        - id : bigint <<PK>>
+        - labor_id : bigint <<FK>>
+        - inventory_id : bigint <<FK>>
+        - category_id : bigint <<FK>>
+        - name : string
+        - characteristics : text
+        - amount : int
+        - initial_amount : int
+        - minimum_stock : int
+        - unit_measure : string
+        - price : decimal
+        - expiration_date : date
+        - observations : text
+        - status : enum
+        - deleted_at : timestamp
+        --
+        + category() : BelongsTo
+        + labor() : BelongsTo
+        + inventory() : BelongsTo
+        + getUsedAmountAttribute() : int
+        + getInitialAmountAttribute() : int
+        + getStockAttribute() : int
+        + hasStockFor(amount) : bool
+        + calculateStatus() : string
+        + getStatusColorAttribute() : string
+        + getStatusTextAttribute() : string
+    }
+
+    class Tool <<(E,#4CAF50) Entity>> {
+        - id : bigint <<PK>>
+        - labor_id : bigint <<FK>>
+        - inventory_id : bigint <<FK>>
+        - category_id : bigint <<FK>>
+        - nombre : string
+        - imagen : string
+        - placa : string
+        - descripcion : text
+        - descripcion_actual : text
+        - marca : string
+        - modelo : string
+        - estado : string
+        - cantidad_total : int
+        - cantidad_disponible : int
+        - fecha_mantenimiento : date
+        - proximo_mantenimiento : date
+        - fecha_adquisicion : date
+        - atributos : text
+        - amount : int
+        - price : decimal
+        - deleted_at : timestamp
+        --
+        + category() : BelongsTo
+        + labor() : BelongsTo
+        + inventory() : BelongsTo
+    }
+
+    class InfrastockCategory <<(E,#4CAF50) Entity>> {
+        - id : bigint <<PK>>
+        - name : string
+        - type : string
+        - deleted_at : timestamp
+        --
+        + equipments() : HasMany
+        + tools() : HasMany
+    }
+
+    class Inventory <<(E,#4CAF50) Entity>> {
+        - id : bigint <<PK>>
+        - person_id : bigint <<FK>>
+        - productive_unit_warehouse_id : bigint <<FK>>
+        - element_id : bigint <<FK>>
+        - destination : string
+        - description : text
+        - price : decimal
+        - amount : int
+        - stock : int
+        - production_date : date
+        - lot_number : string
+        - expiration_date : date
+        - state : string
+        - mark : string
+        - inventory_code : string
+        - deleted_at : timestamp
+    }
+
+    class Labor <<(E,#4CAF50) Entity>> {
+        - id : bigint <<PK>>
+        - activity_id : bigint <<FK>>
+        - person_id : bigint <<FK>>
+        - planning_date : date
+        - execution_date : date
+        - description : text
+        - price : decimal
+        - status : string
+        - observations : text
+        - destination : string
+        - deleted_at : timestamp
+    }
+}
+
+' =========================================
+' PAQUETE: Ubicaciones y Almacenes
+' =========================================
+package "Ubicaciones y Almacenes" #E3F2FD {
+
+    class ProductiveUnit <<(E,#1976D2) Entity>> {
+        - id : bigint <<PK>>
+        - name : string
+        - description : text
+        - icon : string
+        - person_id : bigint <<FK>>
+        - sector_id : bigint <<FK>>
+        - farm_id : bigint <<FK>>
+        - deleted_at : timestamp
+    }
+
+    class Warehouse <<(E,#1976D2) Entity>> {
+        - id : bigint <<PK>>
+        - name : string
+        - description : text
+        - app_id : bigint <<FK>>
+        - deleted_at : timestamp
+    }
+
+    class ProductiveUnitWarehouse <<(E,#1976D2) Entity>> {
+        - id : bigint <<PK>>
+        - productive_unit_id : bigint <<FK>>
+        - warehouse_id : bigint <<FK>>
+        - deleted_at : timestamp
+        --
+        + productiveUnit() : BelongsTo
+        + warehouse() : BelongsTo
+    }
+}
+
+' =========================================
+' PAQUETE: Movimientos y Préstamos
+' =========================================
+package "Movimientos y Préstamos" #FFF3E0 {
+
+    class WarehouseMovement <<(E,#E65100) Entity>> {
+        - id : bigint <<PK>>
+        - productive_unit_warehouse_id : bigint <<FK>>
+        - movement_id : bigint <<FK>> {nullable}
+        - equipment_id : bigint <<FK>>
+        - user_id : bigint <<FK>>
+        - surplus_id : bigint <<FK>>
+        - role : string
+        - item_type : string
+        - amount : int
+        - status : enum
+        - description : text
+        - imagen : string
+        - purpose : text
+        - required_date : date
+        - delivery_image : string
+        - return_image : string
+        - deleted_at : timestamp
+        --
+        + productiveUnitWarehouse() : BelongsTo
+        + user() : BelongsTo
+        + equipment() : BelongsTo
+        + tool() : BelongsTo
+        + surplus() : BelongsTo
+    }
+
+    note right of WarehouseMovement
+        **role**: Préstamo | Devolución | Entrega | Recibe
+        **item_type**: equipment | tool
+        **status**: pending | approved | rejected
+    end note
+}
+
+' =========================================
+' PAQUETE: Solicitudes de Insumos
+' =========================================
+package "Solicitudes de Insumos" #FCE4EC {
+
+    class Request <<(E,#C62828) Entity>> {
+        - id : bigint <<PK>>
+        - user_id : bigint <<FK>>
+        - productive_unit_warehouse_id : bigint <<FK>>
+        - approved_by : bigint <<FK>>
+        - description : text
+        - status : string
+        - approved_at : datetime
+        - rejected_at : datetime
+        - rejection_reason : string
+        --
+        + user() : BelongsTo
+        + productiveUnitWarehouse() : BelongsTo
+        + approver() : BelongsTo
+        + items() : HasMany
+        + getTotalItemsAttribute() : int
+        + getTotalRequestedAmountAttribute() : int
+        + scopePending(query)
+        + scopeApproved(query)
+        + scopeRejected(query)
+    }
+
+    class RequestItem <<(E,#C62828) Entity>> {
+        - id : bigint <<PK>>
+        - request_id : bigint <<FK>>
+        - equipment_id : bigint <<FK>>
+        - requested_amount : int
+        - approved_amount : int
+        - delivered_amount : int
+        - status : string
+        - notes : text
+        --
+        + request() : BelongsTo
+        + equipment() : BelongsTo
+        + scopePending(query)
+        + scopeApproved(query)
+        + scopeRejected(query)
+        + scopeDelivered(query)
+    }
+
+    note right of Request
+        **status**: pending | approved
+                    | rejected | delivered
+    end note
+}
+
+' =========================================
+' PAQUETE: Sobrantes
+' =========================================
+package "Gestión de Sobrantes" #F3E5F5 {
+
+    class Surplus <<(E,#7B1FA2) Entity>> {
+        - id : bigint <<PK>>
+        - equipment_id : bigint <<FK>>
+        - user_id : bigint <<FK>>
+        - request_id : bigint <<FK>>
+        - request_item_id : bigint <<FK>>
+        - surplus_amount : int
+        - reason : text
+        - description : text
+        - surplus_date : date
+        - status : enum
+        - processed_at : datetime
+        - processed_by : string
+        --
+        + equipment() : BelongsTo
+        + user() : BelongsTo
+        + request() : BelongsTo
+        + requestItem() : BelongsTo
+        + isPending() : bool
+        + isApproved() : bool
+        + isRejected() : bool
+        + scopeByDateRange(query, start, end)
+        + scopeByUser(query, userId)
+        + scopeByEquipment(query, equipId)
+        + scopeByStatus(query, status)
+    }
+}
+
+' =========================================
+' PAQUETE: Notificaciones
+' =========================================
+package "Sistema de Notificaciones" #FFFDE7 {
+
+    class Notification <<(E,#F9A825) Entity>> {
+        - id : char(36) <<PK>> {UUID}
+        - type : string
+        - notifiable_type : string
+        - notifiable_id : bigint
+        - data : json
+        - read_at : datetime
+        --
+        + notifiable() : MorphTo
+        + markAsRead() : void
+        + isRead() : bool
+        + {static} createRequestCreatedNotification()
+        + {static} createRequestApprovedNotification()
+        + {static} createRequestRejectedNotification()
+    }
+
+    note right of Notification
+        **type**: request_created | request_approved
+                  | request_rejected | request_delivered
+                  | supply_expiring | surplus_reported
+                  | loan_created | loan_approved
+                  | loan_rejected
+    end note
+}
+
+' =========================================
+' CLASE EXTERNA: User (App\Models)
+' =========================================
+package "Sistema Principal (App)" #ECEFF1 {
+
+    class User <<(E,#546E7A) External>> {
+        - id : bigint <<PK>>
+        - person_id : bigint <<FK>>
+        - email : string
+        - password : string
+        - nickname : string
+        --
+        + roles() : BelongsToMany
+        + person() : BelongsTo
+    }
+}
+
+' =========================================
+' RELACIONES
+' =========================================
+
+' -- Inventario --
+InfrastockCategory "1" --o "0..*" Equipment : categoriza >
+InfrastockCategory "1" --o "0..*" Tool : categoriza >
+Labor "1" --o "0..*" Equipment : asociada a >
+Labor "1" --o "0..*" Tool : asociada a >
+Inventory "1" --o "0..*" Equipment : pertenece a >
+Inventory "1" --o "0..*" Tool : pertenece a >
+
+' -- Ubicaciones --
+ProductiveUnit "1" --o "0..*" ProductiveUnitWarehouse : tiene >
+Warehouse "1" --o "0..*" ProductiveUnitWarehouse : tiene >
+
+' -- Movimientos --
+ProductiveUnitWarehouse "1" --o "0..*" WarehouseMovement : origen/destino >
+User "1" --o "0..*" WarehouseMovement : realiza >
+Equipment "1" --o "0..*" WarehouseMovement : involucra >
+Tool "1" --o "0..*" WarehouseMovement : involucra >
+Surplus "1" --o "0..*" WarehouseMovement : asocia >
+
+' -- Solicitudes --
+User "1" --o "0..*" Request : crea >
+User "1" --o "0..*" Request : aprueba >
+ProductiveUnitWarehouse "1" --o "0..*" Request : destino >
+Request "1" *-- "1..*" RequestItem : contiene >
+Equipment "1" --o "0..*" RequestItem : solicitado >
+
+' -- Sobrantes --
+Equipment "1" --o "0..*" Surplus : genera >
+User "1" --o "0..*" Surplus : reporta >
+Request "1" --o "0..*" Surplus : origen >
+RequestItem "1" --o "0..*" Surplus : detalle >
+
+' -- Notificaciones (polimórfica) --
+User "1" ..o "0..*" Notification : recibe >
+
+@enduml

@@ -1,0 +1,116 @@
+@startuml Diagrama de Componentes - INFRASTOCK
+
+skinparam shadowing false
+skinparam defaultFontSize 10
+skinparam handwritten false
+skinparam ComponentBorderColor #333
+skinparam NodeBorderColor #333
+skinparam ActorBorderColor #333
+skinparam ArrowColor #333
+skinparam PackageBorderColor #333
+skinparam PackageFontStyle bold
+
+title **Diagrama de Componentes - Módulo INFRASTOCK**
+
+' ============= ACTORES =============
+actor "Administrador" as ADMIN
+actor "Operario" as OPER
+actor "Personal\nde Área" as AREA
+actor "Instructor" as INST
+
+' ============= FRONTEND =============
+node "<<Frontend Web>>" as FRONT {
+    component [Interfaz Web\nHTML/CSS/JS] as UI
+}
+
+ADMIN --> UI
+OPER --> UI
+AREA --> UI
+INST --> UI
+
+' ============= BACKEND =============
+node "<<Backend>>" as BACK {
+    component [Módulo de\nAutenticación\ny Roles] as M1
+    component [Módulo de\nGestión de\nUsuarios] as M2
+    component [Módulo de\nInsumos] as M3
+    component [Módulo de\nHerramientas] as M4
+    component [Módulo de\nPréstamos y\nDevoluciones] as M5
+    component [Módulo de\nSolicitudes] as M6
+    component [Módulo de\nSobrantes] as M7
+    component [Módulo de\nCategorías] as M8
+    component [Módulo de\nÁreas\nProductivas] as M9
+    component [Módulo de\nInventario\ny Stock] as M10
+    component [Módulo de\nSeguridad] as M11
+    component [Módulo de\nNotificaciones] as M12
+    component [Módulo de\nReportes] as M13
+    component [Módulo de\nExportación] as M14
+    component [Módulo de\nFiltro y\nBúsqueda] as M15
+    component [Módulo de\nHistorial /\nSeguimiento] as M16
+}
+
+UI --> M1
+UI --> M2
+UI --> M3
+UI --> M4
+UI --> M5
+UI --> M6
+UI --> M7
+UI --> M8
+UI --> M9
+UI --> M10
+UI --> M11
+UI --> M12
+UI --> M13
+UI --> M14
+UI --> M15
+UI --> M16
+
+' ============= BASE DE DATOS =============
+node "**BASE DE DATOS DE SICEFA**" as DATABASE {
+    component [Tabla\nUsers] as T1
+    component [Tabla\nRoles] as T2
+    component [Tabla\nEquipments\n(Insumos)] as T3
+    component [Tabla\nTools\n(Herramientas)] as T4
+    component [Tabla\nWarehouse\nMovements] as T5
+    component [Tabla\nRequests\n(Solicitudes)] as T6
+    component [Tabla\nRequest\nItems] as T7
+    component [Tabla\nSurpluses\n(Sobrantes)] as T8
+    component [Tabla\nInfrast.\nCategories] as T9
+    component [Tabla\nProductive\nUnits] as T10
+    component [Tabla\nWarehouses\n(Almacenes)] as T11
+    component [Tabla\nInventories] as T12
+    component [Tabla\nNotifications] as T13
+    component [Tabla\nLabors] as T14
+}
+
+M1 --> T1
+M1 --> T2
+M2 --> T1
+M3 --> T3
+M3 --> T9
+M4 --> T4
+M4 --> T9
+M5 --> T5
+M5 --> T4
+M6 --> T6
+M6 --> T7
+M7 --> T8
+M8 --> T9
+M9 --> T10
+M9 --> T11
+M10 --> T3
+M10 --> T12
+M10 --> T5
+M11 --> T1
+M11 --> T2
+M12 --> T13
+M13 --> T5
+M13 --> T6
+M14 --> T6
+M14 --> T3
+M15 --> T3
+M15 --> T4
+M16 --> T5
+M16 --> T14
+
+@enduml
