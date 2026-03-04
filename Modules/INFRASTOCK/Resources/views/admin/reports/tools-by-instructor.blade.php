@@ -99,7 +99,7 @@
                         <span class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $index < 3 ? 'bg-blue-400 text-white' : 'bg-gray-300 text-gray-700' }} mr-3">
                             {{ $index + 1 }}
                         </span>
-                        <span class="text-sm font-medium text-gray-800">{{ $tool->tool->name ?? 'N/A' }}</span>
+                        <span class="text-sm font-medium text-gray-800">{{ $tool->tool->nombre ?? 'N/A' }}</span>
                     </div>
                     <span class="text-sm font-bold text-blue-600">{{ number_format($tool->total_loans) }}</span>
                 </div>
@@ -192,7 +192,7 @@
                     @foreach($loanDetails->take(50) as $detail)
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $detail->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $detail->tool->name ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $detail->tool->nombre ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $detail->user->person->first_name ?? '' }} {{ $detail->user->person->first_last_name ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

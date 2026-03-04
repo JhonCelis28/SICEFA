@@ -258,7 +258,7 @@
                             <a href="https://github.com/sharonlondono07" class="text-orange-600 hover:text-orange-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
-                            <a href="#" class="text-orange-600 hover:text-orange-800 transition-colors">
+                            <a href="https://www.linkedin.com/in/snlo/" class="text-orange-600 hover:text-orange-800 transition-colors">
                                 <i class="fab fa-linkedin text-2xl"></i>
                             </a>
                         </div>

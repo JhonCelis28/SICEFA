@@ -318,9 +318,7 @@
                                 <tr class="hover:bg-gray-50 transition-colors duration-150">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-8 w-8">
-                                                <img class="h-8 w-8 rounded-full" src="{{ asset('AdminLTE/dist/img/user2-160x160.jpg') }}" alt="">
-                                            </div>
+                                           
                                             <div class="ml-3">
                                                 @php
                                                     $roleName = 'Usuario';
