@@ -39,6 +39,7 @@ class INFRASTOCKCategoriesSeeder extends Seeder
             'PVC',
             'Inventario Ingeniería',
             'Ferretería y pintura',
+            'Herramientas eléctricas Industriales'
         ];
 
         foreach ($categories as $categoryName) {

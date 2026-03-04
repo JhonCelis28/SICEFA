@@ -206,7 +206,7 @@
                             <a href="https://github.com/PaulaDayana" class="text-green-600 hover:text-green-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
-                            <a href="#" class="text-green-600 hover:text-green-800 transition-colors">
+                            <a href="https://www.linkedin.com/in/paula-dayana-cerquera-tovar-63013b3b5/" class="text-green-600 hover:text-green-800 transition-colors">
                                 <i class="fab fa-linkedin text-2xl"></i>
                             </a>
                         </div>
@@ -232,7 +232,7 @@
                             <a href="https://github.com/johanprogam" class="text-purple-600 hover:text-purple-800 transition-colors">
                                 <i class="fab fa-github text-2xl"></i>
                             </a>
-                            <a href="#" class="text-purple-600 hover:text-purple-800 transition-colors">
+                            <a href="https://www.linkedin.com/in/johan-calderon-4253603b5" class="text-purple-600 hover:text-purple-800 transition-colors">
                                 <i class="fab fa-linkedin text-2xl"></i>
                             </a>
                         </div>

@@ -544,7 +544,7 @@
 
         <!-- BOTÓN PRINCIPAL (ya no se mueve) -->
         <button onclick="toggleManuals()" title="Manuales" class="bg-green-700 hover:bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition duration-300">
-            <img src="{{ asset('assets/img/soporte.png') }}" alt="Manuales" class="w-6 h-6">
+            <img src="{{ asset('assets/img/soporte.png') }}" alt="Manuale" class="w-6 h-6">
         </button>
     </div>
 
