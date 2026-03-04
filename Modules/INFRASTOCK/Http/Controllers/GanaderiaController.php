@@ -124,6 +124,10 @@ class GanaderiaController extends Controller
     {
         $this->verifyRole();
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
 
         // Filtrar: excluir categorías de aseo para Ganadería (herramientas e insumos generales)
@@ -482,6 +486,10 @@ class GanaderiaController extends Controller
 
         // Obtener equipos disponibles para el modal
         $equipments = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name')
             ->get();
 
@@ -848,6 +856,10 @@ class GanaderiaController extends Controller
 
         // Obtener herramientas e insumos generales (excluir aseo) - Mantenido por compatibilidad
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
         
         $equipments = $this->excludeCleaningCategories($query)->get();

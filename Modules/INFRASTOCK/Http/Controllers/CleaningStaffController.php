@@ -430,6 +430,10 @@ class CleaningStaffController extends Controller
 
         // Obtener equipos disponibles para el modal (incluyendo agotados)
         $equipments = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name')
             ->get();
 

@@ -124,6 +124,10 @@ class AgroindustriaController extends Controller
     {
         $this->verifyRole();
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
 
         // Filtrar: excluir categorías de aseo para Agroindustria (herramientas e insumos generales)
@@ -482,6 +486,10 @@ class AgroindustriaController extends Controller
 
         // Obtener equipos disponibles para el modal
         $equipments = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name')
             ->get();
 
@@ -854,6 +862,10 @@ class AgroindustriaController extends Controller
 
         // Obtener herramientas e insumos generales (excluir aseo) - Mantenido si se usa por compatibilidad
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
         
         $equipments = $this->excludeCleaningCategories($query)->get();

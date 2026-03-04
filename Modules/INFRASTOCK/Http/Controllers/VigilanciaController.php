@@ -124,6 +124,10 @@ class VigilanciaController extends Controller
     {
         $this->verifyRole();
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
 
         // Filtrar: excluir categorías de aseo para Vigilancia (herramientas e insumos generales)
@@ -482,6 +486,10 @@ class VigilanciaController extends Controller
 
         // Obtener equipos disponibles para el modal
         $equipments = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name')
             ->get();
 
@@ -850,6 +858,10 @@ class VigilanciaController extends Controller
 
         // Obtener herramientas e insumos generales (excluir aseo)
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
         
         $equipments = $this->excludeCleaningCategories($query)->get();
