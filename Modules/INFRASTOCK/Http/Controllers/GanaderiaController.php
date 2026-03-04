@@ -251,8 +251,12 @@ class GanaderiaController extends Controller
     public function createRequest(Request $request)
     {
         $this->verifyRole();
-        // Filtrar equipos: excluir categorías de aseo (herramientas e insumos generales)
+        // Filtrar equipos: excluir categorías de aseo y no vencidos
         $query = Equipment::with('category')
+            ->where(function($q) {
+                $q->whereNull('expiration_date')
+                  ->orWhere('expiration_date', '>=', now()->startOfDay());
+            })
             ->orderBy('name');
         
         $equipments = $this->excludeCleaningCategories($query)->get()
@@ -332,6 +336,12 @@ class GanaderiaController extends Controller
             }
 
             $amount = $equipmentData['amount'];
+
+            // Verificar que el insumo no esté vencido
+            if ($equipment->status === 'vencido') {
+                $errors[] = "El insumo {$equipment->name} se encuentra vencido.";
+                continue;
+            }
 
             // Verificar que el insumo tenga cantidad suficiente
             if (!$equipment->hasStockFor($amount)) {

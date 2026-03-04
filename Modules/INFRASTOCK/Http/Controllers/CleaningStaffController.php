@@ -266,7 +266,12 @@ class CleaningStaffController extends Controller
     {
         // Si es una petición AJAX, devolver los datos necesarios para el modal
         if ($request->ajax()) {
-            $equipments = Equipment::with('category')->orderBy('name')->get();
+            $equipments = Equipment::with('category')
+                ->where(function($q) {
+                    $q->whereNull('expiration_date')
+                      ->orWhere('expiration_date', '>=', now()->startOfDay());
+                })
+                ->orderBy('name')->get();
             $productiveUnitWarehouses = ProductiveUnitWarehouse::with('productiveUnit', 'warehouse')->get();
             
             return response()->json([
@@ -313,7 +318,13 @@ class CleaningStaffController extends Controller
 
             $amount = $equipmentData['amount'];
 
-        // Verificar que el insumo tenga cantidad suficiente
+            // Verificar que el insumo no esté vencido
+            if ($equipment->status === 'vencido') {
+                $errors[] = "El insumo {$equipment->name} se encuentra vencido.";
+                continue;
+            }
+
+            // Verificar que el insumo tenga cantidad suficiente
             if (!$equipment->hasStockFor($amount)) {
                 $errors[] = "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}";
                 continue;
@@ -572,18 +583,29 @@ class CleaningStaffController extends Controller
                     ->first();
 
                 if ($requestItem) {
-                    // Verificar stock disponible
-                $equipment = $requestItem->equipment;
-                if (!$equipment->hasStockFor($itemData['requested_amount'])) {
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}"
-                        ], 422);
+                    // Verificar stock disponible y expiración
+                    $equipment = $requestItem->equipment;
+                    if ($equipment->status === 'vencido') {
+                        if ($request->ajax() || $request->wantsJson()) {
+                            return response()->json([
+                                'success' => false,
+                                'error' => "El insumo {$equipment->name} se encuentra vencido."
+                            ], 422);
+                        }
+                        return redirect()->route('infrastock.cleaning-staff.requests.index')
+                            ->with('error', "El insumo {$equipment->name} se encuentra vencido.");
                     }
-                    return redirect()->route('infrastock.cleaning-staff.requests.index')
-                        ->with('error', "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}");
-                }
+
+                    if (!$equipment->hasStockFor($itemData['requested_amount'])) {
+                        if ($request->ajax() || $request->wantsJson()) {
+                            return response()->json([
+                                'success' => false,
+                                'error' => "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}"
+                            ], 422);
+                        }
+                        return redirect()->route('infrastock.cleaning-staff.requests.index')
+                            ->with('error', "No hay suficiente stock disponible para {$equipment->name}. Stock disponible: {$equipment->stock}");
+                    }
 
                 $requestItem->update([
                     'requested_amount' => $itemData['requested_amount'],
