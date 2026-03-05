@@ -160,6 +160,36 @@ class SupplyReturnController extends Controller
                 $message .= " Motivo: {$reason}";
             }
 
+            // Determinar la ruta correcta según el rol del usuario
+            $user = $surplus->user;
+            $userRoles = $user ? $user->roles->pluck('name')->toArray() : [];
+            $actionUrl = route('cefa.infrastock.index'); // Ruta por defecto
+
+            if (in_array('Aseo', $userRoles) || in_array('Personal de Aseo', $userRoles)) {
+                $actionUrl = route('infrastock.cleaning-staff.surplus.index');
+            }
+            elseif (in_array('Ciencias Basicas', $userRoles)) {
+                $actionUrl = route('infrastock.ciencias-basicas.surplus-report');
+            }
+            elseif (in_array('Agroindustria', $userRoles)) {
+                $actionUrl = route('infrastock.agroindustria.surplus-report');
+            }
+            elseif (in_array('Centro de Convivencia', $userRoles)) {
+                $actionUrl = route('infrastock.convivencia.surplus-report');
+            }
+            elseif (in_array('Ganadería', $userRoles)) {
+                $actionUrl = route('infrastock.ganaderia.surplus-report');
+            }
+            elseif (in_array('Psicola', $userRoles)) {
+                $actionUrl = route('infrastock.psicola.surplus-report');
+            }
+            elseif (in_array('Vigilancia', $userRoles)) {
+                $actionUrl = route('infrastock.vigilancia.surplus-report');
+            }
+            elseif (in_array('Operario', $userRoles)) {
+                $actionUrl = route('infrastock.operator.surplus-report');
+            }
+
             Notification::create([
                 'type' => $isApproved ? 'surplus_approved' : 'surplus_rejected',
                 'notifiable_type' => 'App\Models\User',
@@ -172,7 +202,7 @@ class SupplyReturnController extends Controller
                     'surplus_amount' => $surplus->surplus_amount,
                     'status' => $status,
                     'processed_at' => now()->format('d/m/Y H:i'),
-                    'action_url' => route('infrastock.cleaning-staff.surplus.index'), // Ajustar según el rol si es necesario
+                    'action_url' => $actionUrl,
                 ],
             ]);
         }
